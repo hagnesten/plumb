@@ -86,7 +86,10 @@ namespace ui {
 
 				const analysis::function_info& info = db->functions [ static_cast < size_t > ( item.ref ) ];
 				base::writer meta;
-				const wchar_t* note = user_text ( comments, info.start );
+				const wchar_t* note = user_text ( notes, info.start );
+
+				if ( !note )
+					note = user_text ( comments, info.start );
 
 				put_address ( );
 				function_name ( item.ref, name, 200 );

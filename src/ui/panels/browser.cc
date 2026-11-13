@@ -3,14 +3,14 @@
 
 namespace ui {
 
-	static const uint32_t panel_glyphs [ static_cast < int32_t > ( panel::COUNT ) ] = { icons::CODE, icons::IMPORT, icons::EXPORT, icons::FONT, icons::LAYERS, icons::PUZZLE, icons::FORM, icons::LINK, icons::SEARCH, icons::INFO };
-	static const wchar_t* panel_titles [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Functions", L"Imports", L"Exports", L"Strings", L"Sections", L"Classes", L"Structures", L"References", L"Search", L"Inspector" };
-	static const wchar_t* panel_captions [ static_cast < int32_t > ( panel::COUNT ) ] = { L"FUNCTIONS", L"IMPORTS", L"EXPORTS", L"STRINGS", L"SECTIONS", L"CLASSES", L"STRUCTURES", L"REFERENCES", L"SEARCH", L"INSPECTOR" };
+	static const uint32_t panel_glyphs [ static_cast < int32_t > ( panel::COUNT ) ] = { icons::CODE, icons::IMPORT, icons::EXPORT, icons::FONT, icons::LAYERS, icons::PUZZLE, icons::FORM, icons::LINK, icons::SEARCH, icons::TAG, icons::INFO };
+	static const wchar_t* panel_titles [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Functions", L"Imports", L"Exports", L"Strings", L"Sections", L"Classes", L"Structures", L"References", L"Search", L"Notes", L"Inspector" };
+	static const wchar_t* panel_captions [ static_cast < int32_t > ( panel::COUNT ) ] = { L"FUNCTIONS", L"IMPORTS", L"EXPORTS", L"STRINGS", L"SECTIONS", L"CLASSES", L"STRUCTURES", L"REFERENCES", L"SEARCH", L"NOTES", L"INSPECTOR" };
 	static const wchar_t* panel_columns [ static_cast < int32_t > ( panel::COUNT ) ] [ 3 ] = {
 		{ L"Name", L"Address", L"Size" }, { L"Name", nullptr, L"Slot" }, { L"Name", nullptr, L"Address" }, { L"Text", nullptr, L"Address" }, { L"Name", L"Access", L"Address" },
-		{ L"Class", nullptr, L"Virtuals" }, { L"Struct", nullptr, L"Size" }, { L"Kind", L"From", nullptr }, { L"Address", L"Where", nullptr }, { nullptr, nullptr, nullptr }
+		{ L"Class", nullptr, L"Virtuals" }, { L"Struct", nullptr, L"Size" }, { L"Kind", L"From", nullptr }, { L"Address", L"Where", nullptr }, { L"Kind", L"Where", nullptr }, { nullptr, nullptr, nullptr }
 	};
-	static const wchar_t* panel_hints [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Filter functions", L"Filter imports or modules", L"Filter exports", L"Search strings", L"Filter sections", L"Filter classes", L"Filter structures", L"Filter by function", L"Filter results", L"" };
+	static const wchar_t* panel_hints [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Filter functions", L"Filter imports or modules", L"Filter exports", L"Search strings", L"Filter sections", L"Filter classes", L"Filter structures", L"Filter by function", L"Filter results", L"Filter notes", L"" };
 
 	static const wchar_t* ref_word ( analysis::ref type ) {
 
@@ -123,7 +123,7 @@ namespace ui {
 		float x = area.right ( ) - inner_w;
 		base::writer count;
 
-		if ( filters [ slot ].revision != filter_seen [ slot ] )
+		if ( filters [ slot ].revision != filter_seen [ slot ] || ( browsing == panel::NOTES && notes_seen != annotation_revision ) )
 			refresh_filter ( browsing );
 
 		int32_t total = 0;
@@ -148,6 +148,10 @@ namespace ui {
 
 			case panel::SEARCH:
 				total = search_hits.count ( );
+				break;
+
+			case panel::NOTES:
+				total = notes.count ( ) + bookmarks.count ( ) + comments.count ( );
 				break;
 
 			case panel::IMPORTS:
@@ -216,7 +220,7 @@ namespace ui {
 
 		bool sortable = browsing == panel::FUNCTIONS || browsing == panel::EXPORTS || browsing == panel::STRINGS || browsing == panel::SECTIONS;
 		bool middle_right = browsing == panel::FUNCTIONS;
-		float middle_x = browsing == panel::FUNCTIONS ? x + inner_w - 64.0f : ( browsing == panel::SECTIONS ? x + 106.0f : ( browsing == panel::REFERENCES ? x + 60.0f : x + 100.0f ) );
+		float middle_x = browsing == panel::FUNCTIONS ? x + inner_w - 64.0f : ( browsing == panel::SECTIONS ? x + 106.0f : ( browsing == panel::REFERENCES || browsing == panel::NOTES ? x + 60.0f : x + 100.0f ) );
 		float right_x = x + inner_w - 10.0f;
 		float spots [ 3 ] = { x + 10.0f, middle_x, right_x };
 		render::align aligns [ 3 ] = { render::align::LEFT, middle_right ? render::align::RIGHT : render::align::LEFT, render::align::RIGHT };
@@ -305,6 +309,8 @@ namespace ui {
 				empty = analysis_applied ? L"No MSVC RTTI in this image." : L"Waiting for analysis.";
 			else if ( which == panel::SEARCH )
 				empty = search_query.empty ( ) ? L"No search yet." : L"No matches.";
+			else if ( which == panel::NOTES && !filters [ slot ].length )
+				empty = L"Shift+N notes a function, ; comments, Ctrl+D bookmarks.";
 
 			c.text ( empty, render::font::UI, math::vec2 ( area.x + 10.0f, area.y + 16.0f ), ink ( tone::INK_FAINT ) );
 
@@ -462,6 +468,16 @@ namespace ui {
 							case panel::SEARCH:
 								go ( search_hits [ static_cast < size_t > ( value ) ].address, true );
 								break;
+
+							case panel::NOTES: {
+
+								const base::list < user_name >& source = value >= 0x200000 ? comments : ( value >= 0x100000 ? bookmarks : notes );
+
+								go ( source [ static_cast < size_t > ( value & 0xFFFFF ) ].address, true );
+
+								break;
+
+							}
 
 							case panel::IMPORTS:
 								go ( file.imports [ static_cast < size_t > ( value ) ].slot, true );
@@ -762,6 +778,37 @@ namespace ui {
 						c.text ( where.text ( ), render::font::MONO_SMALL, math::vec2 ( row.x + 8.0f, cy ), ink ( tone::ADDRESS ) );
 						c.text ( label.text ( ), render::font::MONO_SMALL, math::vec2 ( row.x + 98.0f, cy ), ink ( item.note.empty ( ) ? tone::INK : tone::INK_SOFT ), render::align::LEFT, row.w - 106.0f );
 
+						break;
+
+					}
+
+					case panel::NOTES: {
+
+						int32_t kind = value >= 0x200000 ? 2 : ( value >= 0x100000 ? 1 : 0 );
+						const base::list < user_name >& source = kind == 2 ? comments : ( kind == 1 ? bookmarks : notes );
+						const user_name& item = source [ static_cast < size_t > ( value & 0xFFFFF ) ];
+						static const wchar_t* const kinds [ 3 ] = { L"note", L"mark", L"comment" };
+						static const tone kind_tones [ 3 ] = { tone::ACCENT, tone::WARNING, tone::COMMENT };
+						int32_t owner = db && analysis_applied ? db->function_at ( item.address ) : -1;
+						wchar_t name [ 200 ];
+						base::writer label;
+
+						if ( owner >= 0 ) {
+
+							function_name ( owner, name, 200 );
+							label.add ( name );
+
+							if ( item.address != db->functions [ static_cast < size_t > ( owner ) ].start )
+								label.add ( L"+" ).hex ( item.address - db->functions [ static_cast < size_t > ( owner ) ].start );
+
+						} else
+							label.hex ( item.address, wide ? 9 : 8 );
+
+						float label_w = base::min ( c.measure ( label.text ( ), render::font::MONO_SMALL ), 120.0f );
+
+						c.text ( kinds [ kind ], render::font::TINY, math::vec2 ( row.x + 8.0f, cy ), ink ( kind_tones [ kind ] ) );
+						c.text ( label.text ( ), render::font::MONO_SMALL, math::vec2 ( row.x + 58.0f, cy ), ink ( tone::INK ), render::align::LEFT, 120.0f );
+						c.text ( item.text.get ( ), render::font::SMALL, math::vec2 ( row.x + 68.0f + label_w, cy ), ink ( tone::INK_SOFT ), render::align::LEFT, row.right ( ) - row.x - 76.0f - label_w );
 
 						break;
 

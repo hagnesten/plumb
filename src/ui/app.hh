@@ -62,6 +62,7 @@ namespace ui {
 		STRUCTS,
 		REFERENCES,
 		SEARCH,
+		NOTES,
 		INSPECTOR,
 		COUNT,
 
@@ -192,6 +193,9 @@ namespace ui {
 		DEBUG_BREAKPOINT,
 		SHORTCUTS,
 		ABOUT,
+		NOTE,
+		SHOW_NOTES,
+		EXPORT_REPORT,
 		COUNT,
 
 	};
@@ -691,6 +695,10 @@ namespace ui {
 
 		void export_classes ( );
 
+		void export_report ( );
+
+		bool write_beside ( const wchar_t* suffix, const base::list < wchar_t >& text, base::writer& target );
+
 		void build_calls ( uint64_t function );
 
 
@@ -853,7 +861,7 @@ namespace ui {
 		uint32_t filter_seen [ static_cast < int32_t > ( panel::COUNT ) ] = { };
 		base::list < int32_t > shown [ static_cast < int32_t > ( panel::COUNT ) ];
 		scroller browser_scroll [ static_cast < int32_t > ( panel::COUNT ) ];
-		int32_t browser_pick [ static_cast < int32_t > ( panel::COUNT ) ] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+		int32_t browser_pick [ static_cast < int32_t > ( panel::COUNT ) ] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 		uint64_t peek_candidate = 0;
 		math::rect peek_candidate_anchor;
 		uint64_t peek_target = 0;
@@ -906,6 +914,9 @@ namespace ui {
 		base::list < user_name > renamed;
 		base::list < user_name > comments;
 		base::list < user_name > bookmarks;
+		base::list < user_name > notes;
+		uint32_t annotation_revision = 1;
+		uint32_t notes_seen = 0;
 		base::list < user_name > number_forms;
 		base::list < user_name > prototypes;
 		base::list < local_entry > locals;

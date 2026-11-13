@@ -84,7 +84,10 @@ namespace ui {
 		{ L"Stop debugging", L"Ctrl+F2" },
 		{ L"Toggle breakpoint", L"F2" },
 		{ L"Keyboard shortcuts", L"F1" },
-		{ L"About Plumb", L"" }
+		{ L"About Plumb", L"" },
+		{ L"Function note", L"Shift+N" },
+		{ L"Notes and bookmarks", L"Alt+0" },
+		{ L"Export report", L"" }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -126,6 +129,7 @@ namespace ui {
 			case command::VIEW_PSEUDOCODE:
 			case command::SWAP_VIEW:
 			case command::COPY_FUNCTION:
+			case command::NOTE:
 				return analyzed && db->function_at ( now->cursor_address ) >= 0;
 
 			case command::MAKE_SIGNATURE:
@@ -572,6 +576,27 @@ namespace ui {
 
 				}
 
+				break;
+
+			case command::SHOW_NOTES:
+				browsing = panel::NOTES;
+				browser_open = true;
+				refresh_filter ( panel::NOTES );
+				break;
+
+			case command::NOTE: {
+
+				int32_t owner = db->function_at ( showing == view::PSEUDOCODE ? now->function : now->cursor_address );
+
+				if ( owner >= 0 )
+					open_prompt ( command::NOTE, db->functions [ static_cast < size_t > ( owner ) ].start );
+
+				break;
+
+			}
+
+			case command::EXPORT_REPORT:
+				export_report ( );
 				break;
 
 			case command::TOGGLE_BYTES:

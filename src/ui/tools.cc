@@ -160,6 +160,8 @@ namespace ui {
 
 		} else if ( action == command::COMMENT )
 			fill = user_text ( comments, address );
+		else if ( action == command::NOTE )
+			fill = user_text ( notes, address );
 		else if ( ( action == command::FIND_SIGNATURE || action == command::SEARCH_ALL ) && !search_query.empty ( ) )
 			fill = search_query.get ( );
 		else if ( action == command::XOR_DECODE )
@@ -287,6 +289,13 @@ namespace ui {
 
 			case command::COMMENT:
 				set_user_text ( comments, prompt_address, text );
+				refresh_filter ( panel::NOTES );
+				changed ( );
+				break;
+
+			case command::NOTE:
+				set_user_text ( notes, prompt_address, text );
+				refresh_filter ( panel::NOTES );
 				changed ( );
 				break;
 

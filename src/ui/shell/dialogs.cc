@@ -135,6 +135,8 @@ namespace ui {
 
 		if ( prompt_action == command::COMMENT )
 			title = L"Comment";
+		else if ( prompt_action == command::NOTE )
+			title = L"Function note";
 		else if ( prompt_action == command::FIND_SIGNATURE )
 			title = L"Find signature or bytes";
 		else if ( prompt_action == command::SEARCH_ALL )
@@ -219,7 +221,7 @@ namespace ui {
 
 		uint64_t field_id = make_id ( "prompt" );
 
-		const wchar_t* hint = prompt_action == command::FIND_SIGNATURE ? L"Pattern" : ( prompt_action == command::COMMENT ? L"Comment, empty to remove" : L"New name, empty to reset" );
+		const wchar_t* hint = prompt_action == command::FIND_SIGNATURE ? L"Pattern" : ( prompt_action == command::COMMENT ? L"Comment, empty to remove" : ( prompt_action == command::NOTE ? L"What this function does, empty to remove" : L"New name, empty to reset" ) );
 		bool code_font = prompt_action == command::FIND_SIGNATURE || prompt_action == command::SEARCH_ALL || prompt_action == command::ASSEMBLE || prompt_action == command::PATCH_BYTES || prompt_action == command::XOR_DECODE || prompt_mode >= 2;
 
 		if ( prompt_action == command::SEARCH_ALL )

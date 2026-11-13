@@ -385,6 +385,8 @@ namespace ui {
 					run ( command::BACK );
 				else if ( code == VK_RIGHT )
 					run ( command::FORWARD );
+				else if ( code == '0' )
+					run ( command::SHOW_NOTES );
 				else if ( code >= '1' && code <= '9' )
 					run ( static_cast < command > ( static_cast < int32_t > ( command::SHOW_FUNCTIONS ) + static_cast < int32_t > ( code - '1' ) ) );
 
@@ -533,7 +535,7 @@ namespace ui {
 					continue;
 
 				case 'N':
-					run ( command::RENAME );
+					run ( key_shift ? command::NOTE : command::RENAME );
 					continue;
 
 				case 'H':

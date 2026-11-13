@@ -7,18 +7,18 @@ namespace ui {
 	struct menu_spec {
 
 		const wchar_t* title;
-		command items [ 16 ];
+		command items [ 20 ];
 		int32_t count;
 
 	};
 
 	static const menu_spec menus [ ] = {
 		{ L"File", { command::OPEN, command::SAVE_PROJECT, command::CLOSE, command::COUNT, command::TOGGLE_AUTOSAVE, command::COUNT, command::EXIT }, 7 },
-		{ L"Edit", { command::UNDO, command::REDO, command::COUNT, command::COPY, command::COPY_FUNCTION, command::COUNT, command::RENAME, command::COMMENT, command::SET_TYPE, command::BOOKMARK, command::COUNT, command::NUMBER_RADIX, command::NUMBER_CHAR, command::NUMBER_BINARY, command::NUMBER_FLOAT, command::NUMBER_RESET }, 16 },
+		{ L"Edit", { command::UNDO, command::REDO, command::COUNT, command::COPY, command::COPY_FUNCTION, command::COUNT, command::RENAME, command::COMMENT, command::NOTE, command::SET_TYPE, command::BOOKMARK, command::COUNT, command::NUMBER_RADIX, command::NUMBER_CHAR, command::NUMBER_BINARY, command::NUMBER_FLOAT, command::NUMBER_RESET }, 17 },
 		{ L"Jump", { command::GO_ADDRESS, command::GO_ENTRY, command::FOLLOW, command::COUNT, command::BACK, command::FORWARD, command::COUNT, command::NEXT_SECTION, command::PREVIOUS_SECTION, command::COUNT, command::FIND, command::PALETTE }, 12 },
 		{ L"View", { command::TOGGLE_GRAPH, command::VIEW_PSEUDOCODE, command::SWAP_VIEW, command::COUNT, command::VIEW_LISTING, command::VIEW_HEX, command::VIEW_HEADERS, command::VIEW_CALLS, command::COUNT, command::SPLIT, command::NEXT_TAB, command::CLOSE_TAB, command::COUNT, command::THEME, command::TOGGLE_BYTES, command::TOGGLE_SPACING }, 16 },
-		{ L"Window", { command::SHOW_FUNCTIONS, command::SHOW_IMPORTS, command::SHOW_EXPORTS, command::SHOW_STRINGS, command::SHOW_SECTIONS, command::SHOW_CLASSES, command::SHOW_STRUCTS, command::SHOW_REFERENCES, command::SHOW_SEARCH, command::COUNT, command::TOGGLE_BROWSER, command::TOGGLE_INSPECTOR, command::TOGGLE_OUTPUT, command::RESET_LAYOUT }, 14 },
-		{ L"Tools", { command::SEARCH_ALL, command::SHOW_REFERENCES, command::COUNT, command::MAKE_SIGNATURE, command::FIND_SIGNATURE, command::COUNT, command::XOR_DECODE, command::STRUCT_FROM_VAR, command::EXPORT_CLASSES, command::COUNT, command::TOGGLE_TERNARY }, 11 },
+		{ L"Window", { command::SHOW_FUNCTIONS, command::SHOW_IMPORTS, command::SHOW_EXPORTS, command::SHOW_STRINGS, command::SHOW_SECTIONS, command::SHOW_CLASSES, command::SHOW_STRUCTS, command::SHOW_REFERENCES, command::SHOW_SEARCH, command::SHOW_NOTES, command::COUNT, command::TOGGLE_BROWSER, command::TOGGLE_INSPECTOR, command::TOGGLE_OUTPUT, command::RESET_LAYOUT }, 15 },
+		{ L"Tools", { command::SEARCH_ALL, command::SHOW_REFERENCES, command::COUNT, command::MAKE_SIGNATURE, command::FIND_SIGNATURE, command::COUNT, command::XOR_DECODE, command::STRUCT_FROM_VAR, command::EXPORT_CLASSES, command::EXPORT_REPORT, command::COUNT, command::TOGGLE_TERNARY }, 12 },
 		{ L"Patch", { command::ASSEMBLE, command::PATCH_BYTES, command::REVERT_PATCH, command::COUNT, command::EXPORT_PATCHED }, 5 },
 		{ L"Debug", { command::DEBUG_RUN, command::DEBUG_PAUSE, command::DEBUG_STOP, command::COUNT, command::DEBUG_STEP_INTO, command::DEBUG_STEP_OVER, command::COUNT, command::DEBUG_BREAKPOINT }, 8 },
 		{ L"Help", { command::SHORTCUTS, command::COUNT, command::ABOUT }, 3 }

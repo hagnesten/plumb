@@ -1352,6 +1352,8 @@ namespace ui {
 
 	void app::set_user_text ( base::list < user_name >& list, uint64_t address, const wchar_t* text ) {
 
+		annotation_revision++;
+
 		for ( int32_t i = 0; i < list.count ( ); i++ ) {
 
 			if ( list [ static_cast < size_t > ( i ) ].address == address ) {

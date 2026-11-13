@@ -249,6 +249,44 @@ namespace ui {
 
 				break;
 
+			case panel::NOTES: {
+
+				const base::list < user_name >* sources [ 3 ] = { &notes, &bookmarks, &comments };
+
+				notes_seen = annotation_revision;
+
+				for ( int32_t kind = 0; kind < 3; kind++ ) {
+
+					const base::list < user_name >& source = *sources [ kind ];
+
+					for ( int32_t i = 0; i < source.count ( ) && i < 0x100000; i++ ) {
+
+						const user_name& item = source [ static_cast < size_t > ( i ) ];
+
+						if ( needle [ 0 ] && !contains_text ( item.text.get ( ), needle ) ) {
+
+							int32_t owner = db && analysis_applied ? db->function_at ( item.address ) : -1;
+
+							if ( owner < 0 )
+								continue;
+
+							function_name ( owner, buffer, 200 );
+
+							if ( !contains_text ( buffer, needle ) )
+								continue;
+
+						}
+
+						list.push ( kind * 0x100000 + i );
+
+					}
+
+				}
+
+				break;
+
+			}
+
 			default:
 				break;
 
@@ -1184,6 +1222,7 @@ namespace ui {
 		renamed.clear ( );
 		comments.clear ( );
 		bookmarks.clear ( );
+		notes.clear ( );
 		reference_list.clear ( );
 		search_hits.clear ( );
 		total_rows = 0;

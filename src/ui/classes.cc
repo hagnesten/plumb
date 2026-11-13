@@ -235,64 +235,13 @@ namespace ui {
 		out.push ( 0 );
 		copy_text ( out.data ( ) );
 
-		base::list < char > data;
-		int32_t needed = WideCharToMultiByte ( CP_UTF8, 0, out.data ( ), out.count ( ) - 1, nullptr, 0, nullptr, nullptr );
-
-		data.resize ( static_cast < size_t > ( base::max ( needed, 0 ) ) );
-
-		if ( needed > 0 )
-			WideCharToMultiByte ( CP_UTF8, 0, out.data ( ), out.count ( ) - 1, data.data ( ), needed, nullptr, nullptr );
-
 		base::writer target;
-		const wchar_t* path = file.path.get ( );
-		int32_t dot = -1;
-		int32_t length = 0;
 
-		for ( ; path [ length ]; length++ ) {
+		if ( !write_beside ( L".classes.h", out, target ) ) {
 
-			if ( path [ length ] == L'.' )
-				dot = length;
-			else if ( path [ length ] == L'\\' || path [ length ] == L'/' )
-				dot = -1;
+			log ( log_kind::WARN, L"Copied the classes to the clipboard, but couldn't write the header file." );
 
-		}
-
-		for ( int32_t i = 0; i < ( dot >= 0 ? dot : length ); i++ )
-			target.add ( path [ i ] );
-
-		target.add ( L".classes.h" );
-
-		if ( !files::write ( target.text ( ), data.data ( ), data.count ( ) ) ) {
-
-			base::writer folder;
-			const wchar_t* short_name = file.name.get ( );
-			int32_t name_dot = -1;
-
-			for ( int32_t i = 0; short_name [ i ]; i++ ) {
-
-				if ( short_name [ i ] == L'.' )
-					name_dot = i;
-
-			}
-
-			folder.add ( files::folder ( ) ).add ( L"\\exports" );
-			CreateDirectoryW ( folder.text ( ), nullptr );
-			folder.add ( L"\\" );
-
-			for ( int32_t i = 0; short_name [ i ] && ( name_dot < 0 || i < name_dot ); i++ )
-				folder.add ( short_name [ i ] );
-
-			folder.add ( L".classes.h" );
-			target.clear ( );
-			target.add ( folder.text ( ) );
-
-			if ( !files::write ( target.text ( ), data.data ( ), data.count ( ) ) ) {
-
-				log ( log_kind::WARN, L"Copied the classes to the clipboard, but couldn't write the header file." );
-
-				return;
-
-			}
+			return;
 
 		}
 

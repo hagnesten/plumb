@@ -155,6 +155,7 @@ namespace ui {
 		write_list ( L"name", renamed );
 		write_list ( L"comment", comments );
 		write_list ( L"bookmark", bookmarks );
+		write_list ( L"note", notes );
 		write_list ( L"number", number_forms );
 		write_list ( L"proto", prototypes );
 
@@ -208,9 +209,12 @@ namespace ui {
 
 	void app::apply_project ( const char* data ) {
 
+		annotation_revision++;
+
 		renamed.clear ( );
 		comments.clear ( );
 		bookmarks.clear ( );
+		notes.clear ( );
 		number_forms.clear ( );
 		prototypes.clear ( );
 		locals.clear ( );
@@ -291,6 +295,8 @@ namespace ui {
 				set_user_text ( comments, address, at );
 			else if ( base::same_text ( key, L"bookmark" ) )
 				set_user_text ( bookmarks, address, at );
+			else if ( base::same_text ( key, L"note" ) )
+				set_user_text ( notes, address, at );
 			else if ( base::same_text ( key, L"number" ) )
 				set_user_text ( number_forms, address, at );
 			else if ( base::same_text ( key, L"proto" ) )

@@ -207,8 +207,11 @@ namespace ui {
 
 			const analysis::function_info& info = db->functions [ static_cast < size_t > ( function ) ];
 			const wchar_t* shape = prototype_for ( target );
+			const wchar_t* remark = user_text ( notes, target );
 
-			if ( shape )
+			if ( remark )
+				detail.add ( remark );
+			else if ( shape )
 				detail.add ( shape );
 			else
 				detail.number ( info.instructions ).add ( L" instructions \x00B7 " ).number ( info.callers ).add ( info.callers == 1 ? L" caller \x00B7 0x" : L" callers \x00B7 0x" ).hex ( info.end - info.start ).add ( L" bytes" );
