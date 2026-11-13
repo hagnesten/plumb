@@ -719,13 +719,36 @@ int program_main ( ) {
 	int32_t argument_count = 0;
 	wchar_t** arguments = CommandLineToArgvW ( GetCommandLineW ( ), &argument_count );
 	const wchar_t* open_path = nullptr;
+	bool serve = false;
 
 	for ( int32_t i = 1; arguments && i < argument_count; i++ ) {
 
 		if ( base::same_text ( arguments [ i ], L"--software" ) )
 			software_only = true;
+		else if ( base::same_text ( arguments [ i ], L"--mcp" ) )
+			serve = true;
 		else if ( arguments [ i ] [ 0 ] != L'-' )
 			open_path = arguments [ i ];
+
+	}
+
+	if ( serve ) {
+
+		ui::app* server = new ui::app ( );
+
+		server->setup ( nullptr, nullptr );
+
+		if ( open_path )
+			server->open_file ( open_path );
+
+		if ( arguments )
+			LocalFree ( arguments );
+
+		int32_t code = server->serve_mcp ( );
+
+		CoUninitialize ( );
+
+		return code;
 
 	}
 

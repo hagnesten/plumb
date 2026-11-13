@@ -52,6 +52,7 @@
     <ClCompile Include="src\analysis\signatures.cc" />
     <ClCompile Include="src\base\base.cc" />
     <ClCompile Include="src\base\files.cc" />
+    <ClCompile Include="src\base\json.cc" />
     <ClCompile Include="src\base\math.cc" />
     <ClCompile Include="src\debugger\debugger.cc" />
     <ClCompile Include="src\decompiler\cache.cc" />
@@ -72,6 +73,7 @@
     <ClCompile Include="src\ui\commands.cc" />
     <ClCompile Include="src\ui\input.cc" />
     <ClCompile Include="src\ui\listing.cc" />
+    <ClCompile Include="src\ui\mcp.cc" />
     <ClCompile Include="src\ui\panels\browser.cc" />
     <ClCompile Include="src\ui\panels\inspector.cc" />
     <ClCompile Include="src\ui\panels\output.cc" />
@@ -111,6 +113,7 @@
     <ClInclude Include="src\analysis\signatures.hh" />
     <ClInclude Include="src\base\base.hh" />
     <ClInclude Include="src\base\files.hh" />
+    <ClInclude Include="src\base\json.hh" />
     <ClInclude Include="src\base\math.hh" />
     <ClInclude Include="src\debugger\debugger.hh" />
     <ClInclude Include="src\decompiler\decompiler.hh" />

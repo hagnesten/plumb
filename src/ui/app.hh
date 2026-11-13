@@ -8,6 +8,14 @@
 #include "decompiler/decompiler.hh"
 #include "ui/metrics.hh"
 
+namespace json {
+
+	struct value;
+
+	class writer;
+
+}
+
 namespace ui {
 
 	enum class hit : int32_t {
@@ -694,6 +702,16 @@ namespace ui {
 		void search_everything ( const wchar_t* query );
 
 		bool run_query ( const wchar_t* text );
+
+		int32_t serve_mcp ( );
+
+		void mcp_message ( const json::value& message, json::writer& reply );
+
+		bool mcp_call ( const char* name, const json::value* args, base::list < wchar_t >& out );
+
+		bool mcp_address ( const json::value* args, const char* key, uint64_t& address, base::writer& problem ) const;
+
+		void mcp_disassemble ( uint64_t address, int32_t count, uint64_t limit, base::list < wchar_t >& out ) const;
 
 		void export_classes ( );
 
