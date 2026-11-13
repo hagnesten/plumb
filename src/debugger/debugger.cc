@@ -13,6 +13,21 @@ namespace debugger {
 
 	};
 
+	struct cover_point {
+
+		uint64_t address = 0;
+		uint8_t original = 0;
+		bool armed = false;
+
+	};
+
+	struct condition_entry {
+
+		uint64_t rva = 0;
+		base::text text;
+
+	};
+
 	struct thread_entry {
 
 		DWORD id = 0;
@@ -28,6 +43,10 @@ namespace debugger {
 	static volatile long wanted_serial = 0;
 	static base::list < uint64_t > wanted;
 	static base::list < base::text > messages;
+	static base::list < condition_entry > conditions;
+	static base::list < uint64_t > cover_wanted;
+	static base::list < uint64_t > cover_hits;
+	static base::list < cover_point > cover;
 	static wchar_t target [ 600 ];
 	static uint64_t entry = 0;
 	static bool wide_target = true;
@@ -102,13 +121,132 @@ namespace debugger {
 
 	}
 
+	static int32_t find_cover ( uint64_t address ) {
+
+		int32_t low = 0;
+		int32_t high = cover.count ( ) - 1;
+
+		while ( low <= high ) {
+
+			int32_t middle = ( low + high ) / 2;
+			uint64_t value = cover [ static_cast < size_t > ( middle ) ].address;
+
+			if ( value == address )
+				return middle;
+
+			if ( value < address )
+				low = middle + 1;
+			else
+				high = middle - 1;
+
+		}
+
+		return -1;
+
+	}
+
+	static void record_cover ( cover_point& item ) {
+
+		item.armed = false;
+
+		AcquireSRWLockExclusive ( &lock );
+		cover_hits.push ( item.address - image_base );
+		ReleaseSRWLockExclusive ( &lock );
+
+	}
+
 	static void arm ( breakpoint& item ) {
 
 		if ( item.armed )
 			return;
 
+		int32_t shared_point = find_cover ( item.address );
+
+		if ( shared_point >= 0 && cover [ static_cast < size_t > ( shared_point ) ].armed ) {
+
+			item.original = cover [ static_cast < size_t > ( shared_point ) ].original;
+			record_cover ( cover [ static_cast < size_t > ( shared_point ) ] );
+			item.armed = true;
+
+			return;
+
+		}
+
 		if ( read_memory ( item.address, &item.original, 1 ) && write_byte ( item.address, 0xCC ) )
 			item.armed = true;
+
+	}
+
+	static void arm_coverage ( ) {
+
+		base::list < uint64_t > copy;
+
+		AcquireSRWLockShared ( &lock );
+
+		for ( uint64_t rva : cover_wanted )
+			copy.push ( rva );
+
+		ReleaseSRWLockShared ( &lock );
+
+		cover.clear ( );
+
+		if ( copy.empty ( ) )
+			return;
+
+		uint64_t low = image_base + copy [ 0 ];
+		uint64_t high = image_base + copy.back ( ) + 1;
+		DWORD old = 0;
+		void* region = reinterpret_cast < void* > ( low );
+		SIZE_T span = static_cast < SIZE_T > ( high - low );
+
+		VirtualProtectEx ( process, region, span, PAGE_EXECUTE_READWRITE, &old );
+
+		for ( uint64_t rva : copy ) {
+
+			cover_point& item = cover.emplace ( );
+			uint8_t trap = 0xCC;
+			SIZE_T done = 0;
+
+			item.address = image_base + rva;
+
+			if ( read_memory ( item.address, &item.original, 1 ) && WriteProcessMemory ( process, reinterpret_cast < void* > ( item.address ), &trap, 1, &done ) && done == 1 )
+				item.armed = true;
+
+		}
+
+		VirtualProtectEx ( process, region, span, old, &old );
+		FlushInstructionCache ( process, region, span );
+
+	}
+
+	static bool get_registers ( HANDLE thread, uint64_t* values );
+
+	static bool condition_holds ( uint64_t address, HANDLE thread ) {
+
+		base::text text;
+
+		AcquireSRWLockShared ( &lock );
+
+		for ( const condition_entry& item : conditions ) {
+
+			if ( image_base + item.rva == address )
+				text.set ( item.text.get ( ) );
+
+		}
+
+		ReleaseSRWLockShared ( &lock );
+
+		if ( text.empty ( ) )
+			return true;
+
+		uint64_t registers [ 18 ] = { };
+		bool valid = false;
+
+		get_registers ( thread, registers );
+
+		bool result = test_condition ( text.get ( ), registers, wide_target, valid );
+
+		return !valid || result;
 
 	}
 
@@ -281,8 +419,37 @@ namespace debugger {
 		value.image_base = image_base;
 		value.wide = wide_target;
 
-		if ( thread && get_registers ( thread, value.registers ) )
+		value.stack_count = 0;
+
+		if ( thread && get_registers ( thread, value.registers ) ) {
+
 			value.pc = value.registers [ 16 ];
+
+			if ( state == status::PAUSED ) {
+
+				if ( wide_target ) {
+
+					if ( read_memory ( value.registers [ 4 ], value.stack, sizeof ( value.stack ) ) )
+						value.stack_count = 64;
+
+				} else {
+
+					uint32_t narrow [ 64 ] = { };
+
+					if ( read_memory ( value.registers [ 4 ], narrow, sizeof ( narrow ) ) ) {
+
+						for ( int32_t i = 0; i < 64; i++ )
+							value.stack [ i ] = narrow [ i ];
+
+						value.stack_count = 64;
+
+					}
+
+				}
+
+			}
+
+		}
 
 		int32_t i = 0;
 
@@ -434,6 +601,7 @@ namespace debugger {
 
 					start_point.address = image_base + entry;
 					start_point.temporary = true;
+					arm_coverage ( );
 					arm ( start_point );
 					synced_serial = -1;
 					sync_points ( );
@@ -491,7 +659,21 @@ namespace debugger {
 
 						int32_t hit = find_point ( at );
 
-						if ( hit >= 0 && points [ static_cast < size_t > ( hit ) ].armed ) {
+						int32_t covered = hit < 0 ? find_cover ( at ) : -1;
+
+						if ( covered >= 0 && cover [ static_cast < size_t > ( covered ) ].armed ) {
+
+							write_byte ( at, cover [ static_cast < size_t > ( covered ) ].original );
+							record_cover ( cover [ static_cast < size_t > ( covered ) ] );
+							adjust ( thread, true, at, false );
+
+						} else if ( hit >= 0 && points [ static_cast < size_t > ( hit ) ].armed && !points [ static_cast < size_t > ( hit ) ].temporary && !condition_holds ( at, thread ) ) {
+
+							disarm ( points [ static_cast < size_t > ( hit ) ] );
+							adjust ( thread, true, at, true );
+							reinsert = at;
+
+						} else if ( hit >= 0 && points [ static_cast < size_t > ( hit ) ].armed ) {
 
 							breakpoint& item = points [ static_cast < size_t > ( hit ) ];
 							bool temporary = item.temporary;
@@ -673,6 +855,7 @@ namespace debugger {
 		log_text ( note );
 		threads.clear ( );
 		points.clear ( );
+		cover.clear ( );
 		process = nullptr;
 		image_base = 0;
 
@@ -747,6 +930,175 @@ namespace debugger {
 
 		if ( wake )
 			SetEvent ( wake );
+
+	}
+
+	void set_condition ( uint64_t rva, const wchar_t* text ) {
+
+		AcquireSRWLockExclusive ( &lock );
+
+		for ( int32_t i = conditions.count ( ) - 1; i >= 0; i-- ) {
+
+			if ( conditions [ static_cast < size_t > ( i ) ].rva == rva )
+				conditions.remove_at ( static_cast < size_t > ( i ) );
+
+		}
+
+		if ( text && text [ 0 ] ) {
+
+			condition_entry& item = conditions.emplace ( );
+
+			item.rva = rva;
+			item.text.set ( text );
+
+		}
+
+		ReleaseSRWLockExclusive ( &lock );
+
+	}
+
+	void set_coverage ( const uint64_t* rvas, int32_t count ) {
+
+		AcquireSRWLockExclusive ( &lock );
+		cover_wanted.clear ( );
+		cover_hits.clear ( );
+
+		for ( int32_t i = 0; i < count; i++ )
+			cover_wanted.push ( rvas [ i ] );
+
+		ReleaseSRWLockExclusive ( &lock );
+
+	}
+
+	int32_t take_coverage ( base::list < uint64_t >& out ) {
+
+		AcquireSRWLockExclusive ( &lock );
+
+		int32_t count = cover_hits.count ( );
+
+		for ( uint64_t rva : cover_hits )
+			out.push ( rva );
+
+		cover_hits.clear ( );
+		ReleaseSRWLockExclusive ( &lock );
+
+		return count;
+
+	}
+
+	bool peek ( uint64_t address, void* out, size_t size ) {
+
+		if ( !process || read ( ).state != status::PAUSED )
+			return false;
+
+		return read_memory ( address, out, size );
+
+	}
+
+	static bool parse_value ( const wchar_t*& at, uint64_t& value ) {
+
+		bool hex = at [ 0 ] == L'0' && ( at [ 1 ] == L'x' || at [ 1 ] == L'X' );
+		bool any = false;
+
+		if ( hex )
+			at += 2;
+
+		value = 0;
+
+		while ( *at ) {
+
+			wchar_t c = *at;
+			uint32_t digit = 0;
+
+			if ( c >= L'0' && c <= L'9' )
+				digit = static_cast < uint32_t > ( c - L'0' );
+			else if ( hex && c >= L'a' && c <= L'f' )
+				digit = static_cast < uint32_t > ( c - L'a' + 10 );
+			else if ( hex && c >= L'A' && c <= L'F' )
+				digit = static_cast < uint32_t > ( c - L'A' + 10 );
+			else
+				break;
+
+			value = value * ( hex ? 16 : 10 ) + digit;
+			any = true;
+			at++;
+
+		}
+
+		return any;
+
+	}
+
+	bool test_condition ( const wchar_t* text, const uint64_t* registers, bool wide, bool& valid ) {
+
+		const wchar_t* at = text;
+		wchar_t name [ 16 ];
+		int32_t length = 0;
+		uint64_t left = 0;
+		uint64_t right = 0;
+
+		valid = false;
+
+		while ( *at == L' ' )
+			at++;
+
+		while ( length < 15 && ( ( *at >= L'a' && *at <= L'z' ) || ( *at >= L'A' && *at <= L'Z' ) || ( *at >= L'0' && *at <= L'9' ) ) )
+			name [ length++ ] = static_cast < wchar_t > ( *at >= L'a' && *at <= L'z' ? *at - 32 : *at ), at++;
+
+		name [ length ] = 0;
+
+		int32_t found = -1;
+
+		for ( int32_t i = 0; i < 18; i++ ) {
+
+			if ( base::same_text ( name, register_name ( i, wide ) ) )
+				found = i;
+
+		}
+
+		if ( found < 0 )
+			return false;
+
+		left = registers [ found ];
+
+		while ( *at == L' ' )
+			at++;
+
+		wchar_t op [ 3 ] = { };
+		int32_t op_length = 0;
+
+		while ( op_length < 2 && ( *at == L'=' || *at == L'!' || *at == L'<' || *at == L'>' ) )
+			op [ op_length++ ] = *at++;
+
+		while ( *at == L' ' )
+			at++;
+
+		if ( !op_length || !parse_value ( at, right ) )
+			return false;
+
+		valid = true;
+
+		if ( base::same_text ( op, L"==" ) || base::same_text ( op, L"=" ) )
+			return left == right;
+
+		if ( base::same_text ( op, L"!=" ) )
+			return left != right;
+
+		if ( base::same_text ( op, L"<" ) )
+			return left < right;
+
+		if ( base::same_text ( op, L">" ) )
+			return left > right;
+
+		if ( base::same_text ( op, L"<=" ) )
+			return left <= right;
+
+		if ( base::same_text ( op, L">=" ) )
+			return left >= right;
+
+		valid = false;
+
+		return false;
 
 	}
 
