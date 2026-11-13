@@ -88,7 +88,8 @@ namespace ui {
 		{ L"Function note", L"Shift+N" },
 		{ L"Notes and bookmarks", L"Alt+0" },
 		{ L"Export report", L"" },
-		{ L"Learn names from this file", L"" }
+		{ L"Learn names from this file", L"" },
+		{ L"Compare with another build", L"" }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -159,6 +160,7 @@ namespace ui {
 				return analyzed && !db->classes.empty ( );
 
 			case command::LEARN_LIBRARY:
+			case command::COMPARE_FILE:
 				return analyzed;
 
 			case command::DEBUG_PAUSE:
@@ -605,6 +607,10 @@ namespace ui {
 
 			case command::LEARN_LIBRARY:
 				learn_library ( );
+				break;
+
+			case command::COMPARE_FILE:
+				pending_request = request::COMPARE;
 				break;
 
 			case command::TOGGLE_BYTES:
@@ -1302,6 +1308,8 @@ namespace ui {
 			search_everything ( rest );
 		else if ( base::same_text ( word, L"functions" ) && file.loaded ( ) )
 			run_query ( rest );
+		else if ( base::same_text ( word, L"compare" ) && file.loaded ( ) )
+			compare_with ( rest );
 		else if ( base::same_text ( word, L"asm" ) && enabled ( command::ASSEMBLE ) ) {
 
 			remember_undo ( );

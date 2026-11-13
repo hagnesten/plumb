@@ -32,6 +32,7 @@ namespace ui {
 		{ "set_comment", "Set the comment on an instruction or data address. Empty text removes it.", "{\"type\":\"object\",\"properties\":{\"address\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"}},\"required\":[\"address\",\"text\"]}" },
 		{ "set_note", "Set the note describing what a function does. It shows in the function header, the Notes panel and reports.", "{\"type\":\"object\",\"properties\":{\"function\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"}},\"required\":[\"function\",\"text\"]}" },
 		{ "set_prototype", "Set a function's C prototype, like int __fastcall parse(char* text, int length). The C view and callers use it.", "{\"type\":\"object\",\"properties\":{\"function\":{\"type\":\"string\"},\"prototype\":{\"type\":\"string\"}},\"required\":[\"function\",\"prototype\"]}" },
+		{ "compare_with", "Compare the open file with another build of it. Lists functions that changed, exist only here, or exist only in the other file.", "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Full path to the other build\"},\"show_same\":{\"type\":\"boolean\"}},\"required\":[\"path\"]}" },
 		{ "save_project", "Save names, comments, notes, types and patches to the .plumb project beside the binary.", "{\"type\":\"object\",\"properties\":{}}" }
 	};
 
@@ -799,6 +800,59 @@ namespace ui {
 
 			symbol_name ( address, true, label, 200 );
 			text.line ( base::writer ( ).add ( buffer [ 0 ] ? L"Set at " : L"Cleared at " ).hex ( address, wide ? 9 : 8 ).add ( L" (" ).add ( label ).add ( L"). Call save_project to keep it." ).text ( ) );
+
+			return finish ( true );
+
+		}
+
+		if ( base::same_text ( name, "compare_with" ) ) {
+
+			text_arg ( args, "path", buffer, 1024 );
+
+			const json::value* same = args ? args->get ( "show_same" ) : nullptr;
+			bool show_same = same && same->kind == json::type::BOOLEAN && same->flag;
+			static const wchar_t* const states [ 4 ] = { L"same", L"changed", L"only here", L"only there" };
+
+			if ( !buffer [ 0 ] || !compare_with ( buffer ) ) {
+
+				problem.add ( L"Couldn't compare with " ).add ( buffer ).add ( L"." );
+
+				return finish ( false );
+
+			}
+
+			text.line ( base::writer ( ).add ( L"Compared with " ).add ( other_file->path.get ( ) ).add ( L": " ).number ( diff_counts [ 0 ] ).add ( L" same, " ).number ( diff_counts [ 1 ] ).add ( L" changed, " ).number ( diff_counts [ 2 ] ).add ( L" only here, " ).number ( diff_counts [ 3 ] ).add ( L" only there." ).text ( ) );
+
+			int32_t shown = 0;
+
+			for ( const diff_row& item : diff_rows ) {
+
+				if ( ( item.state == 0 && !show_same ) || shown >= 3000 )
+					continue;
+
+				base::writer row;
+				wchar_t other [ 200 ];
+
+				row.add ( states [ item.state ] ).add ( L"  " );
+
+				if ( item.here >= 0 ) {
+
+					function_name ( item.here, label, 200 );
+					row.hex ( db->functions [ static_cast < size_t > ( item.here ) ].start, wide ? 9 : 8 ).add ( L"  " ).add ( label );
+
+				}
+
+				if ( item.there >= 0 ) {
+
+					other_name ( item.there, other, 200 );
+					row.add ( item.here >= 0 ? L"  <->  " : L"" ).hex ( other_db->functions [ static_cast < size_t > ( item.there ) ].start, wide ? 9 : 8 ).add ( L"  " ).add ( other );
+
+				}
+
+				text.line ( row.text ( ) );
+				shown++;
+
+			}
 
 			return finish ( true );
 

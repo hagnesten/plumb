@@ -212,6 +212,34 @@ namespace ui {
 
 				break;
 
+			case panel::COMPARE: {
+
+				static const wchar_t* const states [ 4 ] = { L"same", L"changed", L"only here", L"only there" };
+
+				for ( int32_t i = 0; i < diff_rows.count ( ); i++ ) {
+
+					const diff_row& item = diff_rows [ static_cast < size_t > ( i ) ];
+
+					if ( needle [ 0 ] && !base::contains_folded ( states [ item.state ], needle ) ) {
+
+						if ( item.here >= 0 )
+							function_name ( item.here, buffer, 200 );
+						else if ( other_db )
+							other_name ( item.there, buffer, 200 );
+
+						if ( !base::contains_folded ( buffer, needle ) )
+							continue;
+
+					}
+
+					list.push ( i );
+
+				}
+
+				break;
+
+			}
+
 			case panel::NOTES: {
 
 				const base::list < user_name >* sources [ 3 ] = { &notes, &bookmarks, &comments };
@@ -1164,6 +1192,7 @@ namespace ui {
 		}
 
 		rebuild_pending = false;
+		close_compare ( );
 		patches.clear ( );
 		stack_seen.clear ( );
 		stack_texts.clear ( );

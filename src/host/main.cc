@@ -237,7 +237,9 @@ static void render_main ( ) {
 	program->frame ( base::seconds ( ) );
 	device->present ( main_output, device->chrome );
 
-	switch ( program->take_request ( ) ) {
+	ui::request asked = program->take_request ( );
+
+	switch ( asked ) {
 
 		case ui::request::MINIMIZE:
 			ShowWindow ( main_window, SW_MINIMIZE );
@@ -251,7 +253,8 @@ static void render_main ( ) {
 			PostMessageW ( main_window, WM_CLOSE, 0, 0 );
 			break;
 
-		case ui::request::OPEN: {
+		case ui::request::OPEN:
+		case ui::request::COMPARE: {
 
 			IFileOpenDialog* dialog = nullptr;
 
@@ -261,7 +264,7 @@ static void render_main ( ) {
 				IShellItem* picked = nullptr;
 
 				dialog->SetFileTypes ( 4, kinds );
-				dialog->SetTitle ( L"Open a binary" );
+				dialog->SetTitle ( asked == ui::request::COMPARE ? L"Compare with another build" : L"Open a binary" );
 
 				if ( SUCCEEDED ( dialog->Show ( main_window ) ) && SUCCEEDED ( dialog->GetResult ( &picked ) ) ) {
 
@@ -269,7 +272,11 @@ static void render_main ( ) {
 
 					if ( SUCCEEDED ( picked->GetDisplayName ( SIGDN_FILESYSPATH, &path ) ) ) {
 
-						program->open_file ( path );
+						if ( asked == ui::request::COMPARE )
+							program->compare_with ( path );
+						else
+							program->open_file ( path );
+
 						CoTaskMemFree ( path );
 
 					}

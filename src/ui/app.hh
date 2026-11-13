@@ -34,6 +34,7 @@ namespace ui {
 		MAXIMIZE,
 		CLOSE,
 		OPEN,
+		COMPARE,
 
 	};
 
@@ -71,6 +72,7 @@ namespace ui {
 		REFERENCES,
 		SEARCH,
 		NOTES,
+		COMPARE,
 		INSPECTOR,
 		COUNT,
 
@@ -205,6 +207,7 @@ namespace ui {
 		SHOW_NOTES,
 		EXPORT_REPORT,
 		LEARN_LIBRARY,
+		COMPARE_FILE,
 		COUNT,
 
 	};
@@ -412,6 +415,14 @@ namespace ui {
 
 		base::text name;
 		base::list < user_field > fields;
+
+	};
+
+	struct diff_row {
+
+		int32_t here = -1;
+		int32_t there = -1;
+		uint8_t state = 0;
 
 	};
 
@@ -711,6 +722,12 @@ namespace ui {
 
 		bool run_query ( const wchar_t* text );
 
+		bool compare_with ( const wchar_t* path );
+
+		void close_compare ( );
+
+		void other_name ( int32_t index, wchar_t* out, int32_t room ) const;
+
 		void learn_library ( );
 
 		void apply_library ( );
@@ -901,7 +918,7 @@ namespace ui {
 		uint32_t filter_seen [ static_cast < int32_t > ( panel::COUNT ) ] = { };
 		base::list < int32_t > shown [ static_cast < int32_t > ( panel::COUNT ) ];
 		scroller browser_scroll [ static_cast < int32_t > ( panel::COUNT ) ];
-		int32_t browser_pick [ static_cast < int32_t > ( panel::COUNT ) ] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+		int32_t browser_pick [ static_cast < int32_t > ( panel::COUNT ) ] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 		uint64_t peek_candidate = 0;
 		math::rect peek_candidate_anchor;
 		uint64_t peek_target = 0;
@@ -957,6 +974,10 @@ namespace ui {
 		base::list < user_name > notes;
 		uint32_t annotation_revision = 1;
 		base::list < user_name > learned;
+		loader::binary* other_file = nullptr;
+		analysis::database* other_db = nullptr;
+		base::list < diff_row > diff_rows;
+		int32_t diff_counts [ 4 ] = { };
 		base::text library_path;
 		uint32_t notes_seen = 0;
 		base::list < user_name > number_forms;

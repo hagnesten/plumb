@@ -3,14 +3,14 @@
 
 namespace ui {
 
-	static const uint32_t panel_glyphs [ static_cast < int32_t > ( panel::COUNT ) ] = { icons::CODE, icons::IMPORT, icons::EXPORT, icons::FONT, icons::LAYERS, icons::PUZZLE, icons::FORM, icons::LINK, icons::SEARCH, icons::TAG, icons::INFO };
-	static const wchar_t* panel_titles [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Functions", L"Imports", L"Exports", L"Strings", L"Sections", L"Classes", L"Structures", L"References", L"Search", L"Notes", L"Inspector" };
-	static const wchar_t* panel_captions [ static_cast < int32_t > ( panel::COUNT ) ] = { L"FUNCTIONS", L"IMPORTS", L"EXPORTS", L"STRINGS", L"SECTIONS", L"CLASSES", L"STRUCTURES", L"REFERENCES", L"SEARCH", L"NOTES", L"INSPECTOR" };
+	static const uint32_t panel_glyphs [ static_cast < int32_t > ( panel::COUNT ) ] = { icons::CODE, icons::IMPORT, icons::EXPORT, icons::FONT, icons::LAYERS, icons::PUZZLE, icons::FORM, icons::LINK, icons::SEARCH, icons::TAG, icons::TILES, icons::INFO };
+	static const wchar_t* panel_titles [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Functions", L"Imports", L"Exports", L"Strings", L"Sections", L"Classes", L"Structures", L"References", L"Search", L"Notes", L"Compare", L"Inspector" };
+	static const wchar_t* panel_captions [ static_cast < int32_t > ( panel::COUNT ) ] = { L"FUNCTIONS", L"IMPORTS", L"EXPORTS", L"STRINGS", L"SECTIONS", L"CLASSES", L"STRUCTURES", L"REFERENCES", L"SEARCH", L"NOTES", L"COMPARE", L"INSPECTOR" };
 	static const wchar_t* panel_columns [ static_cast < int32_t > ( panel::COUNT ) ] [ 3 ] = {
 		{ L"Name", L"Address", L"Size" }, { L"Name", nullptr, L"Slot" }, { L"Name", nullptr, L"Address" }, { L"Text", nullptr, L"Address" }, { L"Name", L"Access", L"Address" },
-		{ L"Class", nullptr, L"Virtuals" }, { L"Struct", nullptr, L"Size" }, { L"Kind", L"From", nullptr }, { L"Address", L"Where", nullptr }, { L"Kind", L"Where", nullptr }, { nullptr, nullptr, nullptr }
+		{ L"Class", nullptr, L"Virtuals" }, { L"Struct", nullptr, L"Size" }, { L"Kind", L"From", nullptr }, { L"Address", L"Where", nullptr }, { L"Kind", L"Where", nullptr }, { L"State", L"Function", L"Size" }, { nullptr, nullptr, nullptr }
 	};
-	static const wchar_t* panel_hints [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Filter functions", L"Filter imports or modules", L"Filter exports", L"Search strings", L"Filter sections", L"Filter classes", L"Filter structures", L"Filter by function", L"Filter results", L"Filter notes", L"" };
+	static const wchar_t* panel_hints [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Filter functions", L"Filter imports or modules", L"Filter exports", L"Search strings", L"Filter sections", L"Filter classes", L"Filter structures", L"Filter by function", L"Filter results", L"Filter notes", L"Filter by name or state", L"" };
 
 	void app::draw_rail ( ) {
 
@@ -122,6 +122,10 @@ namespace ui {
 				total = notes.count ( ) + bookmarks.count ( ) + comments.count ( );
 				break;
 
+			case panel::COMPARE:
+				total = diff_rows.count ( );
+				break;
+
 			case panel::IMPORTS:
 				total = file.imports.count ( );
 				break;
@@ -188,7 +192,7 @@ namespace ui {
 
 		bool sortable = browsing == panel::FUNCTIONS || browsing == panel::EXPORTS || browsing == panel::STRINGS || browsing == panel::SECTIONS;
 		bool middle_right = browsing == panel::FUNCTIONS;
-		float middle_x = browsing == panel::FUNCTIONS ? x + inner_w - 64.0f : ( browsing == panel::SECTIONS ? x + 106.0f : ( browsing == panel::REFERENCES || browsing == panel::NOTES ? x + 60.0f : x + 100.0f ) );
+		float middle_x = browsing == panel::FUNCTIONS ? x + inner_w - 64.0f : ( browsing == panel::SECTIONS ? x + 106.0f : ( browsing == panel::REFERENCES || browsing == panel::NOTES ? x + 60.0f : ( browsing == panel::COMPARE ? x + 72.0f : x + 100.0f ) ) );
 		float right_x = x + inner_w - 10.0f;
 		float spots [ 3 ] = { x + 10.0f, middle_x, right_x };
 		render::align aligns [ 3 ] = { render::align::LEFT, middle_right ? render::align::RIGHT : render::align::LEFT, render::align::RIGHT };
@@ -277,6 +281,8 @@ namespace ui {
 				empty = analysis_applied ? L"No MSVC RTTI in this image." : L"Waiting for analysis.";
 			else if ( which == panel::SEARCH )
 				empty = search_query.empty ( ) ? L"No search yet." : L"No matches.";
+			else if ( which == panel::COMPARE && !filters [ slot ].length )
+				empty = L"Tools > Compare with another build, or type compare <path>.";
 			else if ( which == panel::NOTES && !filters [ slot ].length )
 				empty = L"Shift+N notes a function, ; comments, Ctrl+D bookmarks.";
 
@@ -436,6 +442,25 @@ namespace ui {
 							case panel::SEARCH:
 								go ( search_hits [ static_cast < size_t > ( value ) ].address, true );
 								break;
+
+							case panel::COMPARE: {
+
+								const diff_row& item = diff_rows [ static_cast < size_t > ( value ) ];
+
+								if ( item.here >= 0 )
+									go ( db->functions [ static_cast < size_t > ( item.here ) ].start, true );
+								else if ( other_db ) {
+
+									wchar_t name [ 200 ];
+
+									other_name ( item.there, name, 200 );
+									log ( log_kind::INFO, base::writer ( ).add ( name ).add ( L" is only in " ).add ( other_file->name.get ( ) ).add ( L" at " ).hex ( other_db->functions [ static_cast < size_t > ( item.there ) ].start ).add ( L"." ).text ( ) );
+
+								}
+
+								break;
+
+							}
 
 							case panel::NOTES: {
 
@@ -745,6 +770,34 @@ namespace ui {
 
 						c.text ( where.text ( ), render::font::MONO_SMALL, math::vec2 ( row.x + 8.0f, cy ), ink ( tone::ADDRESS ) );
 						c.text ( label.text ( ), render::font::MONO_SMALL, math::vec2 ( row.x + 98.0f, cy ), ink ( item.note.empty ( ) ? tone::INK : tone::INK_SOFT ), render::align::LEFT, row.w - 106.0f );
+
+						break;
+
+					}
+
+					case panel::COMPARE: {
+
+						const diff_row& item = diff_rows [ static_cast < size_t > ( value ) ];
+						static const wchar_t* const states [ 4 ] = { L"same", L"changed", L"only here", L"only there" };
+						static const tone state_tones [ 4 ] = { tone::INK_FAINT, tone::WARNING, tone::DANGER, tone::SUCCESS };
+						wchar_t name [ 200 ];
+						base::writer size_text;
+						uint64_t here_size = item.here >= 0 ? db->functions [ static_cast < size_t > ( item.here ) ].end - db->functions [ static_cast < size_t > ( item.here ) ].start : 0;
+						uint64_t there_size = item.there >= 0 && other_db ? other_db->functions [ static_cast < size_t > ( item.there ) ].end - other_db->functions [ static_cast < size_t > ( item.there ) ].start : 0;
+
+						if ( item.here >= 0 )
+							function_name ( item.here, name, 200 );
+						else
+							other_name ( item.there, name, 200 );
+
+						if ( item.here >= 0 && item.there >= 0 && here_size != there_size )
+							size_text.add ( here_size > there_size ? L"+0x" : L"-0x" ).hex ( here_size > there_size ? here_size - there_size : there_size - here_size );
+						else
+							size_text.add ( L"0x" ).hex ( item.here >= 0 ? here_size : there_size );
+
+						c.text ( states [ item.state ], render::font::TINY, math::vec2 ( row.x + 8.0f, cy ), ink ( state_tones [ item.state ] ) );
+						c.text ( name, render::font::MONO_SMALL, math::vec2 ( row.x + 70.0f, cy ), item.here >= 0 ? ink ( tone::INK ) : ink ( tone::INK_SOFT ), render::align::LEFT, row.w - 140.0f );
+						c.text ( size_text.text ( ), render::font::MONO_SMALL, math::vec2 ( row.right ( ) - 8.0f, cy ), ink ( tone::INK_FAINT ), render::align::RIGHT );
 
 						break;
 
