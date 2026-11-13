@@ -20,6 +20,9 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 - Number display per instruction: hex or decimal (H), character (R), binary (B) and float (F). Immediates that look like floats get a `float 1.0` hint.
 - Graph view (Space) with layered layout, colored edges (taken, not taken, unconditional, switch case), zoom, pan and a minimap.
 - Stack strings built from immediate stores, including the `mov reg, imm` then store pattern compilers emit, are put back together and shown next to the first store.
+- Clicking a register, name or number marks every use of it in the listing, graph and C. Registers match across sizes, so `rcx` also marks `ecx` and `cl`.
+- Hovering a call or jump target for a moment shows a peek of its first instructions, its string or its import. The pin keeps it open in the corner while you keep reading.
+- The scrollbar doubles as a map of the image: section kinds down one edge, and ticks for the cursor, bookmarks, breakpoints, patches and search hits.
 
 ### Patching
 
@@ -27,6 +30,11 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 - Ctrl+Alt+B writes raw hex bytes, from the listing or the hex view. Ctrl+Alt+R reverts the patched run under the caret.
 - Patched addresses turn yellow, and the image is analyzed again in the background so functions, references and the C view follow the change.
 - Patches are part of the project and of undo and redo. Patch > Write patched copy saves `name.patched.exe` beside the original, or under `%APPDATA%\Plumb\patched` when that folder is read-only. The original file is never touched.
+
+### Names and symbols
+
+- Matching PDB files load on open, from beside the binary, from the path recorded in it, or from local symbol caches (`_NT_SYMBOL_PATH`, `C:\symbols`, `C:\ProgramData\dbg\sym`). Public symbols and every procedure in the module streams become function names, and globals get their real names. The PDB reader is Plumb's own.
+- Tools > Learn names from this file adds every named function to a name library, keyed by a hash of its body with relocations masked out. Every file opened afterwards gets matching functions named automatically. Learning from a build with symbols names the same functions in a stripped build of related code.
 
 ### Analysis
 
@@ -36,9 +44,19 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 - RTTI class recovery: class names, base class chains, vtables and virtual functions, named `Class::vftable` and `Class::vfunc_N` throughout. The Classes panel (Alt+6) lists them all.
 - Tools > Export classes as C++ writes a header with every recovered class: its direct bases, its virtual functions in vtable order using your prototypes, and which slots are inherited. It's also copied to the clipboard.
 - Call graph (Ctrl+4) shows two levels of callers and callees around a function. Double-click a node to center it, Enter opens it in the disassembly.
+- Function queries in the command line: `functions where calls VirtualAlloc and size > 0x100 and not thunk`. Conditions are `calls`, `calledby`, `refs` (strings or names), `name`, `size`, `callers`, `blocks`, `instructions`, `thunk`, `leaf`, `noreturn`, `exported`, `entry`, `named`, `noted`, `typed` and `covered`, each optionally prefixed with `not`.
 - Search everything (Ctrl+Shift+F) looks through the text of every instruction. `#0x40` finds immediates and displacements with that value, and `c:text` searches the C of every function.
 - XOR decoding (Ctrl+Alt+X) takes a key in hex, with an optional length, or `auto` to try every single-byte key. The decoded text is logged and added as a comment.
 - Signature maker (Ctrl+Alt+S) that finds the shortest unique pattern and wildcards relocatable bytes, with output in IDA, x64dbg, code and mask, or byte array form. The signature finder (Ctrl+Alt+F) accepts the same formats or plain text.
+
+### Comparing builds
+
+- Tools > Compare with another build analyzes a second version of the file and pairs up its functions: first by identical bodies, then by name, then by position between matched neighbours. The Compare panel lists every function as same, changed, only here or only there, with the size difference.
+
+### Emulation
+
+- Ctrl+Alt+E runs the function under the cursor in Plumb's own x86 and x86-64 emulator, without starting the program. Calls inside the image are followed, imports return zero and are listed with their arguments, and starting registers can be given like `rcx=0x40 rdx=5`.
+- Readable text the function writes is reported with the instruction that wrote it and added there as a comment, which recovers strings decrypted at run time. The final result shows API hashes and other computed values.
 
 ### Decompiler
 
@@ -56,6 +74,9 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 - F9 starts the program and stops at its entry point. F7 steps into, F8 steps over, F12 pauses and Ctrl+F2 stops.
 - F2 toggles a breakpoint, which shows as a dot in the listing. Breakpoints are kept with the project and moved to the runtime base when ASLR relocates the image.
 - Registers appear in the inspector tab while paused, the current instruction is marked in the listing, and `OutputDebugString` messages go to the output pane.
+- Shift+F2 sets a condition on a breakpoint, like `rax == 0` or `rcx > 0x10`. The program only stops when it holds.
+- While paused, the inspector shows the call stack, the top of the stack with return addresses named, and watch expressions like `[rsp+0x28]` or `g_count+8`.
+- Shift+F9 runs the program with coverage. Every basic block is armed once, the listing marks the instructions that ran, and `functions where covered` lists the functions that did.
 - Works on 64-bit and 32-bit (WOW64) executables.
 
 ### Workspace
@@ -65,6 +86,9 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 - The browser and output windows dock to the left, right or bottom: drag a window's header to move it. Window > Reset window layout puts everything back.
 - Ctrl+S saves the project next to the binary under the same name, so `C:\tools\app.exe` gets `C:\tools\app.plumb`. It holds names, comments, bookmarks, number formats, variable names, types, prototypes, structs, breakpoints and patches, and opening that file opens the binary with everything restored. Projects saved by older versions as `app.exe.plumb` still load and move to the new name on the next save. If `app.plumb` already belongs to another binary in the same folder, such as `app.dll` next to `app.exe`, that one is saved as `app.dll.plumb` instead. Autosave is a setting in the File menu, and closing with unsaved changes asks first.
 - Undo and redo (Ctrl+Z, Ctrl+Y) for every edit.
+- Shift+N writes a note on what a function does. Notes show in the function header and the peek, and the Notes panel (Alt+0) lists every note, bookmark and comment in one place.
+- Tools > Export report writes a Markdown report beside the binary with the file summary, sections, notes, named functions with prototypes, bookmarks, comments, patches, classes and imported modules.
+- Browser lists sort by clicking a column header.
 - Command palette (Ctrl+Shift+P), go to address or name (G), back and forward history, and a command line in the output pane.
 - Dark and light themes.
 
@@ -75,6 +99,18 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 | ![Call graph](docs/media/calls.png) | ![An instruction assembled over the original, with the patched bytes in yellow](docs/media/patch.png) |
 
 ![The light theme with C and disassembly side by side](docs/media/light.png)
+
+## AI assistants
+
+`Plumb.exe --mcp [file]` runs Plumb without a window as an MCP server over standard input and output, so an AI assistant can explore a binary with the same analysis, names and decompiler as the app. With Claude Code:
+
+```
+claude mcp add plumb -- C:\tools\Plumb.exe --mcp
+```
+
+Other clients take the same command in their MCP settings, for example `{ "command": "C:\\tools\\Plumb.exe", "args": [ "--mcp" ] }`.
+
+The tools are `open_binary`, `binary_info`, `list_functions`, `disassemble`, `decompile`, `xrefs_to`, `calls_from`, `list_strings`, `list_imports`, `list_exports`, `search_code`, `query_functions`, `read_bytes`, `emulate`, `compare_with`, `rename`, `set_comment`, `set_note`, `set_prototype` and `save_project`. Edits made by the assistant go into the same `.plumb` project the app opens.
 
 ## Keys
 
@@ -96,6 +132,9 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 | Ctrl+B | Show or hide the browser | Ctrl+J | Show or hide the output |
 | Ctrl+S | Save project | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Ctrl+1 / 2 / 3 | New listing, hex or headers tab | Ctrl+\\ | Split |
+| Shift+N | Function note | Alt+0 | Notes and bookmarks |
+| Shift+F9 | Run with coverage | Shift+F2 | Breakpoint condition |
+| Ctrl+Alt+E | Emulate function | | |
 
 ## Building
 
