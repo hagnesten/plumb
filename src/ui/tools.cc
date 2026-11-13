@@ -295,6 +295,10 @@ namespace ui {
 				changed ( );
 				break;
 
+			case command::EMULATE:
+				emulate_function ( prompt_address, text, nullptr );
+				break;
+
 			case command::DEBUG_WATCH:
 
 				if ( length )

@@ -349,6 +349,8 @@ namespace ui {
 					run ( command::FIND_SIGNATURE );
 				else if ( code == 'A' )
 					run ( command::ASSEMBLE );
+				else if ( code == 'E' )
+					run ( command::EMULATE );
 				else if ( code == 'B' )
 					run ( command::PATCH_BYTES );
 				else if ( code == 'R' )

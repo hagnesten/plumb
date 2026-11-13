@@ -211,6 +211,7 @@ namespace ui {
 		DEBUG_COVERAGE,
 		DEBUG_WATCH,
 		DEBUG_CONDITION,
+		EMULATE,
 		COUNT,
 
 	};
@@ -740,6 +741,8 @@ namespace ui {
 		bool evaluate_watch ( const wchar_t* text, uint64_t& value ) const;
 
 		bool return_site ( uint64_t runtime, uint64_t& local ) const;
+
+		bool emulate_function ( uint64_t address, const wchar_t* setup, base::list < wchar_t >* report );
 
 		void learn_library ( );
 

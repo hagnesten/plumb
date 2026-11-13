@@ -92,7 +92,8 @@ namespace ui {
 		{ L"Compare with another build", L"" },
 		{ L"Run and record coverage", L"Shift+F9" },
 		{ L"Add watch", L"" },
-		{ L"Breakpoint condition", L"Shift+F2" }
+		{ L"Breakpoint condition", L"Shift+F2" },
+		{ L"Emulate function", L"Ctrl+Alt+E" }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -171,6 +172,9 @@ namespace ui {
 
 			case command::DEBUG_WATCH:
 				return has;
+
+			case command::EMULATE:
+				return analyzed && db->function_at ( showing == view::PSEUDOCODE ? now->function : now->cursor_address ) >= 0 && ( file.arch == loader::machine::X64 || file.arch == loader::machine::X86 );
 
 			case command::DEBUG_CONDITION:
 				return analyzed && db->is_start ( now->cursor_address );
@@ -627,6 +631,10 @@ namespace ui {
 
 			case command::DEBUG_COVERAGE:
 				start_debugging ( true );
+				break;
+
+			case command::EMULATE:
+				open_prompt ( command::EMULATE, showing == view::PSEUDOCODE ? now->function : now->cursor_address );
 				break;
 
 			case command::DEBUG_WATCH:
@@ -1331,6 +1339,8 @@ namespace ui {
 			run_query ( rest );
 		else if ( base::same_text ( word, L"compare" ) && file.loaded ( ) )
 			compare_with ( rest );
+		else if ( base::same_text ( word, L"emulate" ) && file.loaded ( ) )
+			emulate_function ( now->cursor_address, rest, nullptr );
 		else if ( base::same_text ( word, L"asm" ) && enabled ( command::ASSEMBLE ) ) {
 
 			remember_undo ( );

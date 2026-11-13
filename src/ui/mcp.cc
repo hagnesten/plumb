@@ -33,6 +33,7 @@ namespace ui {
 		{ "set_note", "Set the note describing what a function does. It shows in the function header, the Notes panel and reports.", "{\"type\":\"object\",\"properties\":{\"function\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"}},\"required\":[\"function\",\"text\"]}" },
 		{ "set_prototype", "Set a function's C prototype, like int __fastcall parse(char* text, int length). The C view and callers use it.", "{\"type\":\"object\",\"properties\":{\"function\":{\"type\":\"string\"},\"prototype\":{\"type\":\"string\"}},\"required\":[\"function\",\"prototype\"]}" },
 		{ "compare_with", "Compare the open file with another build of it. Lists functions that changed, exist only here, or exist only in the other file.", "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Full path to the other build\"},\"show_same\":{\"type\":\"boolean\"}},\"required\":[\"path\"]}" },
+		{ "emulate", "Run a function in Plumb's x86 emulator without starting the program. Reports the result, the imports it calls and any readable strings it writes, which recovers decrypted strings. Decoded strings become comments.", "{\"type\":\"object\",\"properties\":{\"function\":{\"type\":\"string\"},\"registers\":{\"type\":\"string\",\"description\":\"Optional starting registers like rcx=0x40 rdx=5\"}},\"required\":[\"function\"]}" },
 		{ "save_project", "Save names, comments, notes, types and patches to the .plumb project beside the binary.", "{\"type\":\"object\",\"properties\":{}}" }
 	};
 
@@ -853,6 +854,22 @@ namespace ui {
 				shown++;
 
 			}
+
+			return finish ( true );
+
+		}
+
+		if ( base::same_text ( name, "emulate" ) ) {
+
+			uint64_t address = 0;
+			wchar_t setup [ 512 ];
+
+			if ( !mcp_address ( args, "function", address, problem ) )
+				return finish ( false );
+
+			text_arg ( args, "registers", setup, 512 );
+
+			emulate_function ( address, setup, &text.out );
 
 			return finish ( true );
 

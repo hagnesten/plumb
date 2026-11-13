@@ -47,6 +47,7 @@
   <ItemGroup>
     <ClCompile Include="src\analysis\database.cc" />
     <ClCompile Include="src\analysis\discover.cc" />
+    <ClCompile Include="src\analysis\emulate.cc" />
     <ClCompile Include="src\analysis\graph.cc" />
     <ClCompile Include="src\analysis\rtti.cc" />
     <ClCompile Include="src\analysis\signatures.cc" />
@@ -72,6 +73,7 @@
     <ClCompile Include="src\ui\classes.cc" />
     <ClCompile Include="src\ui\commands.cc" />
     <ClCompile Include="src\ui\compare.cc" />
+    <ClCompile Include="src\ui\emulator.cc" />
     <ClCompile Include="src\ui\coverage.cc" />
     <ClCompile Include="src\ui\input.cc" />
     <ClCompile Include="src\ui\library.cc" />
@@ -112,6 +114,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\analysis\database.hh" />
+    <ClInclude Include="src\analysis\emulate.hh" />
     <ClInclude Include="src\analysis\graph.hh" />
     <ClInclude Include="src\analysis\signatures.hh" />
     <ClInclude Include="src\base\base.hh" />
