@@ -5,44 +5,6 @@
 
 namespace ui {
 
-	static int32_t lower_name ( wchar_t value ) {
-
-		return value >= L'A' && value <= L'Z' ? value + 32 : value;
-
-	}
-
-	static bool contains_text ( const wchar_t* haystack, const wchar_t* needle ) {
-
-		if ( !needle [ 0 ] )
-			return true;
-
-		for ( int32_t i = 0; haystack [ i ]; i++ ) {
-
-			int32_t k = 0;
-
-			while ( needle [ k ] && haystack [ i + k ] && lower_name ( haystack [ i + k ] ) == lower_name ( needle [ k ] ) )
-				k++;
-
-			if ( !needle [ k ] )
-				return true;
-
-		}
-
-		return false;
-
-	}
-
-	static void string_preview ( const loader::binary& source, const loader::found_string& item, wchar_t* out, int32_t room ) {
-
-		int32_t length = base::min ( static_cast < int32_t > ( item.length ), room - 1 );
-
-		for ( int32_t i = 0; i < length; i++ )
-			out [ i ] = static_cast < wchar_t > ( source.byte ( item.offset + static_cast < uint64_t > ( i ) * ( item.wide ? 2 : 1 ) ) );
-
-		out [ length ] = 0;
-
-	}
-
 	void app::refresh_filter ( panel which ) {
 
 		int32_t slot = static_cast < int32_t > ( which );
@@ -69,7 +31,7 @@ namespace ui {
 
 							function_name ( i, buffer, 200 );
 
-							if ( !contains_text ( buffer, needle ) )
+							if ( !base::contains_folded ( buffer, needle ) )
 								continue;
 
 						}
@@ -82,7 +44,7 @@ namespace ui {
 
 					for ( int32_t i = 0; i < file.functions.count ( ); i++ ) {
 
-						if ( contains_text ( file.functions [ static_cast < size_t > ( i ) ].name.get ( ), needle ) )
+						if ( base::contains_folded ( file.functions [ static_cast < size_t > ( i ) ].name.get ( ), needle ) )
 							list.push ( i );
 
 					}
@@ -97,13 +59,13 @@ namespace ui {
 
 					const loader::module& owner = file.modules [ static_cast < size_t > ( m ) ];
 					bool header = false;
-					bool module_match = contains_text ( owner.name.get ( ), needle );
+					bool module_match = base::contains_folded ( owner.name.get ( ), needle );
 
 					for ( int32_t i = owner.first; i < owner.first + owner.count; i++ ) {
 
 						const loader::import& item = file.imports [ static_cast < size_t > ( i ) ];
 
-						if ( !module_match && !contains_text ( item.name.get ( ), needle ) )
+						if ( !module_match && !base::contains_folded ( item.name.get ( ), needle ) )
 							continue;
 
 						if ( !header ) {
@@ -128,7 +90,7 @@ namespace ui {
 
 				for ( int32_t i = 0; i < file.exports.count ( ); i++ ) {
 
-					if ( contains_text ( file.exports [ static_cast < size_t > ( i ) ].name.get ( ), needle ) )
+					if ( base::contains_folded ( file.exports [ static_cast < size_t > ( i ) ].name.get ( ), needle ) )
 						list.push ( i );
 
 				}
@@ -141,9 +103,9 @@ namespace ui {
 
 					if ( needle [ 0 ] ) {
 
-						string_preview ( file, file.strings [ static_cast < size_t > ( i ) ], buffer, 160 );
+						file.string_text ( file.strings [ static_cast < size_t > ( i ) ], buffer, 160 );
 
-						if ( !contains_text ( buffer, needle ) )
+						if ( !base::contains_folded ( buffer, needle ) )
 							continue;
 
 					}
@@ -158,7 +120,7 @@ namespace ui {
 
 				for ( int32_t i = 0; i < file.sections.count ( ); i++ ) {
 
-					if ( contains_text ( file.sections [ static_cast < size_t > ( i ) ].name, needle ) )
+					if ( base::contains_folded ( file.sections [ static_cast < size_t > ( i ) ].name, needle ) )
 						list.push ( i );
 
 				}
@@ -174,7 +136,7 @@ namespace ui {
 
 					const analysis::class_info& item = db->classes [ static_cast < size_t > ( i ) ];
 
-					if ( !contains_text ( item.name.get ( ), needle ) )
+					if ( !base::contains_folded ( item.name.get ( ), needle ) )
 						continue;
 
 					list.push ( i * 8192 );
@@ -200,7 +162,7 @@ namespace ui {
 
 					const user_struct& item = structs [ static_cast < size_t > ( i ) ];
 
-					if ( !contains_text ( item.name.get ( ), needle ) )
+					if ( !base::contains_folded ( item.name.get ( ), needle ) )
 						continue;
 
 					list.push ( i * 4096 );
@@ -231,7 +193,7 @@ namespace ui {
 
 						function_name ( owner, buffer, 200 );
 
-						if ( !contains_text ( buffer, needle ) )
+						if ( !base::contains_folded ( buffer, needle ) )
 							continue;
 
 					}
@@ -263,7 +225,7 @@ namespace ui {
 
 						const user_name& item = source [ static_cast < size_t > ( i ) ];
 
-						if ( needle [ 0 ] && !contains_text ( item.text.get ( ), needle ) ) {
+						if ( needle [ 0 ] && !base::contains_folded ( item.text.get ( ), needle ) ) {
 
 							int32_t owner = db && analysis_applied ? db->function_at ( item.address ) : -1;
 
@@ -272,7 +234,7 @@ namespace ui {
 
 							function_name ( owner, buffer, 200 );
 
-							if ( !contains_text ( buffer, needle ) )
+							if ( !base::contains_folded ( buffer, needle ) )
 								continue;
 
 						}
@@ -368,7 +330,7 @@ namespace ui {
 
 					if ( by_text ) {
 
-						string_preview ( file, item, buffer, 160 );
+						file.string_text ( item, buffer, 160 );
 						texts [ static_cast < size_t > ( i ) ].set ( buffer );
 
 					} else

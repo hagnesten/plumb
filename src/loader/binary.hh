@@ -140,6 +140,8 @@ namespace loader {
 
 		uint64_t read64 ( uint64_t offset ) const;
 
+		void string_text ( const found_string& item, wchar_t* out, int32_t room ) const;
+
 		void poke ( uint64_t offset, uint8_t value );
 
 		base::text path;

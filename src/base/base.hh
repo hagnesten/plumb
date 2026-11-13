@@ -134,6 +134,27 @@ namespace base {
 
 	}
 
+	inline bool contains_folded ( const wchar_t* haystack, const wchar_t* needle ) {
+
+		if ( !needle [ 0 ] )
+			return true;
+
+		for ( int32_t i = 0; haystack [ i ]; i++ ) {
+
+			int32_t k = 0;
+
+			while ( needle [ k ] && haystack [ i + k ] && fold_case ( haystack [ i + k ] ) == fold_case ( needle [ k ] ) )
+				k++;
+
+			if ( !needle [ k ] )
+				return true;
+
+		}
+
+		return false;
+
+	}
+
 	inline bool same_text ( const wchar_t* a, const wchar_t* b ) {
 
 		while ( *a && *a == *b ) {

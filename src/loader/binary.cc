@@ -879,4 +879,15 @@ namespace loader {
 
 	}
 
+	void binary::string_text ( const found_string& item, wchar_t* out, int32_t room ) const {
+
+		int32_t length = base::min ( static_cast < int32_t > ( item.length ), room - 1 );
+
+		for ( int32_t i = 0; i < length; i++ )
+			out [ i ] = static_cast < wchar_t > ( byte ( item.offset + static_cast < uint64_t > ( i ) * ( item.wide ? 2 : 1 ) ) );
+
+		out [ length ] = 0;
+
+	}
+
 }
