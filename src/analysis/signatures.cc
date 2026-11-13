@@ -441,7 +441,7 @@ namespace analysis {
 
 	}
 
-	static bool append_instruction ( const database& db, const x86::instruction& ins, pattern& out ) {
+	bool masked_instruction ( const database& db, const x86::instruction& ins, pattern& out ) {
 
 		const loader::binary& file = *db.file;
 		uint64_t offset = 0;
@@ -533,7 +533,7 @@ namespace analysis {
 
 			size_t before = out.bytes.size ( );
 
-			if ( !append_instruction ( db, ins, out ) )
+			if ( !masked_instruction ( db, ins, out ) )
 				break;
 
 			at = ins.next ( );
@@ -769,6 +769,55 @@ namespace analysis {
 		}
 
 		out.push ( 0 );
+
+	}
+
+	bool function_key ( const database& db, int32_t index, uint64_t& key ) {
+
+		const function_info& info = db.functions [ static_cast < size_t > ( index ) ];
+		uint64_t length = info.end - info.start;
+		pattern body;
+		int32_t instructions = 0;
+
+		if ( length < 12 || length > 0x10000 || ( info.flags & THUNK ) )
+			return false;
+
+		for ( uint64_t at = info.start; at < info.end && body.bytes.size ( ) < 1024; ) {
+
+			x86::instruction ins;
+
+			if ( !db.is_start ( at ) || !db.decode ( at, ins ) ) {
+
+				at++;
+
+				continue;
+
+			}
+
+			if ( !masked_instruction ( db, ins, body ) )
+				return false;
+
+			instructions++;
+			at = ins.next ( );
+
+		}
+
+		if ( instructions < 5 )
+			return false;
+
+		uint64_t hash = 0xCBF29CE484222325ull;
+
+		for ( size_t i = 0; i < body.bytes.size ( ); i++ ) {
+
+			hash ^= body.mask [ i ] ? static_cast < uint64_t > ( body.bytes [ i ] ) : 0x100ull;
+			hash *= 0x100000001B3ull;
+
+		}
+
+		hash ^= length * 0x9E3779B97F4A7C15ull;
+		key = hash ? hash : 1;
+
+		return true;
 
 	}
 

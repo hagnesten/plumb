@@ -42,4 +42,8 @@ namespace analysis {
 
 	void format_pattern ( const pattern& value, pattern_style style, base::list < wchar_t >& out );
 
+	bool masked_instruction ( const database& db, const x86::instruction& ins, pattern& out );
+
+	bool function_key ( const database& db, int32_t index, uint64_t& key );
+
 }
