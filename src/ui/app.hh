@@ -854,6 +854,17 @@ namespace ui {
 		base::list < int32_t > shown [ static_cast < int32_t > ( panel::COUNT ) ];
 		scroller browser_scroll [ static_cast < int32_t > ( panel::COUNT ) ];
 		int32_t browser_pick [ static_cast < int32_t > ( panel::COUNT ) ] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+		uint64_t peek_candidate = 0;
+		math::rect peek_candidate_anchor;
+		uint64_t peek_target = 0;
+		math::rect peek_anchor;
+		math::rect peek_box;
+		float peek_time = 0.0f;
+		uint64_t peek_built = 0;
+		base::list < row_line > peek_rows;
+		uint64_t pinned_target = 0;
+		uint64_t pinned_built = 0;
+		base::list < row_line > pinned_rows;
 		wchar_t highlight [ 64 ] = { };
 		int32_t highlight_family = -1;
 		int8_t sort_by [ static_cast < int32_t > ( panel::COUNT ) ] = { };
@@ -1066,6 +1077,14 @@ namespace ui {
 		void draw_listing ( math::rect area );
 
 		void draw_listing_map ( math::rect area );
+
+		void peek ( uint64_t target, math::rect anchor );
+
+		void build_peek ( uint64_t target, base::list < row_line >& out ) const;
+
+		bool draw_peek_box ( uint64_t target, math::rect box, const base::list < row_line >& rows, bool pinned );
+
+		void draw_peeks ( );
 
 		void set_highlight ( const wchar_t* text, int32_t length, int32_t column );
 

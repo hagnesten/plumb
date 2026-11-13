@@ -81,6 +81,7 @@
     <ClCompile Include="src\ui\shell\dialogs.cc" />
     <ClCompile Include="src\ui\shell\docking.cc" />
     <ClCompile Include="src\ui\shell\palette.cc" />
+    <ClCompile Include="src\ui\shell\peek.cc" />
     <ClCompile Include="src\ui\shell\start.cc" />
     <ClCompile Include="src\ui\shell\status.cc" />
     <ClCompile Include="src\ui\shell\title.cc" />

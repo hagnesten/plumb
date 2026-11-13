@@ -443,6 +443,7 @@ namespace ui {
 					if ( part->target && part->target != code->function && !now->code_selecting && over ( math::rect ( px, y, static_cast < float > ( length ) * adv, row_h ) ) && over ( text_area ) ) {
 
 						hand = true;
+						peek ( part->target, math::rect ( px, y, static_cast < float > ( length ) * adv, row_h ) );
 						c.fill ( math::rect ( px, cy + 6.0f, static_cast < float > ( length ) * adv, 1.0f ), 0.0f, ink ( color ).fade ( 0.7f ) );
 
 						if ( clicked_id == id && key_control ) {

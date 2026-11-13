@@ -558,6 +558,32 @@ namespace ui {
 
 		tip_candidate = 0;
 
+		bool shown_peek = peek_target && peek_time >= 0.45f;
+
+		if ( peek_candidate && peek_candidate == peek_target ) {
+
+			peek_time += dt;
+			peek_anchor = peek_candidate_anchor;
+
+			if ( peek_time < 0.45f )
+				animating = true;
+
+		} else if ( peek_candidate && !( shown_peek && over ( peek_box ) ) ) {
+
+			peek_target = peek_candidate;
+			peek_anchor = peek_candidate_anchor;
+			peek_time = 0.0f;
+			animating = true;
+
+		} else if ( !peek_candidate && !( shown_peek && over ( peek_box ) ) ) {
+
+			peek_target = 0;
+			peek_time = 0.0f;
+
+		}
+
+		peek_candidate = 0;
+
 	}
 
 	void app::log ( log_kind kind, const wchar_t* text ) {
@@ -788,6 +814,7 @@ namespace ui {
 			draw_browser ( );
 			draw_docks ( );
 			draw_rail ( );
+			draw_peeks ( );
 			canvas.pop ( );
 
 		}

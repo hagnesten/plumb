@@ -316,6 +316,7 @@ namespace ui {
 
 						c.fill ( math::rect ( rx, cy + 6.0f, token_area.w, 1.0f ), 0.0f, ink ( run.color ).fade ( 0.7f ) );
 						hand = true;
+						peek ( run.target, token_area );
 
 						if ( clicked_id == id && key_control )
 							follow_target = run.target;
