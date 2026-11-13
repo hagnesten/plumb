@@ -62,7 +62,7 @@ namespace ui {
 
 		math::rect line_area ( area.x + 6.0f, area.bottom ( ) - field_h + 2.0f, area.w - 12.0f, metric::field );
 
-		if ( text_field ( make_id ( "command_line" ), command_field, line_area, L"Command: go 140001000, section .rdata, theme light, help", icons::CHEVRON_RIGHT, render::font::MONO ) )
+		if ( text_field ( make_id ( "command_line" ), command_field, line_area, L"Command: go 140001000, functions where calls VirtualAlloc and size > 0x100, help", icons::CHEVRON_RIGHT, render::font::MONO ) )
 			run_command_line ( );
 
 		c.pop_clip ( );

@@ -693,6 +693,8 @@ namespace ui {
 
 		void search_everything ( const wchar_t* query );
 
+		bool run_query ( const wchar_t* text );
+
 		void export_classes ( );
 
 		void export_report ( );

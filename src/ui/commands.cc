@@ -1271,7 +1271,7 @@ namespace ui {
 		uint64_t address = 0;
 
 		if ( base::same_text ( word, L"help" ) )
-			log ( log_kind::INFO, L"Commands: go <address|name>, entry, back, forward, section <name>, view <asm|c|hex|headers|calls>, find <pattern>, search <text|#value|c:text>, asm <instruction>, patch <hex bytes>, revert, xor <key|auto>, sig, rename <name>, comment <text>, split, theme <light|dark>, open, close, clear" );
+			log ( log_kind::INFO, L"Commands: go <address|name>, entry, back, forward, section <name>, view <asm|c|hex|headers|calls>, find <pattern>, search <text|#value|c:text>, functions where <calls X|calledby X|refs text|name X|size > N|callers > N|thunk|leaf|named|noted> [and ...], asm <instruction>, patch <hex bytes>, revert, xor <key|auto>, sig, rename <name>, comment <text>, split, theme <light|dark>, open, close, clear" );
 		else if ( base::same_text ( word, L"clear" ) )
 			output.clear ( );
 		else if ( base::same_text ( word, L"open" ) )
@@ -1292,6 +1292,8 @@ namespace ui {
 			find_signature ( rest );
 		else if ( base::same_text ( word, L"search" ) && enabled ( command::SEARCH_ALL ) )
 			search_everything ( rest );
+		else if ( base::same_text ( word, L"functions" ) && file.loaded ( ) )
+			run_query ( rest );
 		else if ( base::same_text ( word, L"asm" ) && enabled ( command::ASSEMBLE ) ) {
 
 			remember_undo ( );

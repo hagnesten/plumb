@@ -75,6 +75,7 @@
     <ClCompile Include="src\ui\panels\inspector.cc" />
     <ClCompile Include="src\ui\panels\output.cc" />
     <ClCompile Include="src\ui\patching.cc" />
+    <ClCompile Include="src\ui\query.cc" />
     <ClCompile Include="src\ui\report.cc" />
     <ClCompile Include="src\ui\rows.cc" />
     <ClCompile Include="src\ui\session.cc" />
