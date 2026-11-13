@@ -44,6 +44,6 @@ namespace analysis {
 
 	bool masked_instruction ( const database& db, const x86::instruction& ins, pattern& out );
 
-	bool function_key ( const database& db, int32_t index, uint64_t& key );
+	bool function_key ( const database& db, int32_t index, uint64_t& key, bool strict = true );
 
 }

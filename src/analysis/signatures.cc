@@ -772,14 +772,14 @@ namespace analysis {
 
 	}
 
-	bool function_key ( const database& db, int32_t index, uint64_t& key ) {
+	bool function_key ( const database& db, int32_t index, uint64_t& key, bool strict ) {
 
 		const function_info& info = db.functions [ static_cast < size_t > ( index ) ];
 		uint64_t length = info.end - info.start;
 		pattern body;
 		int32_t instructions = 0;
 
-		if ( length < 12 || length > 0x10000 || ( info.flags & THUNK ) )
+		if ( length > 0x10000 || ( strict && ( length < 12 || ( info.flags & THUNK ) ) ) )
 			return false;
 
 		for ( uint64_t at = info.start; at < info.end && body.bytes.size ( ) < 1024; ) {
@@ -802,7 +802,7 @@ namespace analysis {
 
 		}
 
-		if ( instructions < 5 )
+		if ( !instructions || ( strict && instructions < 5 ) )
 			return false;
 
 		uint64_t hash = 0xCBF29CE484222325ull;
