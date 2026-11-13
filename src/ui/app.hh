@@ -1063,6 +1063,8 @@ namespace ui {
 
 		void draw_listing ( math::rect area );
 
+		void draw_listing_map ( math::rect area );
+
 		void draw_graph ( math::rect area );
 
 		void draw_pseudocode ( math::rect area );

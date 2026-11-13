@@ -343,7 +343,86 @@ namespace ui {
 
 		}
 
+		draw_listing_map ( area );
 		draw_scrollbar ( make_id ( "listing_bar", drawing_serial ), area, now->listing_scroll, static_cast < float > ( total_rows ) + 3.0f, visible );
+
+	}
+
+	void app::draw_listing_map ( math::rect area ) {
+
+		if ( !total_rows || area.h < 60.0f )
+			return;
+
+		render::canvas& c = canvas;
+		math::rect track ( area.right ( ) - 11.0f, area.y, 11.0f, area.h );
+		float total = static_cast < float > ( total_rows ) + 3.0f;
+
+		auto y_of = [ & ] ( uint64_t address ) {
+
+			return track.y + static_cast < float > ( row_of ( address ) ) / total * track.h;
+
+		};
+
+		auto tick = [ & ] ( uint64_t address, render::color tint, float thick, float inset ) {
+
+			float y = math::round ( y_of ( address ) - thick * 0.5f );
+
+			c.fill ( math::rect ( track.x + inset, y, track.w - inset - 1.0f, thick ), 0.0f, tint );
+
+		};
+
+		c.fill ( track, 0.0f, ink ( tone::PANEL ).fade ( 0.55f ) );
+		c.fill ( math::rect ( track.x, track.y, 1.0f, track.h ), 0.0f, ink ( tone::LINE ) );
+
+		for ( const loader::section& item : file.sections ) {
+
+			if ( !item.size )
+				continue;
+
+			tone band = item.type == loader::kind::CODE ? tone::CODE_BAND : ( item.type == loader::kind::CONSTANT ? tone::CONST_BAND : ( item.type == loader::kind::EMPTY ? tone::EMPTY_BAND : ( item.type == loader::kind::HEADER ? tone::HEADER_BAND : tone::DATA_BAND ) ) );
+			float top = y_of ( item.address );
+			float bottom = y_of ( item.address + item.size - 1 ) + 1.0f;
+
+			c.fill ( math::rect ( track.x + 1.0f, top, 2.0f, base::max ( bottom - top, 1.0f ) ), 0.0f, ink ( band ) );
+
+		}
+
+		int32_t hits = base::min ( search_hits.count ( ), 4000 );
+
+		for ( int32_t i = 0; i < hits; i++ )
+			tick ( search_hits [ static_cast < size_t > ( i ) ].address, ink ( tone::INK_SOFT ).fade ( 0.6f ), 1.0f, 4.0f );
+
+		uint64_t last_patch = ~0ull;
+
+		for ( const patched_byte& item : patches ) {
+
+			uint64_t address = 0;
+
+			if ( item.offset == last_patch + 1 ) {
+
+				last_patch = item.offset;
+
+				continue;
+
+			}
+
+			last_patch = item.offset;
+
+			if ( file.address_of ( item.offset, address ) )
+				tick ( address, ink ( tone::WARNING ), 2.0f, 4.0f );
+
+		}
+
+		for ( const user_name& item : bookmarks )
+			tick ( item.address, ink ( tone::ACCENT ), 2.0f, 4.0f );
+
+		for ( uint64_t address : breakpoints )
+			tick ( address, ink ( tone::DANGER ), 2.0f, 4.0f );
+
+		if ( debug_pc )
+			tick ( debug_pc, ink ( tone::WARNING ), 3.0f, 1.0f );
+
+		tick ( now->cursor_address, ink ( tone::INK ), 2.0f, 1.0f );
 
 	}
 
