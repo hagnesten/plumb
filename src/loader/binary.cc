@@ -785,6 +785,12 @@ namespace loader {
 			buffer [ length ] = 0;
 			debug_path.set ( buffer );
 
+			for ( int32_t g = 0; g < 16; g++ )
+				debug_guid [ g ] = byte ( record + 4 + static_cast < uint64_t > ( g ) );
+
+			debug_age = read32 ( record + 20 );
+			debug_known = true;
+
 			break;
 
 		}
@@ -876,6 +882,30 @@ namespace loader {
 				strings.push ( wide_list [ b++ ] );
 
 		}
+
+	}
+
+	const symbol* binary::label_at ( uint64_t address ) const {
+
+		int32_t low = 0;
+		int32_t high = labels.count ( ) - 1;
+
+		while ( low <= high ) {
+
+			int32_t middle = ( low + high ) / 2;
+			uint64_t value = labels [ static_cast < size_t > ( middle ) ].address;
+
+			if ( value == address )
+				return &labels [ static_cast < size_t > ( middle ) ];
+
+			if ( value < address )
+				low = middle + 1;
+			else
+				high = middle - 1;
+
+		}
+
+		return nullptr;
 
 	}
 

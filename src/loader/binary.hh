@@ -38,6 +38,7 @@ namespace loader {
 		ENTRY,
 		EXPORT,
 		TLS,
+		DEBUG,
 
 	};
 
@@ -142,6 +143,8 @@ namespace loader {
 
 		void string_text ( const found_string& item, wchar_t* out, int32_t room ) const;
 
+		const symbol* label_at ( uint64_t address ) const;
+
 		void poke ( uint64_t offset, uint8_t value );
 
 		base::text path;
@@ -171,6 +174,11 @@ namespace loader {
 		base::list < symbol > functions;
 		base::list < base::text > notes;
 		base::text debug_path;
+		uint8_t debug_guid [ 16 ] = { };
+		uint32_t debug_age = 0;
+		bool debug_known = false;
+		base::list < symbol > labels;
+		base::text symbol_file;
 
 	private:
 

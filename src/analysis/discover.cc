@@ -1223,7 +1223,7 @@ namespace analysis {
 
 			seed.address = item.address;
 			seed.end = 0;
-			seed.flags = item.type == loader::symbol_kind::ENTRY ? FROM_ENTRY : ( item.type == loader::symbol_kind::TLS ? FROM_TLS : FROM_EXPORT );
+			seed.flags = item.type == loader::symbol_kind::ENTRY ? FROM_ENTRY : ( item.type == loader::symbol_kind::TLS ? FROM_TLS : ( item.type == loader::symbol_kind::DEBUG ? FROM_SYMBOLS : FROM_EXPORT ) );
 			seeds.push ( seed );
 
 		}

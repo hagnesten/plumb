@@ -20,6 +20,7 @@ namespace analysis {
 		LEAF = 512,
 		NAMED = 1024,
 		FROM_JUMP = 2048,
+		FROM_SYMBOLS = 4096,
 
 	};
 
