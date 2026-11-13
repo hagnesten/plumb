@@ -1746,6 +1746,14 @@ namespace ui {
 
 		}
 
+		if ( const loader::symbol* label = file.label_at ( address ) ) {
+
+			copy_name ( label->name.get ( ), out, room );
+
+			return true;
+
+		}
+
 		int32_t text_index = string_at ( address );
 
 		if ( text_index >= 0 ) {

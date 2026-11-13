@@ -61,6 +61,7 @@
     <ClCompile Include="src\host\capture.cc" />
     <ClCompile Include="src\host\main.cc" />
     <ClCompile Include="src\loader\binary.cc" />
+    <ClCompile Include="src\loader\symbols.cc" />
     <ClCompile Include="src\render\canvas.cc" />
     <ClCompile Include="src\render\device.cc" />
     <ClCompile Include="src\runtime\memory.cc" />
@@ -115,6 +116,7 @@
     <ClInclude Include="src\decompiler\decompiler.hh" />
     <ClInclude Include="src\decompiler\internal.hh" />
     <ClInclude Include="src\loader\binary.hh" />
+    <ClInclude Include="src\loader\symbols.hh" />
     <ClInclude Include="src\render\render.hh" />
     <ClInclude Include="src\runtime\runtime.hh" />
     <ClInclude Include="src\ui\app.hh" />

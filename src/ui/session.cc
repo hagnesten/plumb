@@ -1,6 +1,7 @@
 #include "ui/app.hh"
 #include "ui/icons.hh"
 #include "base/files.hh"
+#include "loader/symbols.hh"
 #include <windows.h>
 
 namespace ui {
@@ -1085,6 +1086,9 @@ namespace ui {
 
 		}
 
+		base::writer symbols;
+		bool symbolized = loader::load_symbols ( file, symbols );
+
 		load_problem.set ( L"" );
 		string_addresses.clear ( );
 		string_order.clear ( );
@@ -1124,7 +1128,7 @@ namespace ui {
 		log ( log_kind::INFO, line.text ( ) );
 
 		if ( !file.debug_path.empty ( ) )
-			log ( log_kind::INFO, base::writer ( ).add ( L"Debug info points to " ).add ( file.debug_path.get ( ) ).text ( ) );
+			log ( symbolized ? log_kind::GOOD : log_kind::INFO, symbolized ? symbols.text ( ) : base::writer ( ).add ( L"Debug info points to " ).add ( file.debug_path.get ( ) ).add ( L". " ).add ( symbols.text ( ) ).text ( ) );
 
 		if ( file.arch == loader::machine::ARM64 || file.arch == loader::machine::ARM )
 			log ( log_kind::WARN, L"This is an ARM image. Plumb decodes x86 and x86-64 only, so code is shown as bytes." );
