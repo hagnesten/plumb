@@ -970,4 +970,70 @@ namespace ui {
 
 	}
 
+	static int32_t family_of_text ( const wchar_t* text, int32_t length ) {
+
+		if ( length < 2 || length > 5 )
+			return -1;
+
+		for ( int32_t r = 1; r < x86::REG_COUNT; r++ ) {
+
+			const char* name = x86::register_name ( static_cast < uint8_t > ( r ) );
+			int32_t i = 0;
+
+			if ( !name )
+				continue;
+
+			while ( i < length && name [ i ] && base::fold_case ( text [ i ] ) == static_cast < wchar_t > ( name [ i ] ) )
+				i++;
+
+			if ( i == length && !name [ i ] )
+				return x86::register_family ( static_cast < uint8_t > ( r ) );
+
+		}
+
+		return -1;
+
+	}
+
+	void app::set_highlight ( const wchar_t* text, int32_t length, int32_t column ) {
+
+		wchar_t fresh [ 64 ] = { };
+		int32_t from = 0;
+		int32_t to = 0;
+
+		if ( text && word_bounds ( text, length, base::clamp ( column, 0, length ), from, to ) && to - from < 63 ) {
+
+			for ( int32_t i = from; i < to; i++ )
+				fresh [ i - from ] = text [ i ];
+
+		}
+
+		if ( base::same_text ( fresh, highlight ) )
+			return;
+
+		for ( int32_t i = 0; i < 64; i++ )
+			highlight [ i ] = fresh [ i ];
+
+		highlight_family = family_of_text ( highlight, base::text_length ( highlight ) );
+		pending = base::max ( pending, 2 );
+
+	}
+
+	bool app::highlighted ( const wchar_t* piece, int32_t length ) const {
+
+		if ( !highlight [ 0 ] || length <= 0 )
+			return false;
+
+		int32_t i = 0;
+
+		while ( i < length && highlight [ i ] && piece [ i ] == highlight [ i ] )
+			i++;
+
+		if ( i == length && !highlight [ i ] )
+			return true;
+
+		return highlight_family >= 0 && family_of_text ( piece, length ) == highlight_family;
+
+	}
+
 }

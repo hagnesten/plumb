@@ -814,6 +814,10 @@ namespace ui {
 						piece [ k ] = layout->text [ static_cast < size_t > ( line.text + run.start + k ) ];
 
 					piece [ length ] = 0;
+
+					if ( highlighted ( piece, length ) )
+						c.fill ( math::rect ( rx, ly, static_cast < float > ( length ) * layout->adv, layout->line_h ), 0.0f, ink ( tone::SELECT ).fade ( 0.75f ) );
+
 					c.text ( piece, render::font::MONO_SMALL, math::vec2 ( rx, cy ), ink ( run.color ), render::align::LEFT, node.x + node.w - 8.0f - rx );
 
 					if ( run.target && i == hit_node && l == hit_line ) {

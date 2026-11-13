@@ -854,6 +854,8 @@ namespace ui {
 		base::list < int32_t > shown [ static_cast < int32_t > ( panel::COUNT ) ];
 		scroller browser_scroll [ static_cast < int32_t > ( panel::COUNT ) ];
 		int32_t browser_pick [ static_cast < int32_t > ( panel::COUNT ) ] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+		wchar_t highlight [ 64 ] = { };
+		int32_t highlight_family = -1;
 		int8_t sort_by [ static_cast < int32_t > ( panel::COUNT ) ] = { };
 		bool sort_down [ static_cast < int32_t > ( panel::COUNT ) ] = { };
 		int32_t expanded_struct = -1;
@@ -1064,6 +1066,10 @@ namespace ui {
 		void draw_listing ( math::rect area );
 
 		void draw_listing_map ( math::rect area );
+
+		void set_highlight ( const wchar_t* text, int32_t length, int32_t column );
+
+		bool highlighted ( const wchar_t* piece, int32_t length ) const;
 
 		void draw_graph ( math::rect area );
 

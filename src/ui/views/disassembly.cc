@@ -243,6 +243,16 @@ namespace ui {
 
 		}
 
+		bool leading = pane_document ( focused_pane ) >= 0 && &documents [ pane_document ( focused_pane ) ].state == now;
+
+		if ( leading && total_rows && !ranged ) {
+
+			const row_line& line = line_for ( now->cursor_row );
+
+			set_highlight ( line.decor ? nullptr : line.text, line.length, now->caret_col );
+
+		}
+
 		for ( int32_t k = 0; k < count; k++ ) {
 
 			uint64_t row = first + static_cast < uint64_t > ( k );
@@ -292,6 +302,9 @@ namespace ui {
 				piece [ length ] = 0;
 
 				render::font role = line.decor && r > 0 ? render::font::MONO_SMALL : ( line.strong [ r ] ? render::font::MONO_STRONG : render::font::MONO );
+
+				if ( !line.decor && highlighted ( piece, length ) )
+					c.fill ( math::rect ( rx, y + 1.0f, static_cast < float > ( length ) * adv, row_h - 2.0f ), 0.0f, ink ( tone::SELECT ).fade ( 0.75f ) );
 
 				c.text ( piece, role, math::vec2 ( rx, cy ), ink ( run.color ) );
 

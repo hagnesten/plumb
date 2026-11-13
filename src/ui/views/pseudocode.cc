@@ -317,7 +317,18 @@ namespace ui {
 		bool hand = false;
 
 		c.push_clip ( text_area );
-		c.fill ( math::rect ( area.x, cursor_y, 2.5f, row_h ), 0.0f, ink ( tone::SELECT_LINE ) );
+		c.fill ( math::rect ( area.x, cursor_y, area.w, row_h ), 0.0f, ink ( tone::HOVER ) );
+		c.fill ( math::rect ( area.x, cursor_y, 2.0f, row_h ), 0.0f, ink ( tone::SELECT_LINE ) );
+
+		bool leading = pane_document ( focused_pane ) >= 0 && &documents [ pane_document ( focused_pane ) ].state == now;
+
+		if ( leading && !ranged && now->code_line >= 0 && now->code_line < total ) {
+
+			const decompiler::line& item = code->lines [ static_cast < size_t > ( now->code_line ) ];
+
+			set_highlight ( code->text.data ( ) + item.text, item.length, now->code_col - item.indent * 4 );
+
+		}
 
 		if ( synced >= 0 && synced != now->code_line ) {
 
@@ -354,7 +365,7 @@ namespace ui {
 				int32_t to = row == high ? high_col : length + 1;
 
 				if ( to > from )
-					c.fill ( math::rect ( x_text + static_cast < float > ( from ) * adv, y + 1.0f, static_cast < float > ( to - from ) * adv, row_h - 2.0f ), 2.0f, ink ( tone::SELECT ) );
+					c.fill ( math::rect ( x_text + static_cast < float > ( from ) * adv, y, static_cast < float > ( to - from ) * adv, row_h ), 0.0f, ink ( tone::SELECT ) );
 
 			}
 
@@ -422,6 +433,9 @@ namespace ui {
 				if ( px > area.right ( ) )
 					break;
 
+				if ( highlighted ( piece, length ) )
+					c.fill ( math::rect ( px, y + 1.0f, static_cast < float > ( length ) * adv, row_h - 2.0f ), 0.0f, ink ( tone::SELECT ).fade ( 0.75f ) );
+
 				c.text ( piece, render::font::MONO, math::vec2 ( px, cy ), ink ( color ) );
 
 				if ( part && part->start <= at ) {
@@ -429,7 +443,7 @@ namespace ui {
 					if ( part->target && part->target != code->function && !now->code_selecting && over ( math::rect ( px, y, static_cast < float > ( length ) * adv, row_h ) ) && over ( text_area ) ) {
 
 						hand = true;
-						c.fill ( math::rect ( px, cy + 7.0f, static_cast < float > ( length ) * adv, 1.0f ), 0.0f, ink ( color ).fade ( 0.7f ) );
+						c.fill ( math::rect ( px, cy + 6.0f, static_cast < float > ( length ) * adv, 1.0f ), 0.0f, ink ( color ).fade ( 0.7f ) );
 
 						if ( clicked_id == id && key_control ) {
 
@@ -466,7 +480,7 @@ namespace ui {
 			if ( lit || now->code_selecting ) {
 
 				c.push_clip ( inner );
-				c.fill ( math::rect ( x_text + static_cast < float > ( now->code_col ) * adv - 0.75f, cursor_y + 3.0f, 1.5f, row_h - 6.0f ), 0.5f, ink ( tone::INK ) );
+				c.fill ( math::rect ( x_text + static_cast < float > ( now->code_col ) * adv - 0.5f, cursor_y + 2.0f, 1.0f, row_h - 4.0f ), 0.0f, ink ( tone::INK ) );
 				c.pop_clip ( );
 
 			}
