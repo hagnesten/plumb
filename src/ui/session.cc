@@ -254,6 +254,137 @@ namespace ui {
 
 		}
 
+		sort_rows ( which );
+
+	}
+
+	void app::sort_rows ( panel which ) {
+
+		int32_t slot = static_cast < int32_t > ( which );
+		int32_t column = sort_by [ slot ];
+		base::list < int32_t >& list = shown [ slot ];
+
+		if ( !column || list.count ( ) < 2 )
+			return;
+
+		bool analyzed = db && analysis_applied && !db->functions.empty ( );
+		bool by_text = column == 1;
+		base::list < uint64_t > numbers;
+		base::list < base::text > texts;
+		base::list < int32_t > order;
+		wchar_t buffer [ 200 ];
+
+		if ( which == panel::FUNCTIONS && !analyzed )
+			return;
+
+		if ( which != panel::FUNCTIONS && which != panel::EXPORTS && which != panel::STRINGS && which != panel::SECTIONS )
+			return;
+
+		order.resize ( list.size ( ) );
+
+		if ( by_text )
+			texts.resize ( list.size ( ) );
+		else
+			numbers.resize ( list.size ( ) );
+
+		for ( int32_t i = 0; i < list.count ( ); i++ ) {
+
+			int32_t value = list [ static_cast < size_t > ( i ) ];
+
+			order [ static_cast < size_t > ( i ) ] = i;
+
+			switch ( which ) {
+
+				case panel::FUNCTIONS: {
+
+					const analysis::function_info& info = db->functions [ static_cast < size_t > ( value ) ];
+
+					if ( by_text ) {
+
+						function_name ( value, buffer, 200 );
+						texts [ static_cast < size_t > ( i ) ].set ( buffer );
+
+					} else
+						numbers [ static_cast < size_t > ( i ) ] = column == 2 ? info.start : info.end - info.start;
+
+					break;
+
+				}
+
+				case panel::EXPORTS: {
+
+					const loader::exported& item = file.exports [ static_cast < size_t > ( value ) ];
+
+					if ( by_text )
+						texts [ static_cast < size_t > ( i ) ].set ( item.name.get ( ) );
+					else
+						numbers [ static_cast < size_t > ( i ) ] = item.address;
+
+					break;
+
+				}
+
+				case panel::STRINGS: {
+
+					const loader::found_string& item = file.strings [ static_cast < size_t > ( value ) ];
+
+					if ( by_text ) {
+
+						string_preview ( file, item, buffer, 160 );
+						texts [ static_cast < size_t > ( i ) ].set ( buffer );
+
+					} else
+						numbers [ static_cast < size_t > ( i ) ] = item.offset;
+
+					break;
+
+				}
+
+				default: {
+
+					const loader::section& item = file.sections [ static_cast < size_t > ( value ) ];
+
+					if ( by_text )
+						texts [ static_cast < size_t > ( i ) ].set ( item.name );
+					else
+						numbers [ static_cast < size_t > ( i ) ] = column == 2 ? ( item.read ? 4u : 0u ) | ( item.write ? 2u : 0u ) | ( item.execute ? 1u : 0u ) : item.address;
+
+					break;
+
+				}
+
+			}
+
+		}
+
+		bool down = sort_down [ slot ];
+
+		base::sort ( order.data ( ), order.count ( ), [ & ] ( int32_t a, int32_t b ) {
+
+			if ( by_text ) {
+
+				int32_t compared = base::compare_folded ( texts [ static_cast < size_t > ( a ) ].get ( ), texts [ static_cast < size_t > ( b ) ].get ( ) );
+
+				return down ? compared > 0 : compared < 0;
+
+			}
+
+			uint64_t x = numbers [ static_cast < size_t > ( a ) ];
+			uint64_t y = numbers [ static_cast < size_t > ( b ) ];
+
+			return down ? x > y : x < y;
+
+		} );
+
+		base::list < int32_t > sorted;
+
+		sorted.resize ( list.size ( ) );
+
+		for ( int32_t i = 0; i < list.count ( ); i++ )
+			sorted [ static_cast < size_t > ( i ) ] = list [ static_cast < size_t > ( order [ static_cast < size_t > ( i ) ] ) ];
+
+		list = base::move ( sorted );
+
 	}
 
 	void app::refresh_references ( ) {

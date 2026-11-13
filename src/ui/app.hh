@@ -854,6 +854,8 @@ namespace ui {
 		base::list < int32_t > shown [ static_cast < int32_t > ( panel::COUNT ) ];
 		scroller browser_scroll [ static_cast < int32_t > ( panel::COUNT ) ];
 		int32_t browser_pick [ static_cast < int32_t > ( panel::COUNT ) ] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+		int8_t sort_by [ static_cast < int32_t > ( panel::COUNT ) ] = { };
+		bool sort_down [ static_cast < int32_t > ( panel::COUNT ) ] = { };
 		int32_t expanded_struct = -1;
 		int32_t prompt_struct = -1;
 		int32_t prompt_offset = 0;
@@ -983,6 +985,8 @@ namespace ui {
 		void set_cursor_row ( uint64_t row, bool center );
 
 		void refresh_filter ( panel which );
+
+		void sort_rows ( panel which );
 
 		void refresh_references ( );
 

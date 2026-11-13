@@ -214,20 +214,65 @@ namespace ui {
 		c.fill ( math::rect ( x, columns.y, inner_w, 1.0f ), 0.0f, ink ( tone::LINE ) );
 		c.fill ( math::rect ( x, columns.bottom ( ) - 1.0f, inner_w, 1.0f ), 0.0f, ink ( tone::LINE ) );
 
-		if ( names [ 0 ] )
-			c.text ( names [ 0 ], render::font::SMALL, math::vec2 ( x + 10.0f, columns.center ( ).y ), ink ( tone::INK_SOFT ) );
+		bool sortable = browsing == panel::FUNCTIONS || browsing == panel::EXPORTS || browsing == panel::STRINGS || browsing == panel::SECTIONS;
+		bool middle_right = browsing == panel::FUNCTIONS;
+		float middle_x = browsing == panel::FUNCTIONS ? x + inner_w - 64.0f : ( browsing == panel::SECTIONS ? x + 106.0f : ( browsing == panel::REFERENCES ? x + 60.0f : x + 100.0f ) );
+		float right_x = x + inner_w - 10.0f;
+		float spots [ 3 ] = { x + 10.0f, middle_x, right_x };
+		render::align aligns [ 3 ] = { render::align::LEFT, middle_right ? render::align::RIGHT : render::align::LEFT, render::align::RIGHT };
+		float middle_left = names [ 1 ] ? ( middle_right ? middle_x - 64.0f : middle_x - 6.0f ) : right_x - 64.0f;
+		math::rect cells [ 3 ] = {
+			math::rect ( x, columns.y, middle_left - x, columns.h ),
+			math::rect ( middle_left, columns.y, middle_right ? middle_x + 4.0f - middle_left : right_x - 70.0f - middle_left, columns.h ),
+			math::rect ( right_x - 64.0f, columns.y, x + inner_w - ( right_x - 64.0f ), columns.h )
+		};
 
-		if ( names [ 1 ] ) {
+		for ( int32_t k = 0; k < 3; k++ ) {
 
-			bool middle_right = browsing == panel::FUNCTIONS;
-			float middle_x = browsing == panel::FUNCTIONS ? x + inner_w - 64.0f : ( browsing == panel::SECTIONS ? x + 106.0f : ( browsing == panel::REFERENCES ? x + 60.0f : x + 100.0f ) );
+			if ( !names [ k ] )
+				continue;
 
-			c.text ( names [ 1 ], render::font::SMALL, math::vec2 ( middle_x, columns.center ( ).y ), ink ( tone::INK_SOFT ), middle_right ? render::align::RIGHT : render::align::LEFT );
+			bool active = sort_by [ slot ] == k + 1;
+			float label_w = c.measure ( names [ k ], render::font::SMALL );
+
+			if ( sortable ) {
+
+				uint64_t id = make_id ( "sort_column", slot * 4 + k );
+				widget& cell = state ( id );
+
+				if ( interact ( id, cells [ k ], cell ) ) {
+
+					if ( !active ) {
+
+						sort_by [ slot ] = static_cast < int8_t > ( k + 1 );
+						sort_down [ slot ] = k == 2 && browsing == panel::FUNCTIONS;
+
+					} else if ( sort_down [ slot ] != ( k == 2 && browsing == panel::FUNCTIONS ) )
+						sort_by [ slot ] = 0;
+					else
+						sort_down [ slot ] = !sort_down [ slot ];
+
+					refresh_filter ( browsing );
+					active = sort_by [ slot ] == k + 1;
+
+				}
+
+				c.fill ( cells [ k ], 0.0f, ink ( tone::HOVER ).fade ( cell.hover ) );
+				tip ( id, L"Sort by this column", cells [ k ] );
+
+			}
+
+			c.text ( names [ k ], active ? render::font::SMALL_STRONG : render::font::SMALL, math::vec2 ( spots [ k ], columns.center ( ).y ), active ? ink ( tone::INK ) : ink ( tone::INK_SOFT ), aligns [ k ] );
+
+			if ( active ) {
+
+				float arrow_x = aligns [ k ] == render::align::RIGHT ? spots [ k ] - label_w - 8.0f : spots [ k ] + label_w + 8.0f;
+
+				c.icon ( sort_down [ slot ] ? icons::CHEVRON_DOWN : icons::CHEVRON_UP, math::vec2 ( arrow_x, columns.center ( ).y ), 8.0f, ink ( tone::ACCENT ) );
+
+			}
 
 		}
-
-		if ( names [ 2 ] )
-			c.text ( names [ 2 ], render::font::SMALL, math::vec2 ( x + inner_w - 10.0f, columns.center ( ).y ), ink ( tone::INK_SOFT ), render::align::RIGHT );
 
 		math::rect list ( x, columns.bottom ( ), inner_w, area.bottom ( ) - columns.bottom ( ) );
 
