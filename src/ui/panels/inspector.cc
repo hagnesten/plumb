@@ -126,6 +126,89 @@ namespace ui {
 
 				}
 
+				wchar_t name [ 200 ];
+				uint64_t local = 0;
+				int32_t frames = 0;
+
+				heading ( L"CALL STACK" );
+
+				if ( debug_pc && symbol_name ( db && db->function_at ( debug_pc ) >= 0 ? db->functions [ static_cast < size_t > ( db->function_at ( debug_pc ) ) ].start : debug_pc, true, name, 200 ) ) {
+
+					base::writer here;
+
+					here.add ( name );
+
+					if ( db && db->function_at ( debug_pc ) >= 0 )
+						here.add ( L"+" ).hex ( debug_pc - db->functions [ static_cast < size_t > ( db->function_at ( debug_pc ) ) ].start );
+
+					pair ( L"current", here.text ( ), render::font::MONO_SMALL, ink ( tone::WARNING ) );
+
+				}
+
+				for ( int32_t i = 0; i < debug_state.stack_count && frames < 16; i++ ) {
+
+					if ( !return_site ( debug_state.stack [ i ], local ) )
+						continue;
+
+					int32_t owner = db->function_at ( local );
+					base::writer slot;
+					base::writer site;
+
+					slot.add ( debug_state.wide ? L"rsp+" : L"esp+" ).hex ( static_cast < uint64_t > ( i ) * ( debug_state.wide ? 8 : 4 ) );
+
+					if ( owner >= 0 ) {
+
+						function_name ( owner, name, 200 );
+						site.add ( name ).add ( L"+" ).hex ( local - db->functions [ static_cast < size_t > ( owner ) ].start );
+
+					} else
+						site.hex ( local );
+
+					pair ( slot.text ( ), site.text ( ), render::font::MONO_SMALL, ink ( tone::FUNCTION ) );
+					frames++;
+
+				}
+
+				if ( !frames && !debug_pc )
+					pair ( L"", L"No frames in this image", render::font::SMALL, ink ( tone::INK_FAINT ) );
+
+				heading ( L"STACK" );
+
+				for ( int32_t i = 0; i < debug_state.stack_count && i < 12; i++ ) {
+
+					base::writer slot;
+					base::writer content;
+
+					slot.add ( debug_state.wide ? L"+" : L"+" ).hex ( static_cast < uint64_t > ( i ) * ( debug_state.wide ? 8 : 4 ), 2 );
+					content.hex ( debug_state.stack [ i ], debug_state.wide ? 16 : 8 );
+
+					if ( return_site ( debug_state.stack [ i ], local ) && symbol_name ( local, true, name, 200 ) )
+						content.add ( L"  " ).add ( name );
+
+					pair ( slot.text ( ), content.text ( ), render::font::MONO_SMALL, ink ( tone::INK ) );
+
+				}
+
+			}
+
+			if ( !watches.empty ( ) ) {
+
+				heading ( L"WATCH" );
+
+				for ( const base::text& item : watches ) {
+
+					uint64_t value = 0;
+					base::writer shown;
+
+					if ( debug_state.state == debugger::status::PAUSED && evaluate_watch ( item.get ( ), value ) )
+						shown.hex ( value, debug_state.wide ? 16 : 8 );
+					else
+						shown.add ( debug_state.state == debugger::status::PAUSED ? L"unreadable" : L"while paused" );
+
+					pair ( item.get ( ), shown.text ( ), render::font::MONO_SMALL, ink ( debug_state.state == debugger::status::PAUSED ? tone::INK : tone::INK_FAINT ) );
+
+				}
+
 			}
 
 		}

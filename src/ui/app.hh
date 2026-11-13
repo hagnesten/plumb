@@ -208,6 +208,9 @@ namespace ui {
 		EXPORT_REPORT,
 		LEARN_LIBRARY,
 		COMPARE_FILE,
+		DEBUG_COVERAGE,
+		DEBUG_WATCH,
+		DEBUG_CONDITION,
 		COUNT,
 
 	};
@@ -728,6 +731,16 @@ namespace ui {
 
 		void other_name ( int32_t index, wchar_t* out, int32_t room ) const;
 
+		bool is_covered ( uint64_t address ) const;
+
+		void start_debugging ( bool record );
+
+		void merge_coverage ( );
+
+		bool evaluate_watch ( const wchar_t* text, uint64_t& value ) const;
+
+		bool return_site ( uint64_t runtime, uint64_t& local ) const;
+
 		void learn_library ( );
 
 		void apply_library ( );
@@ -974,6 +987,11 @@ namespace ui {
 		base::list < user_name > notes;
 		uint32_t annotation_revision = 1;
 		base::list < user_name > learned;
+		base::list < uint64_t > coverage;
+		base::list < uint64_t > coverage_blocks;
+		int32_t coverage_functions = 0;
+		base::list < base::text > watches;
+		base::list < user_name > conditions;
 		loader::binary* other_file = nullptr;
 		analysis::database* other_db = nullptr;
 		base::list < diff_row > diff_rows;

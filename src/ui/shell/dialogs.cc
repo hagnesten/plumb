@@ -137,6 +137,10 @@ namespace ui {
 			title = L"Comment";
 		else if ( prompt_action == command::NOTE )
 			title = L"Function note";
+		else if ( prompt_action == command::DEBUG_WATCH )
+			title = L"Add watch";
+		else if ( prompt_action == command::DEBUG_CONDITION )
+			title = L"Breakpoint condition";
 		else if ( prompt_action == command::FIND_SIGNATURE )
 			title = L"Find signature or bytes";
 		else if ( prompt_action == command::SEARCH_ALL )
@@ -222,7 +226,7 @@ namespace ui {
 		uint64_t field_id = make_id ( "prompt" );
 
 		const wchar_t* hint = prompt_action == command::FIND_SIGNATURE ? L"Pattern" : ( prompt_action == command::COMMENT ? L"Comment, empty to remove" : ( prompt_action == command::NOTE ? L"What this function does, empty to remove" : L"New name, empty to reset" ) );
-		bool code_font = prompt_action == command::FIND_SIGNATURE || prompt_action == command::SEARCH_ALL || prompt_action == command::ASSEMBLE || prompt_action == command::PATCH_BYTES || prompt_action == command::XOR_DECODE || prompt_mode >= 2;
+		bool code_font = prompt_action == command::DEBUG_WATCH || prompt_action == command::DEBUG_CONDITION || prompt_action == command::FIND_SIGNATURE || prompt_action == command::SEARCH_ALL || prompt_action == command::ASSEMBLE || prompt_action == command::PATCH_BYTES || prompt_action == command::XOR_DECODE || prompt_mode >= 2;
 
 		if ( prompt_action == command::SEARCH_ALL )
 			hint = L"call rax,  #0x40,  c:GetProcAddress";
@@ -232,6 +236,10 @@ namespace ui {
 			hint = L"90 90 EB 05";
 		else if ( prompt_action == command::XOR_DECODE )
 			hint = L"auto";
+		else if ( prompt_action == command::DEBUG_WATCH )
+			hint = L"rcx,  [rsp+0x28],  g_name+8,  empty clears all";
+		else if ( prompt_action == command::DEBUG_CONDITION )
+			hint = L"rax == 0,  empty makes it unconditional";
 
 		if ( prompt_mode == 2 )
 			hint = L"int32_t, char*, DWORD, MyStruct*  (empty resets)";

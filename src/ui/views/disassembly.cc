@@ -219,8 +219,11 @@ namespace ui {
 
 			}
 
+			if ( line.instruction && !coverage.empty ( ) && is_covered ( line.address ) )
+				c.fill ( math::rect ( area.x + 3.0f, y, 3.0f, row_h ), 0.0f, ink ( tone::SUCCESS ).fade ( 0.7f ) );
+
 			if ( line.instruction && !breakpoints.empty ( ) && is_breakpoint ( line.address ) )
-				c.fill ( math::rect ( area.x + 11.0f, cy - 4.0f, 8.0f, 8.0f ), 4.0f, ink ( tone::DANGER ) );
+				c.fill ( math::rect ( area.x + 11.0f, cy - 4.0f, 8.0f, 8.0f ), 4.0f, ink ( user_text ( conditions, line.address ) ? tone::WARNING : tone::DANGER ) );
 
 			if ( ranged && row >= low && row <= high ) {
 

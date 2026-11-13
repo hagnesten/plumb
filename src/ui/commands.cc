@@ -89,7 +89,10 @@ namespace ui {
 		{ L"Notes and bookmarks", L"Alt+0" },
 		{ L"Export report", L"" },
 		{ L"Learn names from this file", L"" },
-		{ L"Compare with another build", L"" }
+		{ L"Compare with another build", L"" },
+		{ L"Run and record coverage", L"Shift+F9" },
+		{ L"Add watch", L"" },
+		{ L"Breakpoint condition", L"Shift+F2" }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -162,6 +165,15 @@ namespace ui {
 			case command::LEARN_LIBRARY:
 			case command::COMPARE_FILE:
 				return analyzed;
+
+			case command::DEBUG_COVERAGE:
+				return analyzed && !debugger::active ( ) && !file.dll;
+
+			case command::DEBUG_WATCH:
+				return has;
+
+			case command::DEBUG_CONDITION:
+				return analyzed && db->is_start ( now->cursor_address );
 
 			case command::DEBUG_PAUSE:
 				return debug_state.state == debugger::status::RUNNING;
@@ -613,6 +625,18 @@ namespace ui {
 				pending_request = request::COMPARE;
 				break;
 
+			case command::DEBUG_COVERAGE:
+				start_debugging ( true );
+				break;
+
+			case command::DEBUG_WATCH:
+				open_prompt ( command::DEBUG_WATCH, now->cursor_address );
+				break;
+
+			case command::DEBUG_CONDITION:
+				open_prompt ( command::DEBUG_CONDITION, now->cursor_address );
+				break;
+
 			case command::TOGGLE_BYTES:
 				show_bytes = !show_bytes;
 				break;
@@ -733,10 +757,7 @@ namespace ui {
 
 				}
 
-				sync_breakpoints ( );
-
-				if ( debugger::start ( file.path.get ( ), file.entry - file.base, file.wide ( ) ) )
-					log ( log_kind::INFO, base::writer ( ).add ( L"Starting " ).add ( file.name.get ( ) ).add ( L" under the debugger. It stops at the entry point." ).text ( ) );
+				start_debugging ( false );
 
 				break;
 

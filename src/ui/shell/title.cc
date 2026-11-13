@@ -20,7 +20,7 @@ namespace ui {
 		{ L"Window", { command::SHOW_FUNCTIONS, command::SHOW_IMPORTS, command::SHOW_EXPORTS, command::SHOW_STRINGS, command::SHOW_SECTIONS, command::SHOW_CLASSES, command::SHOW_STRUCTS, command::SHOW_REFERENCES, command::SHOW_SEARCH, command::SHOW_NOTES, command::COUNT, command::TOGGLE_BROWSER, command::TOGGLE_INSPECTOR, command::TOGGLE_OUTPUT, command::RESET_LAYOUT }, 15 },
 		{ L"Tools", { command::SEARCH_ALL, command::SHOW_REFERENCES, command::COUNT, command::MAKE_SIGNATURE, command::FIND_SIGNATURE, command::COUNT, command::XOR_DECODE, command::STRUCT_FROM_VAR, command::EXPORT_CLASSES, command::EXPORT_REPORT, command::COUNT, command::LEARN_LIBRARY, command::COMPARE_FILE, command::COUNT, command::TOGGLE_TERNARY }, 15 },
 		{ L"Patch", { command::ASSEMBLE, command::PATCH_BYTES, command::REVERT_PATCH, command::COUNT, command::EXPORT_PATCHED }, 5 },
-		{ L"Debug", { command::DEBUG_RUN, command::DEBUG_PAUSE, command::DEBUG_STOP, command::COUNT, command::DEBUG_STEP_INTO, command::DEBUG_STEP_OVER, command::COUNT, command::DEBUG_BREAKPOINT }, 8 },
+		{ L"Debug", { command::DEBUG_RUN, command::DEBUG_COVERAGE, command::DEBUG_PAUSE, command::DEBUG_STOP, command::COUNT, command::DEBUG_STEP_INTO, command::DEBUG_STEP_OVER, command::COUNT, command::DEBUG_BREAKPOINT, command::DEBUG_CONDITION, command::DEBUG_WATCH }, 11 },
 		{ L"Help", { command::SHORTCUTS, command::COUNT, command::ABOUT }, 3 }
 	};
 

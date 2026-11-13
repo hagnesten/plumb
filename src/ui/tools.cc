@@ -162,6 +162,8 @@ namespace ui {
 			fill = user_text ( comments, address );
 		else if ( action == command::NOTE )
 			fill = user_text ( notes, address );
+		else if ( action == command::DEBUG_CONDITION )
+			fill = user_text ( conditions, address );
 		else if ( ( action == command::FIND_SIGNATURE || action == command::SEARCH_ALL ) && !search_query.empty ( ) )
 			fill = search_query.get ( );
 		else if ( action == command::XOR_DECODE )
@@ -292,6 +294,41 @@ namespace ui {
 				refresh_filter ( panel::NOTES );
 				changed ( );
 				break;
+
+			case command::DEBUG_WATCH:
+
+				if ( length )
+					watches.push ( base::text ( text ) );
+				else
+					watches.clear ( );
+
+				break;
+
+			case command::DEBUG_CONDITION: {
+
+				uint64_t zeros [ 18 ] = { };
+				bool valid = false;
+
+				debugger::test_condition ( text, zeros, file.wide ( ), valid );
+
+				if ( length && !valid ) {
+
+					log ( log_kind::WARN, L"Conditions look like  rax == 0,  rcx > 0x10  or  rip != 140001000." );
+
+					break;
+
+				}
+
+				set_user_text ( conditions, prompt_address, text );
+
+				if ( length && !is_breakpoint ( prompt_address ) )
+					breakpoints.push ( prompt_address );
+
+				sync_breakpoints ( );
+				changed ( );
+				break;
+
+			}
 
 			case command::NOTE:
 				set_user_text ( notes, prompt_address, text );

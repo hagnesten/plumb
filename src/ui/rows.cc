@@ -672,12 +672,23 @@ namespace ui {
 
 		debugger::set_breakpoints ( rvas.data ( ), rvas.count ( ) );
 
+		for ( uint64_t item : breakpoints ) {
+
+			const wchar_t* rule = user_text ( conditions, item );
+
+			debugger::set_condition ( item - file.base, rule ? rule : L"" );
+
+		}
+
 	}
 
 	void app::poll_debugger ( ) {
 
 		debugger::snapshot value = debugger::read ( );
 		wchar_t text [ 420 ];
+
+		if ( !coverage_blocks.empty ( ) )
+			merge_coverage ( );
 
 		while ( debugger::take_log ( text, 420 ) )
 			log ( log_kind::INFO, text );
@@ -709,8 +720,19 @@ namespace ui {
 			debug_pc = 0;
 			log ( log_kind::FAIL, value.note );
 
-		} else if ( value.state != debugger::status::PAUSED )
+		} else if ( value.state != debugger::status::PAUSED ) {
+
 			debug_pc = 0;
+
+			if ( value.state == debugger::status::EXITED && !coverage_blocks.empty ( ) ) {
+
+				merge_coverage ( );
+				log ( log_kind::GOOD, base::writer ( ).add ( L"Coverage: " ).grouped ( static_cast < uint64_t > ( coverage.count ( ) ) ).add ( L" instructions ran in " ).grouped ( static_cast < uint64_t > ( coverage_functions ) ).add ( L" of " ).grouped ( db ? static_cast < uint64_t > ( db->functions.count ( ) ) : 0 ).add ( L" functions. Query them with functions where covered." ).text ( ) );
+				coverage_blocks.clear ( );
+
+			}
+
+		}
 
 	}
 

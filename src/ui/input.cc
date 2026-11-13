@@ -278,7 +278,7 @@ namespace ui {
 			if ( code == VK_F9 || code == VK_F7 || code == VK_F8 || code == VK_F12 || code == VK_F2 ) {
 
 				if ( code == VK_F9 )
-					run ( command::DEBUG_RUN );
+					run ( key_shift && !debugger::active ( ) ? command::DEBUG_COVERAGE : command::DEBUG_RUN );
 				else if ( code == VK_F7 )
 					run ( command::DEBUG_STEP_INTO );
 				else if ( code == VK_F8 )
@@ -286,7 +286,7 @@ namespace ui {
 				else if ( code == VK_F12 )
 					run ( command::DEBUG_PAUSE );
 				else
-					run ( key_control ? command::DEBUG_STOP : command::DEBUG_BREAKPOINT );
+					run ( key_control ? command::DEBUG_STOP : ( key_shift ? command::DEBUG_CONDITION : command::DEBUG_BREAKPOINT ) );
 
 				continue;
 

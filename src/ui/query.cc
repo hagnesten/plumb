@@ -278,8 +278,10 @@ namespace ui {
 					special = 2;
 				else if ( base::same_text ( token, L"typed" ) )
 					special = 3;
+				else if ( base::same_text ( token, L"covered" ) )
+					special = 4;
 				else
-					return fail ( base::writer ( ).add ( L"Unknown condition \"" ).add ( token ).add ( L"\". Use calls, calledby, refs, name, size, callers, blocks, instructions, thunk, leaf, noreturn, exported, entry, named, noted or typed." ).text ( ) );
+					return fail ( base::writer ( ).add ( L"Unknown condition \"" ).add ( token ).add ( L"\". Use calls, calledby, refs, name, size, callers, blocks, instructions, thunk, leaf, noreturn, exported, entry, named, noted, typed or covered." ).text ( ) );
 
 				for ( int32_t i = 0; i < total; i++ ) {
 
@@ -292,6 +294,8 @@ namespace ui {
 						matched = ( info.flags & analysis::NAMED ) || user_text ( renamed, info.start );
 					else if ( special == 2 )
 						matched = user_text ( notes, info.start ) != nullptr;
+					else if ( special == 4 )
+						matched = is_covered ( info.start );
 					else
 						matched = prototype_for ( info.start ) != nullptr;
 

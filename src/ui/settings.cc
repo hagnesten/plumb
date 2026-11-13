@@ -156,6 +156,7 @@ namespace ui {
 		write_list ( L"comment", comments );
 		write_list ( L"bookmark", bookmarks );
 		write_list ( L"note", notes );
+		write_list ( L"condition", conditions );
 		write_list ( L"number", number_forms );
 		write_list ( L"proto", prototypes );
 
@@ -215,6 +216,7 @@ namespace ui {
 		comments.clear ( );
 		bookmarks.clear ( );
 		notes.clear ( );
+		conditions.clear ( );
 		number_forms.clear ( );
 		prototypes.clear ( );
 		locals.clear ( );
@@ -297,6 +299,8 @@ namespace ui {
 				set_user_text ( bookmarks, address, at );
 			else if ( base::same_text ( key, L"note" ) )
 				set_user_text ( notes, address, at );
+			else if ( base::same_text ( key, L"condition" ) )
+				set_user_text ( conditions, address, at );
 			else if ( base::same_text ( key, L"number" ) )
 				set_user_text ( number_forms, address, at );
 			else if ( base::same_text ( key, L"proto" ) )
