@@ -12,38 +12,6 @@ namespace ui {
 	};
 	static const wchar_t* panel_hints [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Filter functions", L"Filter imports or modules", L"Filter exports", L"Search strings", L"Filter sections", L"Filter classes", L"Filter structures", L"Filter by function", L"Filter results", L"Filter notes", L"" };
 
-	static const wchar_t* ref_word ( analysis::ref type ) {
-
-		switch ( type ) {
-
-			case analysis::ref::CALL:
-				return L"call";
-
-			case analysis::ref::JUMP:
-				return L"jump";
-
-			case analysis::ref::BRANCH:
-				return L"branch";
-
-			case analysis::ref::READ:
-				return L"read";
-
-			case analysis::ref::WRITE:
-				return L"write";
-
-			case analysis::ref::ADDRESS:
-				return L"address";
-
-			case analysis::ref::POINTER:
-				return L"pointer";
-
-			default:
-				return L"case";
-
-		}
-
-	}
-
 	void app::draw_rail ( ) {
 
 		if ( rail_area.w < 1.0f )
@@ -744,7 +712,7 @@ namespace ui {
 						} else
 							label.hex ( source );
 
-						c.text ( ref_word ( item.type ), render::font::TINY, math::vec2 ( row.x + 8.0f, cy ), ink ( kind_tone ) );
+						c.text ( analysis::ref_name ( item.type ), render::font::TINY, math::vec2 ( row.x + 8.0f, cy ), ink ( kind_tone ) );
 						c.text ( label.text ( ), render::font::MONO_SMALL, math::vec2 ( row.x + 58.0f, cy ), ink ( tone::INK ), render::align::LEFT, row.w - 66.0f );
 
 						break;

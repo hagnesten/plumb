@@ -208,6 +208,8 @@ namespace analysis {
 
 	bool is_noreturn_name ( const wchar_t* name );
 
+	const wchar_t* ref_name ( ref type );
+
 	uint64_t rank ( const uint64_t* words, const uint32_t* directory, uint64_t index );
 
 }

@@ -444,4 +444,36 @@ namespace analysis {
 
 	}
 
+	const wchar_t* ref_name ( ref type ) {
+
+		switch ( type ) {
+
+			case ref::CALL:
+				return L"call";
+
+			case ref::JUMP:
+				return L"jump";
+
+			case ref::BRANCH:
+				return L"branch";
+
+			case ref::READ:
+				return L"read";
+
+			case ref::WRITE:
+				return L"write";
+
+			case ref::ADDRESS:
+				return L"address";
+
+			case ref::POINTER:
+				return L"pointer";
+
+			default:
+				return L"case";
+
+		}
+
+	}
+
 }
