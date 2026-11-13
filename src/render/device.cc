@@ -292,7 +292,7 @@ namespace render {
 		if ( FAILED ( dwrite->GetSystemFontCollection ( &collection, FALSE ) ) )
 			return false;
 
-		const wchar_t* wanted [ 3 ] [ 2 ] = { { L"Segoe UI Variable Text", L"Segoe UI" }, { L"Segoe UI Variable Display", L"Segoe UI" }, { L"Cascadia Mono", L"Consolas" } };
+		const wchar_t* wanted [ 3 ] [ 2 ] = { { L"Segoe UI Variable Text", L"Segoe UI" }, { L"Segoe UI Variable Display", L"Segoe UI" }, { L"Consolas", L"Cascadia Mono" } };
 		const wchar_t* families [ 3 ];
 
 		for ( int32_t i = 0; i < 3; i++ ) {
@@ -306,18 +306,18 @@ namespace render {
 		}
 
 		font_role roles [ static_cast < int32_t > ( font::COUNT ) ] = {
-			{ 0, DWRITE_FONT_WEIGHT_REGULAR, 12.5f, 0.0f },
+			{ 0, DWRITE_FONT_WEIGHT_REGULAR, 12.0f, 0.0f },
+			{ 0, DWRITE_FONT_WEIGHT_SEMI_BOLD, 12.0f, 0.0f },
+			{ 0, DWRITE_FONT_WEIGHT_REGULAR, 11.0f, 0.0f },
+			{ 0, DWRITE_FONT_WEIGHT_SEMI_BOLD, 11.0f, 0.0f },
+			{ 0, DWRITE_FONT_WEIGHT_SEMI_BOLD, 10.0f, 0.05f },
 			{ 0, DWRITE_FONT_WEIGHT_SEMI_BOLD, 12.5f, 0.0f },
-			{ 0, DWRITE_FONT_WEIGHT_REGULAR, 11.5f, 0.0f },
-			{ 0, DWRITE_FONT_WEIGHT_SEMI_BOLD, 11.5f, 0.0f },
-			{ 0, DWRITE_FONT_WEIGHT_SEMI_BOLD, 10.0f, 0.06f },
-			{ 1, DWRITE_FONT_WEIGHT_SEMI_BOLD, 15.0f, -0.005f },
-			{ 1, DWRITE_FONT_WEIGHT_SEMI_BOLD, 26.0f, -0.015f },
-			{ 1, DWRITE_FONT_WEIGHT_SEMI_BOLD, 40.0f, -0.02f },
-			{ 2, DWRITE_FONT_WEIGHT_REGULAR, 12.5f, 0.0f },
-			{ 2, DWRITE_FONT_WEIGHT_SEMI_BOLD, 12.5f, 0.0f },
-			{ 2, DWRITE_FONT_WEIGHT_REGULAR, 11.5f, 0.0f },
-			{ 1, DWRITE_FONT_WEIGHT_SEMI_BOLD, 13.0f, 0.01f }
+			{ 1, DWRITE_FONT_WEIGHT_SEMI_BOLD, 20.0f, -0.01f },
+			{ 1, DWRITE_FONT_WEIGHT_SEMI_BOLD, 28.0f, -0.015f },
+			{ 2, DWRITE_FONT_WEIGHT_REGULAR, 13.0f, 0.0f },
+			{ 2, DWRITE_FONT_WEIGHT_BOLD, 13.0f, 0.0f },
+			{ 2, DWRITE_FONT_WEIGHT_REGULAR, 12.0f, 0.0f },
+			{ 0, DWRITE_FONT_WEIGHT_SEMI_BOLD, 12.0f, 0.0f }
 		};
 
 		for ( int32_t i = 0; i < static_cast < int32_t > ( font::COUNT ); i++ ) {
