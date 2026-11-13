@@ -543,6 +543,7 @@ namespace ui {
 			calls_for = ~0ull;
 			names_revision++;
 			references_for = ~0ull;
+			apply_library ( );
 			build_listing ( );
 			refresh_filter ( panel::FUNCTIONS );
 			refresh_filter ( panel::CLASSES );
@@ -586,6 +587,7 @@ namespace ui {
 
 		wait_analysis ( );
 		analysis_applied = true;
+		apply_library ( );
 		build_listing ( );
 		refresh_filter ( panel::FUNCTIONS );
 		refresh_filter ( panel::CLASSES );

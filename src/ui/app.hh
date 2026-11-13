@@ -204,6 +204,7 @@ namespace ui {
 		NOTE,
 		SHOW_NOTES,
 		EXPORT_REPORT,
+		LEARN_LIBRARY,
 		COUNT,
 
 	};
@@ -555,6 +556,13 @@ namespace ui {
 
 	public:
 
+		struct library_entry {
+
+			uint64_t key = 0;
+			base::text name;
+
+		};
+
 		bool setup ( render::gpu* device, void* window_handle );
 
 		void rebuild_gpu ( render::gpu* device );
@@ -702,6 +710,18 @@ namespace ui {
 		void search_everything ( const wchar_t* query );
 
 		bool run_query ( const wchar_t* text );
+
+		void learn_library ( );
+
+		void apply_library ( );
+
+		void read_library ( base::list < library_entry >& out ) const;
+
+		void library_file ( base::writer& out ) const;
+
+		bool meaningful_name ( int32_t index, wchar_t* name, int32_t room ) const;
+
+		const wchar_t* learned_name ( uint64_t address ) const;
 
 		int32_t serve_mcp ( );
 
@@ -936,6 +956,8 @@ namespace ui {
 		base::list < user_name > bookmarks;
 		base::list < user_name > notes;
 		uint32_t annotation_revision = 1;
+		base::list < user_name > learned;
+		base::text library_path;
 		uint32_t notes_seen = 0;
 		base::list < user_name > number_forms;
 		base::list < user_name > prototypes;

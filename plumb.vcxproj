@@ -72,6 +72,7 @@
     <ClCompile Include="src\ui\classes.cc" />
     <ClCompile Include="src\ui\commands.cc" />
     <ClCompile Include="src\ui\input.cc" />
+    <ClCompile Include="src\ui\library.cc" />
     <ClCompile Include="src\ui\listing.cc" />
     <ClCompile Include="src\ui\mcp.cc" />
     <ClCompile Include="src\ui\panels\browser.cc" />

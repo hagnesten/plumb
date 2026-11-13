@@ -1420,6 +1420,14 @@ namespace ui {
 
 		}
 
+		if ( const wchar_t* known = learned.empty ( ) ? nullptr : learned_name ( item.start ) ) {
+
+			copy_name ( known, out, room );
+
+			return;
+
+		}
+
 		int32_t slot = db->virtual_of ( item.start );
 
 		if ( slot >= 0 ) {

@@ -238,6 +238,14 @@ static bool capture_mode ( ) {
 			app->settings_frozen = true;
 
 		}
+		else if ( base::same_text ( command, L"library" ) ) {
+
+			wchar_t path [ 600 ];
+
+			reader.word ( path, 600 );
+			app->library_path.set ( path );
+
+		}
 		else if ( base::same_text ( command, L"async" ) )
 			app->analysis_sync = false;
 		else if ( base::same_text ( command, L"sleep" ) ) {

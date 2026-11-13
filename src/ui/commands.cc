@@ -87,7 +87,8 @@ namespace ui {
 		{ L"About Plumb", L"" },
 		{ L"Function note", L"Shift+N" },
 		{ L"Notes and bookmarks", L"Alt+0" },
-		{ L"Export report", L"" }
+		{ L"Export report", L"" },
+		{ L"Learn names from this file", L"" }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -156,6 +157,9 @@ namespace ui {
 
 			case command::EXPORT_CLASSES:
 				return analyzed && !db->classes.empty ( );
+
+			case command::LEARN_LIBRARY:
+				return analyzed;
 
 			case command::DEBUG_PAUSE:
 				return debug_state.state == debugger::status::RUNNING;
@@ -597,6 +601,10 @@ namespace ui {
 
 			case command::EXPORT_REPORT:
 				export_report ( );
+				break;
+
+			case command::LEARN_LIBRARY:
+				learn_library ( );
 				break;
 
 			case command::TOGGLE_BYTES:
