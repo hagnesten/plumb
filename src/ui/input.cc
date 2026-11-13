@@ -616,7 +616,7 @@ namespace ui {
 
 				}
 
-				int64_t page = static_cast < int64_t > ( panes [ focused_pane ].body.h / 20.0f ) - 2;
+				int64_t page = static_cast < int64_t > ( panes [ focused_pane ].body.h / metric::code_row ) - 2;
 				int64_t move = 0;
 
 				if ( code == VK_LEFT || code == VK_RIGHT ) {
@@ -676,7 +676,7 @@ namespace ui {
 					continue;
 
 				int32_t count = code_view->lines.count ( );
-				int32_t page = static_cast < int32_t > ( panes [ focused_pane ].body.h / 20.0f ) - 2;
+				int32_t page = static_cast < int32_t > ( panes [ focused_pane ].body.h / metric::code_row ) - 2;
 				int32_t move = 0;
 
 				if ( ( code == VK_LEFT || code == VK_RIGHT ) && count ) {
@@ -760,7 +760,7 @@ namespace ui {
 
 					}
 
-					float visible = panes [ focused_pane ].body.h / 20.0f - 1.0f;
+					float visible = panes [ focused_pane ].body.h / metric::code_row - 1.0f;
 					float place = static_cast < float > ( now->code_line );
 
 					if ( place < now->code_scroll.target )
@@ -772,7 +772,7 @@ namespace ui {
 
 			} else if ( showing == view::HEX && file.size ) {
 
-				int64_t page = ( static_cast < int64_t > ( panes [ focused_pane ].body.h / 20.0f ) - 3 ) * 16;
+				int64_t page = ( static_cast < int64_t > ( panes [ focused_pane ].body.h / metric::code_row ) - 3 ) * 16;
 				int64_t move = 0;
 
 				if ( code == VK_RIGHT )
@@ -798,7 +798,7 @@ namespace ui {
 						now->hex_anchor = now->hex_cursor;
 
 					float row = static_cast < float > ( now->hex_cursor / 16 );
-					float visible = base::max ( panes [ focused_pane ].body.h / 20.0f - 3.0f, 1.0f );
+					float visible = base::max ( panes [ focused_pane ].body.h / metric::code_row - 3.0f, 1.0f );
 
 					if ( row < now->hex_scroll.target )
 						now->hex_scroll.target = row;

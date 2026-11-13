@@ -47,9 +47,7 @@ namespace ui {
 		c.fill ( math::rect ( area.x, area.bottom ( ) - 1.0f, area.w, 1.0f ), 0.0f, ink ( tone::LINE ) );
 		c.push_clip ( area );
 
-		float x = area.x + 6.0f;
-		float active_x = 0.0f;
-		float active_w = 0.0f;
+		float x = area.x;
 		float tools = 150.0f;
 		float room = base::max ( area.w - tools - 40.0f, 80.0f );
 		float total = 0.0f;
@@ -89,43 +87,11 @@ namespace ui {
 		for ( int32_t t = 0; t < item.count; t++ ) {
 
 			tab_label ( documents [ item.tabs [ t ] ] );
-			total += base::min ( c.measure ( label, render::font::UI ), 220.0f ) + 56.0f;
+			total += base::min ( c.measure ( label, render::font::UI ), 220.0f ) + 52.0f;
 
 		}
 
 		float squeeze = total > room ? room / total : 1.0f;
-		float scan = x;
-
-		for ( int32_t t = 0; t < item.count; t++ ) {
-
-			tab_label ( documents [ item.tabs [ t ] ] );
-
-			float slot_w = base::max ( ( base::min ( c.measure ( label, render::font::UI ), 220.0f ) + 56.0f ) * squeeze, 64.0f );
-
-			if ( item.active == t ) {
-
-				active_x = scan;
-				active_w = slot_w;
-
-			}
-
-			scan += slot_w;
-
-		}
-
-		if ( !item.tab_ready ) {
-
-			item.tab_x = active_x;
-			item.tab_w = active_w;
-			item.tab_ready = true;
-
-		}
-
-		spring ( item.tab_x, item.tab_vx, active_x, 460.0f, 42.9f );
-		spring ( item.tab_w, item.tab_vw, active_w, 460.0f, 42.9f );
-
-		if ( item.count )
-			c.fill ( math::rect ( item.tab_x + 2.0f, area.y + 4.0f, base::max ( item.tab_w - 4.0f, 0.0f ), area.h - 9.0f ), 4.0f, ink ( tone::BASE ).fade ( 0.7f ) );
 
 		for ( int32_t t = 0; t < item.count; t++ ) {
 
@@ -134,8 +100,8 @@ namespace ui {
 			tab_label ( doc );
 
 			float text_w = base::min ( c.measure ( label, render::font::UI ), 220.0f );
-			float slot_w = base::max ( ( text_w + 56.0f ) * squeeze, 64.0f );
-			math::rect slot ( x, area.y, slot_w, area.h - 1.0f );
+			float slot_w = base::max ( ( text_w + 52.0f ) * squeeze, 64.0f );
+			math::rect slot ( x, area.y, slot_w, area.h );
 			uint64_t id = make_id ( "tab", static_cast < int64_t > ( doc.serial ) );
 			widget& state_item = state ( id );
 			bool selected = item.active == t;
@@ -147,30 +113,23 @@ namespace ui {
 				close_tab = t;
 
 			bool inside = over ( slot ) && menu_open < 0;
-			widget& lit = state ( make_id ( "tab_lit", static_cast < int64_t > ( doc.serial ) ) );
 
-			approach ( state_item.value, inside ? 1.0f : 0.0f, 22.0f );
-			approach ( lit.value, selected ? 1.0f : 0.0f, 20.0f );
+			if ( selected ) {
 
-			float lift = state_item.value;
-			float on = lit.value;
+				c.fill ( slot, 0.0f, ink ( tone::BASE ) );
+				c.fill ( math::rect ( slot.x, slot.y, slot.w, 2.0f ), 0.0f, focused_here ? ink ( tone::ACCENT ) : ink ( tone::LINE_STRONG ) );
 
-			if ( !selected )
-				c.fill ( math::rect ( slot.x + 2.0f, slot.y + 4.0f, slot.w - 4.0f, slot.h - 8.0f ), 4.0f, ink ( tone::HOVER ).fade ( lift * 2.4f ) );
+			} else if ( inside )
+				c.fill ( math::rect ( slot.x, slot.y, slot.w, slot.h - 1.0f ), 0.0f, ink ( tone::HOVER ) );
 
-			c.icon ( view_glyphs [ static_cast < int32_t > ( doc.kind ) ], math::vec2 ( slot.x + 16.0f, slot.center ( ).y ), 12.0f, render::mix ( render::mix ( ink ( tone::INK_FAINT ), ink ( tone::INK_SOFT ), lift ), ink ( tone::ACCENT ), on ) );
-			c.text ( label, render::font::UI, math::vec2 ( slot.x + 30.0f, slot.center ( ).y ), render::mix ( render::mix ( ink ( tone::INK_SOFT ), ink ( tone::INK ), lift ), ink ( tone::INK ), on ), render::align::LEFT, slot.w - 54.0f );
+			c.fill ( math::rect ( slot.right ( ) - 1.0f, slot.y, 1.0f, slot.h - ( selected ? 0.0f : 1.0f ) ), 0.0f, ink ( tone::LINE ) );
+			c.icon ( view_glyphs [ static_cast < int32_t > ( doc.kind ) ], math::vec2 ( slot.x + 15.0f, slot.center ( ).y ), 11.0f, selected ? ink ( tone::ACCENT ) : ink ( tone::INK_FAINT ) );
+			c.text ( label, render::font::UI, math::vec2 ( slot.x + 28.0f, slot.center ( ).y ), selected || inside ? ink ( tone::INK ) : ink ( tone::INK_SOFT ), render::align::LEFT, slot.w - 50.0f );
 
-			float reveal = selected ? base::max ( 0.6f, lift ) : lift;
+			if ( ( selected || inside ) && ( item.count > 1 || pane_count > 1 ) ) {
 
-			if ( reveal > 0.02f && ( item.count > 1 || pane_count > 1 ) ) {
-
-				c.push_alpha ( reveal );
-
-				if ( icon_button ( make_id ( "tab_close", static_cast < int64_t > ( doc.serial ) ), math::vec2 ( slot.right ( ) - 14.0f, slot.center ( ).y ), 20.0f, icons::CANCEL, 9.0f, L"Close tab (Ctrl+W)" ) )
+				if ( icon_button ( make_id ( "tab_close", static_cast < int64_t > ( doc.serial ) ), math::vec2 ( slot.right ( ) - 13.0f, slot.center ( ).y ), 18.0f, icons::CANCEL, 8.0f, L"Close tab (Ctrl+W)" ) )
 					close_tab = t;
-
-				c.pop ( );
 
 			}
 
@@ -178,7 +137,7 @@ namespace ui {
 
 		}
 
-		if ( icon_button ( make_id ( "tab_add", index ), math::vec2 ( x + 16.0f, area.center ( ).y ), 26.0f, icons::ADD, 11.0f, L"New disassembly tab (Ctrl+1)" ) ) {
+		if ( icon_button ( make_id ( "tab_add", index ), math::vec2 ( x + 14.0f, area.center ( ).y ), 22.0f, icons::ADD, 10.0f, L"New disassembly tab (Ctrl+1)" ) ) {
 
 			focused_pane = index;
 			select_state ( pane_document ( index ) );
@@ -186,38 +145,36 @@ namespace ui {
 
 		}
 
-		c.fill ( math::rect ( item.tab_x + 8.0f, area.bottom ( ) - 2.5f, base::max ( item.tab_w - 16.0f, 0.0f ), 2.0f ), 1.0f, focused_here ? ink ( tone::ACCENT ) : ink ( tone::LINE_STRONG ) );
-
-		float right = area.right ( ) - 10.0f;
+		float right = area.right ( ) - 6.0f;
 
 		if ( right - x > 140.0f ) {
 
-			if ( icon_button ( make_id ( "tab_split", index ), math::vec2 ( right - 14.0f, area.center ( ).y ), 28.0f, icons::LAYERS, 13.0f, pane_count > 1 ? L"Join panes (Ctrl+\\)" : L"Split side by side (Ctrl+\\)" ) ) {
+			if ( icon_button ( make_id ( "tab_split", index ), math::vec2 ( right - 12.0f, area.center ( ).y ), 22.0f, icons::LAYERS, 12.0f, pane_count > 1 ? L"Join panes (Ctrl+\\)" : L"Split side by side (Ctrl+\\)" ) ) {
 
 				focused_pane = index;
 				run ( command::SPLIT );
 
 			}
 
-			right -= 32.0f;
+			right -= 26.0f;
 
-			if ( icon_button ( make_id ( "tab_forward", index ), math::vec2 ( right - 14.0f, area.center ( ).y ), 28.0f, icons::FORWARD, 13.0f, L"Forward (Alt+Right)" ) ) {
+			if ( icon_button ( make_id ( "tab_forward", index ), math::vec2 ( right - 12.0f, area.center ( ).y ), 22.0f, icons::FORWARD, 12.0f, L"Forward (Alt+Right)" ) ) {
 
 				focus_document ( index, item.active );
 				run ( command::FORWARD );
 
 			}
 
-			right -= 30.0f;
+			right -= 24.0f;
 
-			if ( icon_button ( make_id ( "tab_back", index ), math::vec2 ( right - 14.0f, area.center ( ).y ), 28.0f, icons::BACK, 13.0f, L"Back (Esc)" ) ) {
+			if ( icon_button ( make_id ( "tab_back", index ), math::vec2 ( right - 12.0f, area.center ( ).y ), 22.0f, icons::BACK, 12.0f, L"Back (Esc)" ) ) {
 
 				focus_document ( index, item.active );
 				run ( command::BACK );
 
 			}
 
-			right -= 36.0f;
+			right -= 32.0f;
 
 			int32_t doc = pane_document ( index );
 
@@ -264,11 +221,6 @@ namespace ui {
 
 		select_state ( doc );
 		drawing_serial = current.serial;
-		approach ( current.fade, 1.0f, 18.0f );
-
-		float fade = math::saturate ( current.fade );
-
-		c.push ( math::vec2 ( item.body.x, item.body.y ), 1.0f, 0.35f + 0.65f * fade, math::vec2 ( 0.0f, 3.0f * ( 1.0f - fade ) ) );
 
 		switch ( current.kind ) {
 
@@ -297,8 +249,6 @@ namespace ui {
 				break;
 
 		}
-
-		c.pop ( );
 
 		if ( pane_count > 1 && index != focused_pane )
 			c.fill ( item.body, 0.0f, ink ( tone::BASE ).fade ( 0.12f ) );

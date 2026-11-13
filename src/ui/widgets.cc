@@ -28,25 +28,25 @@ namespace ui {
 
 		bool showing_tip = tip_id && tip_text && tip_time > 0.55f;
 
-		approach ( tip_show, showing_tip ? 1.0f : 0.0f, showing_tip ? 16.0f : 30.0f );
+		settle ( tip_show, showing_tip ? 1.0f : 0.0f );
 
 		if ( tip_show <= 0.01f || !tip_text )
 			return;
 
 		render::canvas& c = canvas;
 		float text_w = c.measure ( tip_text, render::font::SMALL );
-		float bw = text_w + 18.0f;
-		float bh = 24.0f;
+		float bw = text_w + 14.0f;
+		float bh = 20.0f;
 		float x = base::clamp ( tip_anchor.center ( ).x - bw * 0.5f, 6.0f, w - bw - 6.0f );
-		float y = tip_anchor.bottom ( ) + 6.0f;
+		float y = tip_anchor.bottom ( ) + 4.0f;
 
 		if ( y + bh > h - 4.0f )
-			y = tip_anchor.y - bh - 6.0f;
+			y = tip_anchor.y - bh - 4.0f;
 
 		c.push_alpha ( tip_show );
-		c.shadow ( math::rect ( x, y, bw, bh ), 4.0f, 8.0f, ink ( tone::SHADOW ).fade ( 0.6f ), math::vec2 ( 0.0f, 2.0f ) );
-		c.outline ( math::rect ( x, y, bw, bh ), 4.0f, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
-		c.text ( tip_text, render::font::SMALL, math::vec2 ( x + 9.0f, y + bh * 0.5f ), ink ( tone::INK ) );
+		c.shadow ( math::rect ( x, y, bw, bh ), 2.0f, 4.0f, ink ( tone::SHADOW ).fade ( 0.5f ), math::vec2 ( 0.0f, 1.0f ) );
+		c.outline ( math::rect ( x, y, bw, bh ), 2.0f, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
+		c.text ( tip_text, render::font::SMALL, math::vec2 ( x + 7.0f, y + bh * 0.5f ), ink ( tone::INK ) );
 		c.pop ( );
 
 	}
@@ -78,7 +78,6 @@ namespace ui {
 
 			item.target = place * limit;
 			item.offset = item.target;
-			item.velocity = 0.0f;
 
 		} else if ( clicked_id == id && !( mouse.y >= thumb_y && mouse.y < thumb_y + thumb_h ) ) {
 
@@ -86,10 +85,10 @@ namespace ui {
 
 		}
 
-		float wide = 4.0f + 3.0f * base::max ( bar.hover, dragging ? 1.0f : 0.0f );
-		render::color tint = ink ( tone::INK_FAINT ).fade ( 0.45f + 0.35f * base::max ( bar.hover, dragging ? 1.0f : 0.0f ) );
+		bool lit = bar.hover > 0.5f || dragging;
+		render::color tint = ink ( tone::INK_FAINT ).fade ( lit ? 0.75f : 0.4f );
 
-		c.fill ( math::rect ( track.right ( ) - wide - 3.0f, thumb_y + 2.0f, wide, thumb_h - 4.0f ), wide * 0.5f, tint );
+		c.fill ( math::rect ( track.right ( ) - 8.0f, thumb_y + 2.0f, 6.0f, thumb_h - 4.0f ), 1.0f, tint );
 
 	}
 
@@ -119,7 +118,6 @@ namespace ui {
 
 			item.target = place * limit;
 			item.offset = item.target;
-			item.velocity = 0.0f;
 
 		} else if ( clicked_id == id && !( mouse.x >= thumb_x && mouse.x < thumb_x + thumb_w ) ) {
 
@@ -127,10 +125,10 @@ namespace ui {
 
 		}
 
-		float tall = 4.0f + 3.0f * base::max ( bar.hover, dragging ? 1.0f : 0.0f );
-		render::color tint = ink ( tone::INK_FAINT ).fade ( 0.45f + 0.35f * base::max ( bar.hover, dragging ? 1.0f : 0.0f ) );
+		bool lit = bar.hover > 0.5f || dragging;
+		render::color tint = ink ( tone::INK_FAINT ).fade ( lit ? 0.75f : 0.4f );
 
-		c.fill ( math::rect ( thumb_x + 2.0f, track.bottom ( ) - tall - 3.0f, thumb_w - 4.0f, tall ), tall * 0.5f, tint );
+		c.fill ( math::rect ( thumb_x + 2.0f, track.bottom ( ) - 8.0f, thumb_w - 4.0f, 6.0f ), 1.0f, tint );
 
 	}
 
@@ -170,10 +168,10 @@ namespace ui {
 		if ( primary )
 			fill = render::mix ( fill, render::rgb ( light ? 0x000000 : 0xFFFFFF ), 0.08f * item.hover - 0.1f * item.press );
 
-		c.outline ( area, 4.0f, fill, 1.0f, primary ? fill : ink ( tone::LINE_STRONG ) );
+		c.outline ( area, metric::radius, fill, 1.0f, primary ? fill : ink ( tone::LINE_STRONG ) );
 
 		if ( !primary )
-			c.fill ( area, 4.0f, ink ( tone::HOVER ).fade ( item.hover + item.press ) );
+			c.fill ( area, metric::radius, ink ( tone::HOVER ).fade ( item.hover + item.press ) );
 
 		float label_w = c.measure ( label, render::font::UI_STRONG );
 		float glyph_w = glyph ? 22.0f : 0.0f;
@@ -198,7 +196,7 @@ namespace ui {
 		math::rect area ( center.x - size * 0.5f, center.y - size * 0.5f, size, size );
 		bool clicked = interact ( id, area, item, kind );
 
-		c.fill ( area, 4.0f, ink ( tone::HOVER ).fade ( item.hover + item.press ) );
+		c.fill ( area, metric::radius, ink ( tone::HOVER ).fade ( item.hover + item.press ) );
 		c.icon ( glyph, center, glyph_size, render::mix ( ink ( tone::INK_SOFT ), ink ( tone::INK ), item.hover ) );
 		tip ( id, text, area );
 
@@ -220,7 +218,7 @@ namespace ui {
 		if ( item.hover > 0.5f )
 			wanted_cursor = pointer::TEXT;
 
-		float pad = glyph ? 28.0f : 10.0f;
+		float pad = glyph ? 24.0f : 8.0f;
 		float inner = area.w - pad - 10.0f;
 		math::vec2 base_at ( area.x + pad, area.center ( ).y );
 
@@ -271,14 +269,14 @@ namespace ui {
 
 		}
 
-		approach ( item.value, focused_now ? 1.0f : 0.0f, 20.0f );
+		settle ( item.value, focused_now ? 1.0f : 0.0f );
 
 		render::color border = render::mix ( ink ( tone::LINE ), ink ( tone::SELECT_LINE ), item.value );
 
-		c.outline ( area, 4.0f, ink ( tone::SUNKEN ), 1.0f, border );
+		c.outline ( area, metric::radius, ink ( tone::SUNKEN ), 1.0f, border );
 
 		if ( glyph )
-			c.icon ( glyph, math::vec2 ( area.x + 15.0f, area.center ( ).y ), 12.0f, ink ( tone::INK_FAINT ) );
+			c.icon ( glyph, math::vec2 ( area.x + 12.0f, area.center ( ).y ), 11.0f, ink ( tone::INK_FAINT ) );
 
 		c.push_clip ( math::rect ( area.x + pad - 2.0f, area.y, inner + 4.0f, area.h ) );
 
@@ -315,7 +313,7 @@ namespace ui {
 				float a = width_to ( base::min ( value.caret, value.anchor ) );
 				float b = width_to ( base::max ( value.caret, value.anchor ) );
 
-				c.fill ( math::rect ( base_at.x + a - value.scroll, area.y + 5.0f, b - a, area.h - 10.0f ), 2.0f, ink ( tone::SELECT ) );
+				c.fill ( math::rect ( base_at.x + a - value.scroll, area.y + 4.0f, b - a, area.h - 8.0f ), 0.0f, ink ( tone::SELECT ) );
 
 			}
 
@@ -343,7 +341,7 @@ namespace ui {
 			bool lit = since < 0.6 || static_cast < int64_t > ( ( since - 0.6 ) / 0.53 ) % 2 == 1;
 
 			if ( lit )
-				c.fill ( math::rect ( base_at.x + caret_x - value.scroll - 0.5f, area.y + 6.0f, 1.5f, area.h - 12.0f ), 0.5f, ink ( tone::ACCENT ) );
+				c.fill ( math::rect ( base_at.x + caret_x - value.scroll - 0.5f, area.y + 5.0f, 1.0f, area.h - 10.0f ), 0.0f, ink ( tone::INK ) );
 
 		}
 
@@ -381,8 +379,8 @@ namespace ui {
 		float text_w = c.measure ( keys_text, render::font::SMALL );
 		float x = right ? at.x - text_w - 12.0f : at.x;
 
-		c.outline ( math::rect ( x, at.y - 9.0f, text_w + 12.0f, 18.0f ), 3.0f, ink ( tone::SUNKEN ).fade ( 0.6f ), 1.0f, ink ( tone::LINE ) );
-		c.text ( keys_text, render::font::SMALL, math::vec2 ( x + 6.0f, at.y ), tint );
+		c.outline ( math::rect ( x, at.y - 8.0f, text_w + 10.0f, 16.0f ), 2.0f, ink ( tone::SUNKEN ).fade ( 0.6f ), 1.0f, ink ( tone::LINE ) );
+		c.text ( keys_text, render::font::SMALL, math::vec2 ( x + 5.0f, at.y ), tint );
 
 	}
 

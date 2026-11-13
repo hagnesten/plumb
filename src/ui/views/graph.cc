@@ -593,7 +593,7 @@ namespace ui {
 			const graph_node& node = layout->nodes [ static_cast < size_t > ( selected ) ];
 			float fit = base::min ( area.w / ( layout->right - layout->left + 80.0f ), area.h / ( layout->bottom - layout->top + 80.0f ) );
 
-			now->graph_tzoom = now->graph_ready ? now->graph_tzoom : base::clamp ( fit, 0.55f, 1.0f );
+			now->graph_tzoom = now->graph_ready ? now->graph_tzoom : ( fit >= 0.8f ? base::min ( fit, 1.0f ) : 1.0f );
 			now->graph_tx = node.x + node.w * 0.5f;
 			now->graph_ty = node.y + base::min ( node.h * 0.5f, area.h * 0.3f / now->graph_tzoom );
 
@@ -696,9 +696,9 @@ namespace ui {
 
 		}
 
-		approach ( now->graph_x, now->graph_tx, 16.0f );
-		approach ( now->graph_y, now->graph_ty, 16.0f );
-		approach ( now->graph_zoom, now->graph_tzoom, 16.0f );
+		settle ( now->graph_x, now->graph_tx );
+		settle ( now->graph_y, now->graph_ty );
+		settle ( now->graph_zoom, now->graph_tzoom );
 
 		float zoom = now->graph_zoom;
 		uint64_t follow = 0;
@@ -747,9 +747,9 @@ namespace ui {
 			math::rect box ( node.x, node.y, node.w, node.h );
 			bool chosen = i == now->graph_block;
 
-			c.shadow ( box, 4.0f, 10.0f, ink ( tone::SHADOW ).fade ( 0.4f ), math::vec2 ( 0.0f, 3.0f ) );
-			c.outline ( box, 4.0f, ink ( tone::PANEL ), chosen ? 1.6f : 1.0f, chosen ? ink ( tone::SELECT_LINE ) : ink ( tone::LINE_STRONG ) );
-			c.fill ( math::rect ( node.x + 1.0f, node.y + 1.0f, node.w - 2.0f, layout->line_h + 4.0f ), 3.0f, ink ( tone::RAISED ) );
+			c.outline ( box, 2.0f, ink ( tone::PANEL ), chosen ? 1.5f : 1.0f, chosen ? ink ( tone::SELECT_LINE ) : ink ( tone::LINE_STRONG ) );
+			c.fill ( math::rect ( node.x + 1.0f, node.y + 1.0f, node.w - 2.0f, layout->line_h + 4.0f ), 1.0f, ink ( tone::RAISED ) );
+			c.fill ( math::rect ( node.x + 1.0f, node.y + layout->line_h + 5.0f, node.w - 2.0f, 1.0f ), 0.0f, ink ( tone::LINE ) );
 
 		}
 
@@ -769,7 +769,7 @@ namespace ui {
 				float x0 = node.x + 11.0f;
 
 				if ( l > 0 && line.address == now->cursor_address )
-					c.fill ( math::rect ( node.x + 2.0f, ly, node.w - 4.0f, layout->line_h ), 2.0f, ink ( tone::SELECT ) );
+					c.fill ( math::rect ( node.x + 1.0f, ly, node.w - 2.0f, layout->line_h ), 0.0f, ink ( tone::SELECT ) );
 
 				if ( l == 0 ) {
 
@@ -844,22 +844,23 @@ namespace ui {
 		float map_w = base::min ( 180.0f, area.w * 0.22f );
 		float span_w = layout->right - layout->left + 40.0f;
 		float span_h = layout->bottom - layout->top + 40.0f;
-		float map_scale = base::min ( map_w / span_w, 150.0f / span_h );
-		math::rect map ( area.right ( ) - span_w * map_scale - 16.0f, area.bottom ( ) - span_h * map_scale - 16.0f, span_w * map_scale, span_h * map_scale );
+		float map_scale = base::min ( base::min ( map_w / span_w, 150.0f / span_h ), 0.25f );
+		math::rect map ( area.right ( ) - span_w * map_scale - 12.0f, area.bottom ( ) - span_h * map_scale - 12.0f, span_w * map_scale, span_h * map_scale );
+		bool overflowing = span_w * zoom > area.w || span_h * zoom > area.h;
 
-		if ( map.w > 30.0f && map.h > 20.0f && area.w > 420.0f ) {
+		if ( overflowing && map.w > 12.0f && map.h > 20.0f && area.w > 420.0f ) {
 
 			uint64_t map_id = make_id ( "graph_map", drawing_serial );
 			widget& map_state = state ( map_id );
 
 			interact ( map_id, map, map_state );
-			c.outline ( map, 4.0f, ink ( tone::PANEL ).fade ( 0.92f ), 1.0f, ink ( tone::LINE ) );
+			c.outline ( map, 2.0f, ink ( tone::PANEL ), 1.0f, ink ( tone::LINE_STRONG ) );
 
 			for ( int32_t i = 0; i < layout->nodes.count ( ); i++ ) {
 
 				const graph_node& node = layout->nodes [ static_cast < size_t > ( i ) ];
 
-				c.fill ( math::rect ( map.x + ( node.x - layout->left + 20.0f ) * map_scale, map.y + ( node.y - layout->top + 20.0f ) * map_scale, base::max ( node.w * map_scale, 1.5f ), base::max ( node.h * map_scale, 1.5f ) ), 1.0f, i == now->graph_block ? ink ( tone::SELECT_LINE ) : ink ( tone::LINE_STRONG ) );
+				c.fill ( math::rect ( map.x + ( node.x - layout->left + 20.0f ) * map_scale, map.y + ( node.y - layout->top + 20.0f ) * map_scale, base::max ( node.w * map_scale, 1.5f ), base::max ( node.h * map_scale, 1.5f ) ), 0.0f, i == now->graph_block ? ink ( tone::ACCENT ) : ink ( tone::INK_FAINT ).fade ( 0.6f ) );
 
 			}
 
@@ -868,7 +869,7 @@ namespace ui {
 			math::rect frame ( map.x + ( now->graph_x - view_w * 0.5f - layout->left + 20.0f ) * map_scale, map.y + ( now->graph_y - view_h * 0.5f - layout->top + 20.0f ) * map_scale, view_w * map_scale, view_h * map_scale );
 
 			c.push_clip ( map );
-			c.outline ( frame, 2.0f, ink ( tone::ACCENT ).fade ( 0.08f ), 1.0f, ink ( tone::ACCENT ) );
+			c.outline ( frame, 0.0f, ink ( tone::ACCENT ).fade ( 0.06f ), 1.0f, ink ( tone::ACCENT ).fade ( 0.8f ) );
 			c.pop_clip ( );
 
 			if ( active_id == map_id && mouse_down ) {

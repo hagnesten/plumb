@@ -117,6 +117,7 @@
     <ClInclude Include="src\ui\app.hh" />
     <ClInclude Include="src\ui\format.hh" />
     <ClInclude Include="src\ui\icons.hh" />
+    <ClInclude Include="src\ui\metrics.hh" />
     <ClInclude Include="src\ui\tokens.hh" />
     <ClInclude Include="src\x86\forms.hh" />
     <ClInclude Include="src\x86\mnemonics.hh" />

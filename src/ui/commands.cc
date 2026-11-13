@@ -508,7 +508,6 @@ namespace ui {
 
 				}
 
-				item.fade = 0.0f;
 
 				break;
 

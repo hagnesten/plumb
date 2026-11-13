@@ -11,7 +11,7 @@ namespace ui {
 		float x = area.center ( ).x - column * 0.5f;
 		float top = area.y + base::max ( area.h * 0.5f - 240.0f, 32.0f );
 
-		c.push ( math::vec2 ( area.center ( ).x, top ), 1.0f, shown, math::vec2 ( 0.0f, 6.0f * ( 1.0f - shown ) ) );
+		c.push ( math::vec2 ( area.center ( ).x, top ), 1.0f, shown );
 
 		draw_brand ( math::vec2 ( x + 14.0f, top + 18.0f ), 34.0f );
 		c.text ( L"Plumb", render::font::TITLE, math::vec2 ( x + 40.0f, top + 12.0f ), ink ( tone::INK ) );
@@ -75,7 +75,7 @@ namespace ui {
 
 			bool inside = over ( row ) && menu_open < 0;
 
-			approach ( item.value, inside ? 1.0f : 0.0f, 18.0f );
+			settle ( item.value, inside ? 1.0f : 0.0f );
 
 			float name_w = base::min ( c.measure ( tail, render::font::UI ), column * 0.45f );
 

@@ -10,27 +10,28 @@ namespace ui {
 
 		render::canvas& c = canvas;
 		math::rect area = output_area;
-		float bar_h = 30.0f;
-		float field_h = 34.0f;
+		float bar_h = metric::header;
+		float field_h = metric::field + 8.0f;
 
 		c.push_clip ( area );
 		c.fill ( area, 0.0f, ink ( tone::PANEL ) );
 
 		math::rect bar ( area.x, area.y + 1.0f, area.w, bar_h );
 
-		c.icon ( icons::CONSOLE, math::vec2 ( bar.x + 18.0f, bar.center ( ).y ), 13.0f, ink ( tone::INK_SOFT ) );
-		c.text ( L"Output", render::font::UI_STRONG, math::vec2 ( bar.x + 34.0f, bar.center ( ).y ), ink ( tone::INK ) );
+		c.text ( L"OUTPUT", render::font::TINY, math::vec2 ( bar.x + 10.0f, bar.center ( ).y ), ink ( tone::INK_SOFT ) );
 
 		base::writer count;
 
 		count.grouped ( static_cast < uint64_t > ( output.count ( ) ) ).add ( output.count ( ) == 1 ? L" message" : L" messages" );
-		c.text ( count.text ( ), render::font::SMALL, math::vec2 ( bar.x + 96.0f, bar.center ( ).y ), ink ( tone::INK_FAINT ) );
+		c.text ( count.text ( ), render::font::SMALL, math::vec2 ( bar.x + 66.0f, bar.center ( ).y ), ink ( tone::INK_FAINT ) );
 
-		if ( icon_button ( make_id ( "output_clear" ), math::vec2 ( bar.right ( ) - 20.0f, bar.center ( ).y ), 26.0f, icons::CANCEL, 10.0f, L"Clear output" ) )
+		if ( icon_button ( make_id ( "output_clear" ), math::vec2 ( bar.right ( ) - 16.0f, bar.center ( ).y ), 20.0f, icons::CANCEL, 9.0f, L"Clear output" ) )
 			output.clear ( );
 
-		math::rect list ( area.x, bar.bottom ( ), area.w, area.h - bar_h - field_h - 2.0f );
-		float line_h = 19.0f;
+		c.fill ( math::rect ( area.x, bar.bottom ( ), area.w, 1.0f ), 0.0f, ink ( tone::LINE ) );
+
+		math::rect list ( area.x, bar.bottom ( ) + 1.0f, area.w, area.h - bar_h - field_h - 3.0f );
+		float line_h = metric::log_row;
 		float content = static_cast < float > ( output.count ( ) ) * line_h + 8.0f;
 		uint64_t id = make_id ( "output_list" );
 
@@ -49,15 +50,17 @@ namespace ui {
 			render::color mark = line.kind == log_kind::GOOD ? ink ( tone::SUCCESS ) : ( line.kind == log_kind::WARN ? ink ( tone::WARNING ) : ( line.kind == log_kind::FAIL ? ink ( tone::DANGER ) : ink ( tone::INK_FAINT ) ) );
 			bool echo = line.text.get ( ) [ 0 ] == L'>' && line.text.get ( ) [ 1 ] == L' ';
 
-			c.fill ( math::rect ( list.x + 14.0f, cy - 5.0f, 2.0f, 10.0f ), 1.0f, mark );
-			c.text ( line.text.get ( ), render::font::MONO_SMALL, math::vec2 ( list.x + 26.0f, cy ), echo ? ink ( tone::ACCENT ) : ( line.kind == log_kind::FAIL ? ink ( tone::DANGER ) : ink ( tone::INK ) ), render::align::LEFT, list.w - 40.0f );
+			if ( line.kind != log_kind::INFO )
+				c.fill ( math::rect ( list.x + 8.0f, cy - 4.0f, 2.0f, 8.0f ), 0.0f, mark );
+
+			c.text ( line.text.get ( ), render::font::MONO_SMALL, math::vec2 ( list.x + 16.0f, cy ), echo ? ink ( tone::ACCENT ) : ( line.kind == log_kind::FAIL ? ink ( tone::DANGER ) : ink ( tone::INK ) ), render::align::LEFT, list.w - 30.0f );
 
 		}
 
 		c.pop_clip ( );
 		draw_scrollbar ( make_id ( "output_bar" ), list, output_scroll, content, list.h );
 
-		math::rect line_area ( area.x + 10.0f, area.bottom ( ) - field_h - 2.0f, area.w - 20.0f, 30.0f );
+		math::rect line_area ( area.x + 6.0f, area.bottom ( ) - field_h + 2.0f, area.w - 12.0f, metric::field );
 
 		if ( text_field ( make_id ( "command_line" ), command_field, line_area, L"Command: go 140001000, section .rdata, theme light, help", icons::CHEVRON_RIGHT, render::font::MONO ) )
 			run_command_line ( );

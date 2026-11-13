@@ -333,7 +333,7 @@ namespace ui {
 
 			}
 
-			c.shadow ( item.box, 5.0f, 10.0f, ink ( tone::SHADOW ).fade ( 0.35f ), math::vec2 ( 0.0f, 2.0f ) );
+			
 			c.outline ( item.box, 5.0f, ink ( center ? tone::RAISED : tone::PANEL ), chosen || i == hovered ? 1.6f : 1.0f, chosen ? ink ( tone::SELECT_LINE ) : ( i == hovered ? ink ( tone::ACCENT_SOFT ) : ink ( tone::LINE_STRONG ) ) );
 
 			if ( center )

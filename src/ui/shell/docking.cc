@@ -149,8 +149,8 @@ namespace ui {
 				preview = math::rect ( center_area.x, center_area.bottom ( ) - dock_size [ 2 ], center_area.w, dock_size [ 2 ] );
 
 			preview = math::rect ( preview.x + 4.0f, preview.y + 4.0f, preview.w - 8.0f, preview.h - 8.0f );
-			c.fill ( preview, 6.0f, ink ( tone::BASE ).fade ( 0.88f ) );
-			c.outline ( preview, 6.0f, ink ( tone::ACCENT ).fade ( 0.16f ), 1.5f, ink ( tone::ACCENT ).fade ( 0.8f ) );
+			c.fill ( preview, metric::radius, ink ( tone::BASE ).fade ( 0.88f ) );
+			c.outline ( preview, metric::radius, ink ( tone::ACCENT ).fade ( 0.16f ), 1.5f, ink ( tone::ACCENT ).fade ( 0.8f ) );
 			c.text ( side_titles [ target ], render::font::UI_STRONG, preview.center ( ), ink ( tone::ACCENT ), render::align::CENTER );
 
 		}

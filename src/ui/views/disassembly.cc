@@ -8,7 +8,7 @@ namespace ui {
 	void app::draw_listing ( math::rect area ) {
 
 		render::canvas& c = canvas;
-		float row_h = 20.0f;
+		float row_h = metric::code_row;
 		float adv = c.measure ( L"0000000000", render::font::MONO ) * 0.1f;
 		uint64_t id = make_id ( "listing", drawing_serial );
 		widget& surface = state ( id );
@@ -220,7 +220,7 @@ namespace ui {
 			}
 
 			if ( line.instruction && !breakpoints.empty ( ) && is_breakpoint ( line.address ) )
-				c.fill ( math::rect ( area.x + 11.0f, cy - 4.5f, 9.0f, 9.0f ), 4.5f, ink ( tone::DANGER ) );
+				c.fill ( math::rect ( area.x + 11.0f, cy - 4.0f, 8.0f, 8.0f ), 4.0f, ink ( tone::DANGER ) );
 
 			if ( ranged && row >= low && row <= high ) {
 
@@ -228,7 +228,7 @@ namespace ui {
 				int32_t to = row == high ? high_col : line.length + 1;
 
 				if ( to > from )
-					c.fill ( math::rect ( x0 + static_cast < float > ( from ) * adv, y + 1.0f, static_cast < float > ( to - from ) * adv, row_h - 2.0f ), 2.0f, ink ( tone::SELECT ) );
+					c.fill ( math::rect ( x0 + static_cast < float > ( from ) * adv, y, static_cast < float > ( to - from ) * adv, row_h ), 0.0f, ink ( tone::SELECT ) );
 
 			}
 
@@ -236,8 +236,12 @@ namespace ui {
 
 		float cursor_top = area.y + ( static_cast < float > ( now->cursor_row ) - offset ) * row_h;
 
-		if ( cursor_top > area.y - row_h && cursor_top < area.bottom ( ) )
-			c.fill ( math::rect ( area.x, cursor_top, 2.5f, row_h ), 0.0f, ink ( tone::SELECT_LINE ) );
+		if ( cursor_top > area.y - row_h && cursor_top < area.bottom ( ) ) {
+
+			c.fill ( math::rect ( area.x, cursor_top, area.w, row_h ), 0.0f, ink ( tone::HOVER ) );
+			c.fill ( math::rect ( area.x, cursor_top, 2.0f, row_h ), 0.0f, ink ( tone::SELECT_LINE ) );
+
+		}
 
 		for ( int32_t k = 0; k < count; k++ ) {
 
@@ -264,7 +268,7 @@ namespace ui {
 				float tag_x = x0 + static_cast < float > ( run.start ) * adv;
 				float tag_w = c.measure ( tag, render::font::SMALL );
 
-				c.fill ( math::rect ( tag_x - 6.0f, cy - 8.0f, tag_w + 12.0f, 16.0f ), 3.0f, ink ( tone::BASE ) );
+				c.fill ( math::rect ( tag_x - 6.0f, cy - 7.0f, tag_w + 12.0f, 14.0f ), 0.0f, ink ( tone::BASE ) );
 				c.text ( tag, render::font::SMALL, math::vec2 ( tag_x, cy ), ink ( tone::INK_FAINT ) );
 
 				continue;
@@ -297,7 +301,7 @@ namespace ui {
 
 					if ( over ( token_area ) && over ( area ) && !now->selecting ) {
 
-						c.fill ( math::rect ( rx, cy + 7.0f, token_area.w, 1.0f ), 0.0f, ink ( run.color ).fade ( 0.7f ) );
+						c.fill ( math::rect ( rx, cy + 6.0f, token_area.w, 1.0f ), 0.0f, ink ( run.color ).fade ( 0.7f ) );
 						hand = true;
 
 						if ( clicked_id == id && key_control )
@@ -321,7 +325,7 @@ namespace ui {
 			caret_live = true;
 
 			if ( lit || now->selecting )
-				c.fill ( math::rect ( x0 + static_cast < float > ( now->caret_col ) * adv - 0.75f, cursor_top + 3.0f, 1.5f, row_h - 6.0f ), 0.5f, ink ( tone::INK ) );
+				c.fill ( math::rect ( x0 + static_cast < float > ( now->caret_col ) * adv - 0.5f, cursor_top + 2.0f, 1.0f, row_h - 4.0f ), 0.0f, ink ( tone::INK ) );
 
 		}
 

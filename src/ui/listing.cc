@@ -793,7 +793,7 @@ namespace ui {
 		now->row_for = now->cursor_address;
 		now->row_build = listing_build;
 
-		float visible = view_area.h > 40.0f ? view_area.h / 20.0f - 1.0f : 30.0f;
+		float visible = view_area.h > 40.0f ? view_area.h / metric::code_row - 1.0f : 30.0f;
 		float place = static_cast < float > ( now->cursor_row );
 
 		if ( center )

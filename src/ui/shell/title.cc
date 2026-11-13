@@ -36,7 +36,7 @@ namespace ui {
 		for ( int32_t i = 0; i < menu_count; i++ ) {
 
 			float text_w = c.measure ( menus [ i ].title, render::font::UI );
-			math::rect slot ( x, area.y + 7.0f, text_w + 20.0f, area.h - 14.0f );
+			math::rect slot ( x, area.y + 5.0f, text_w + 18.0f, area.h - 10.0f );
 			uint64_t id = make_id ( "menu_title", i );
 			widget& item = state ( id );
 			bool clicked = interact ( id, slot, item );
@@ -54,9 +54,9 @@ namespace ui {
 
 			float lit = base::max ( item.hover, menu_open == i ? 1.0f : 0.0f );
 
-			c.fill ( slot, 4.0f, ink ( tone::HOVER ).fade ( lit * 1.4f ) );
-			c.text ( menus [ i ].title, render::font::UI, math::vec2 ( slot.x + 10.0f, slot.center ( ).y ), render::mix ( ink ( tone::INK_SOFT ), ink ( tone::INK ), lit ) );
-			x = slot.right ( ) + 1.0f;
+			c.fill ( slot, metric::radius, ink ( tone::HOVER ).fade ( lit * 1.8f ) );
+			c.text ( menus [ i ].title, render::font::UI, math::vec2 ( slot.x + 9.0f, slot.center ( ).y ), lit > 0.5f ? ink ( tone::INK ) : ink ( tone::INK_SOFT ) );
+			x = slot.right ( );
 
 		}
 
@@ -69,9 +69,10 @@ namespace ui {
 
 		c.fill ( area, 0.0f, ink ( tone::TITLE ) );
 		c.fill ( math::rect ( 0.0f, area.bottom ( ) - 1.0f, w, 1.0f ), 0.0f, ink ( tone::LINE ) );
-		draw_brand ( math::vec2 ( 22.0f, area.center ( ).y ), 20.0f );
-		c.text ( L"Plumb", render::font::BRAND, math::vec2 ( 38.0f, area.center ( ).y ), ink ( tone::INK ) );
-		draw_menu_bar ( math::rect ( 92.0f, area.y, 520.0f, area.h ) );
+		draw_brand ( math::vec2 ( 18.0f, area.center ( ).y ), 16.0f );
+		c.text ( L"Plumb", render::font::BRAND, math::vec2 ( 31.0f, area.center ( ).y ), ink ( tone::INK ) );
+		c.fill ( math::rect ( 78.0f, area.y + 9.0f, 1.0f, area.h - 18.0f ), 0.0f, ink ( tone::LINE_STRONG ) );
+		draw_menu_bar ( math::rect ( 82.0f, area.y, 520.0f, area.h ) );
 
 		float buttons = 46.0f * 3.0f;
 		float right_edge = w - buttons;
@@ -125,12 +126,11 @@ namespace ui {
 
 	void app::draw_menu ( ) {
 
-		spring ( menu_show, menu_velocity, menu_open >= 0 ? 1.0f : 0.0f, 900.0f, 60.0f );
+		settle ( menu_show, menu_open >= 0 ? 1.0f : 0.0f );
 
 		if ( menu_open < 0 ) {
 
 			menu_show = 0.0f;
-			menu_velocity = 0.0f;
 
 			return;
 
@@ -138,14 +138,14 @@ namespace ui {
 
 		render::canvas& c = canvas;
 		const menu_spec& spec = menus [ menu_open ];
-		float row_h = 28.0f;
-		float width_menu = 290.0f;
-		float height_menu = 8.0f;
+		float row_h = metric::menu_row;
+		float width_menu = 270.0f;
+		float height_menu = 6.0f;
 
 		for ( int32_t i = 0; i < spec.count; i++ )
-			height_menu += spec.items [ i ] == command::COUNT ? 9.0f : row_h;
+			height_menu += spec.items [ i ] == command::COUNT ? 7.0f : row_h;
 
-		math::rect area ( menu_x [ menu_open ], title_area.bottom ( ) - 3.0f, width_menu, height_menu );
+		math::rect area ( menu_x [ menu_open ], title_area.bottom ( ) - 1.0f, width_menu, height_menu );
 		uint64_t blocker = make_id ( "menu_blocker" );
 		widget& block = state ( blocker );
 
@@ -154,16 +154,16 @@ namespace ui {
 
 		float shown = math::saturate ( menu_show );
 
-		c.push ( math::vec2 ( area.x, area.y ), 1.0f, shown, math::vec2 ( 0.0f, -4.0f * ( 1.0f - shown ) ) );
-		c.shadow ( area, 6.0f, 18.0f, ink ( tone::SHADOW ).fade ( 0.55f ), math::vec2 ( 0.0f, 6.0f ) );
-		c.outline ( area, 6.0f, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
+		c.push ( math::vec2 ( area.x, area.y ), 1.0f, shown );
+		c.shadow ( area, metric::radius, 8.0f, ink ( tone::SHADOW ).fade ( 0.5f ), math::vec2 ( 0.0f, 3.0f ) );
+		c.outline ( area, metric::radius, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
 
 		uint64_t surface = make_id ( "menu_surface" );
 		widget& surface_state = state ( surface );
 
 		interact ( surface, area, surface_state );
 
-		float y = area.y + 4.0f;
+		float y = area.y + 3.0f;
 		bool ran = false;
 
 		for ( int32_t i = 0; i < spec.count; i++ ) {
@@ -172,26 +172,26 @@ namespace ui {
 
 			if ( action == command::COUNT ) {
 
-				c.fill ( math::rect ( area.x + 10.0f, y + 4.0f, area.w - 20.0f, 1.0f ), 0.0f, ink ( tone::LINE ) );
-				y += 9.0f;
+				c.fill ( math::rect ( area.x + 8.0f, y + 3.0f, area.w - 16.0f, 1.0f ), 0.0f, ink ( tone::LINE ) );
+				y += 7.0f;
 
 				continue;
 
 			}
 
-			math::rect row ( area.x + 4.0f, y, area.w - 8.0f, row_h );
+			math::rect row ( area.x + 3.0f, y, area.w - 6.0f, row_h );
 			uint64_t id = make_id ( "menu_item", static_cast < int64_t > ( action ) );
 			widget& item = state ( id );
 			bool usable = enabled ( action );
 			bool clicked = interact ( id, row, item );
 			render::color text = enabled ( action ) ? ink ( tone::INK ) : ink ( tone::INK_FAINT );
 
-			c.fill ( row, 4.0f, ink ( tone::SELECT ).fade ( item.hover * ( usable ? 1.0f : 0.4f ) ) );
+			c.fill ( row, 2.0f, ink ( tone::SELECT ).fade ( item.hover * ( usable ? 1.0f : 0.4f ) ) );
 
 			if ( checked ( action ) )
-				c.icon ( icons::CHECK, math::vec2 ( row.x + 14.0f, row.center ( ).y ), 11.0f, ink ( tone::ACCENT ) );
+				c.icon ( icons::CHECK, math::vec2 ( row.x + 13.0f, row.center ( ).y ), 10.0f, ink ( tone::INK ) );
 
-			c.text ( command_label ( action ), render::font::UI, math::vec2 ( row.x + 30.0f, row.center ( ).y ), text );
+			c.text ( command_label ( action ), render::font::UI, math::vec2 ( row.x + 28.0f, row.center ( ).y ), text );
 			c.text ( command_keys ( action ), render::font::SMALL, math::vec2 ( row.right ( ) - 10.0f, row.center ( ).y ), ink ( tone::INK_FAINT ), render::align::RIGHT );
 
 			if ( clicked && !ran ) {

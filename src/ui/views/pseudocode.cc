@@ -77,7 +77,7 @@ namespace ui {
 
 		}
 
-		float row_h = 20.0f;
+		float row_h = metric::code_row;
 		float adv = c.measure ( L"0000000000", render::font::MONO ) * 0.1f;
 		uint64_t id = make_id ( "code", drawing_serial );
 		widget& surface = state ( id );

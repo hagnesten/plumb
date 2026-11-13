@@ -6,6 +6,7 @@
 #include "analysis/database.hh"
 #include "analysis/signatures.hh"
 #include "decompiler/decompiler.hh"
+#include "ui/metrics.hh"
 
 namespace ui {
 
@@ -237,7 +238,6 @@ namespace ui {
 		float hover = 0.0f;
 		float press = 0.0f;
 		float value = 0.0f;
-		float velocity = 0.0f;
 		uint32_t seen = 0;
 
 	};
@@ -265,14 +265,8 @@ namespace ui {
 
 		float offset = 0.0f;
 		float target = 0.0f;
-		float velocity = 0.0f;
 		float limit = 0.0f;
 		float shown = 0.0f;
-		float from = 0.0f;
-		float from_velocity = 0.0f;
-		float goal = 0.0f;
-		float elapsed = 1.0f;
-		float duration = 0.0f;
 
 	};
 
@@ -311,7 +305,6 @@ namespace ui {
 		scroller listing_scroll;
 		uint64_t cursor_row = 0;
 		float cursor_y = 0.0f;
-		float cursor_velocity = 0.0f;
 		uint64_t cursor_address = 0;
 		bool cursor_ready = false;
 		uint64_t select_anchor = 0;
@@ -338,7 +331,6 @@ namespace ui {
 		scroller code_scroll;
 		int32_t code_line = 0;
 		float code_y = 0.0f;
-		float code_velocity = 0.0f;
 		bool code_ready = false;
 		uint64_t function = 0;
 		float graph_x = 0.0f;
@@ -364,7 +356,6 @@ namespace ui {
 		view kind = view::LISTING;
 		uint32_t serial = 0;
 		view_state state;
-		float fade = 1.0f;
 
 	};
 
@@ -376,11 +367,6 @@ namespace ui {
 		math::rect area;
 		math::rect strip;
 		math::rect body;
-		float tab_x = 0.0f;
-		float tab_w = 0.0f;
-		float tab_vx = 0.0f;
-		float tab_vw = 0.0f;
-		bool tab_ready = false;
 
 	};
 
@@ -736,7 +722,6 @@ namespace ui {
 		mutable int32_t pending = 3;
 		bool light = false;
 		float theme_mix = 0.0f;
-		float theme_velocity = 0.0f;
 		render::color tones [ static_cast < int32_t > ( tone::COUNT ) ];
 		int32_t placement [ 4 ] = { };
 		bool placement_valid = false;
@@ -755,7 +740,6 @@ namespace ui {
 		math::vec2 press_at;
 		float wheel_steps = 0.0f;
 		float wheel_side = 0.0f;
-		bool halt_glide = false;
 		uint64_t hot = 0;
 		uint64_t active_id = 0;
 		uint64_t clicked_id = 0;
@@ -811,16 +795,12 @@ namespace ui {
 		bool browser_open = true;
 		bool output_open = true;
 		float browser_show = 1.0f;
-		float browser_velocity = 0.0f;
 		float output_show = 1.0f;
-		float output_velocity = 0.0f;
 		int32_t dragging_split = 0;
 		float split_grab = 0.0f;
 		float pane_split = 0.5f;
 
 		panel browsing = panel::FUNCTIONS;
-		float rail_marker = 0.0f;
-		float rail_velocity = 0.0f;
 		view showing = view::LISTING;
 
 		document documents [ 16 ];
@@ -834,32 +814,26 @@ namespace ui {
 
 		int32_t menu_open = -1;
 		float menu_show = 0.0f;
-		float menu_velocity = 0.0f;
 		math::rect menu_rect;
 		bool menu_keyboard = false;
 		int32_t menu_focus = -1;
 
 		bool palette_open = false;
 		float palette_show = 0.0f;
-		float palette_velocity = 0.0f;
 		bool palette_address = false;
 		field palette_field;
 		uint32_t palette_seen = 0xFFFFFFFFu;
 		base::list < palette_entry > palette_items;
 		int32_t palette_pick = 0;
 		float palette_pick_y = 0.0f;
-		float palette_pick_velocity = 0.0f;
 
 		bool about_open = false;
 		float about_show = 0.0f;
-		float about_velocity = 0.0f;
 		bool keys_open = false;
 		float keys_show = 0.0f;
-		float keys_velocity = 0.0f;
 
 		bool prompt_open = false;
 		float prompt_show = 0.0f;
-		float prompt_velocity = 0.0f;
 		command prompt_action = command::COUNT;
 		uint64_t prompt_address = 0;
 		int32_t prompt_mode = 0;
@@ -869,7 +843,6 @@ namespace ui {
 
 		bool signature_open = false;
 		float signature_show = 0.0f;
-		float signature_velocity = 0.0f;
 		analysis::signature signature_result;
 		bool signature_ok = false;
 		double signature_seconds = 0.0;
@@ -947,7 +920,6 @@ namespace ui {
 		base::text load_problem;
 		double load_time = -10.0;
 		float welcome_show = 1.0f;
-		float welcome_velocity = 0.0f;
 		float band_hover = -1.0f;
 
 	private:
@@ -964,9 +936,7 @@ namespace ui {
 
 		void tip ( uint64_t id, const wchar_t* text, math::rect anchor );
 
-		void approach ( float& value, float target, float rate );
-
-		void spring ( float& value, float& velocity, float target, float stiffness, float damping );
+		void settle ( float& value, float target );
 
 		void glide ( scroller& item, float limit, float unit = 1.0f );
 

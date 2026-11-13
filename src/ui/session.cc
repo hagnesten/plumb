@@ -431,8 +431,6 @@ namespace ui {
 				now->listing_scroll.offset += shift;
 				now->listing_scroll.target += shift;
 				now->listing_scroll.shown += shift;
-				now->listing_scroll.from += shift;
-				now->listing_scroll.goal += shift;
 
 			}
 
@@ -563,7 +561,6 @@ namespace ui {
 		int32_t after = pane_document ( target_pane );
 
 		if ( after >= 0 && after != before )
-			documents [ after ].fade = 0.2f;
 
 		select_state ( after );
 		pending = base::max ( pending, 2 );
@@ -596,7 +593,6 @@ namespace ui {
 		made.used = true;
 		made.kind = kind;
 		made.serial = next_serial++;
-		made.fade = 0.0f;
 		made.state.cursor_address = address;
 
 		if ( db && analysis_applied ) {

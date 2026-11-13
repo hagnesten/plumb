@@ -24,27 +24,27 @@ namespace ui {
 	}
 
 	static const uint32_t dark_tones [ static_cast < int32_t > ( tone::COUNT ) ] = {
-		0x17191D, 0x1B1E23, 0x24282F, 0x121417, 0x131518, 0x292E36, 0x3A404A, 0xD8DBE1, 0x9BA2AE, 0x5F6672,
-		0xD4A24C, 0xD4A24C, 0x1A1408, 0x22344C, 0x4F82C4, 0xFFFFFF, 0xFFFFFF, 0x000000, 0x7C8594, 0x646C79,
-		0xE2B65B, 0x7FB0E8, 0xB5CEA8, 0xD69D85, 0x8CD1C8, 0x6A9955, 0x4F7DBF, 0x8C7A52, 0x6E6A90, 0x3A3F47,
-		0x5A6170, 0xE5675B, 0x7DBE7A, 0xE3B341, 0x569CD6, 0xD8A0DF, 0x4EC9B0, 0xDCDCAA, 0x9CDCFE, 0x7FD1E6,
-		0xB8D7A3, 0xB4B4B4, 0xA9C7E8, 0xE5C07B, 0xD4A24C
+		0x1C1D20, 0x222327, 0x2A2C30, 0x17181A, 0x26272B, 0x2E3035, 0x3B3E44, 0xD3D5D9, 0x9A9EA5, 0x666B73,
+		0x3D8FD6, 0x3D8FD6, 0xFFFFFF, 0x24405E, 0x3D8FD6, 0xFFFFFF, 0xFFFFFF, 0x000000, 0x6F757E, 0x5A5F67,
+		0xC9B37A, 0x8DB4D9, 0xA9C48E, 0xD4987A, 0x8FC7BC, 0x6E8E68, 0x4A7FB3, 0x86785A, 0x6D6A8C, 0x34373C,
+		0x535862, 0xD9675C, 0x6FB46C, 0xD6A84A, 0x6FA2D3, 0xC08FD0, 0x5DB3A6, 0xDDCB8E, 0xA6C6E2, 0x86C2D6,
+		0xAFCB9A, 0x9EA2A8, 0xA2B8CF, 0xD79BBE, 0x4A4E55
 	};
 
 	static const uint32_t light_tones [ static_cast < int32_t > ( tone::COUNT ) ] = {
-		0xE9E7E2, 0xE1DFD9, 0xF0EEE9, 0xDAD7D0, 0xDCD9D2, 0xCFCBC3, 0xB8B3A9, 0x2B2E34, 0x5D626B, 0x8E939A,
-		0x9E6A1E, 0x9E6A1E, 0xFFFFFF, 0xCCD7E6, 0x4A74AE, 0x000000, 0x000000, 0x000000, 0x6E7580, 0x8A8F96,
-		0x8F5F12, 0x2C5C9E, 0x24785A, 0x9C3B2E, 0x2A6E66, 0x4C7A3A, 0x7896C2, 0xB3A27A, 0x9A96B0, 0xCFCBC2,
-		0x969BA2, 0xBF4A3F, 0x3F873C, 0xA97C12, 0x2F5DB8, 0x8240A8, 0x2A7F98, 0x6E5220, 0x26407A, 0x2A6A86,
-		0x5E6B1E, 0x5C5C5C, 0x34507A, 0x86591A, 0x9E6A1E
+		0xFCFCFD, 0xF2F3F5, 0xFFFFFF, 0xEBECEF, 0xE8EAED, 0xDCDFE3, 0xC4C8CE, 0x1F2328, 0x4F5862, 0x878E97,
+		0x1F6CB8, 0x1F6CB8, 0xFFFFFF, 0xCFE1F5, 0x1F6CB8, 0x000000, 0x000000, 0x000000, 0x6A727C, 0x8C929A,
+		0x86580E, 0x1E4F8F, 0x2B7A3B, 0xA04722, 0x1E6D63, 0x5B7A4E, 0x6A8DB8, 0xAE9D74, 0x938FAE, 0xD5D8DD,
+		0x9AA0A8, 0xC23B30, 0x2F8A3A, 0x9A6D08, 0x1F5FB0, 0x7C3E9E, 0x23768C, 0x6A4E12, 0x1E3F75, 0x266782,
+		0x4E6B1C, 0x50565E, 0x2F4A72, 0x9A3F74, 0xC4C8CE
 	};
 
 	static const float tone_alpha [ static_cast < int32_t > ( tone::COUNT ) ] [ 2 ] = {
 		{ 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f },
-		{ 1.0f, 1.0f }, { 0.16f, 0.14f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 0.045f, 0.045f }, { 0.085f, 0.08f }, { 0.5f, 0.16f }, { 1.0f, 1.0f }, { 1.0f, 1.0f },
+		{ 1.0f, 1.0f }, { 0.16f, 0.12f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 0.04f, 0.04f }, { 0.075f, 0.07f }, { 0.45f, 0.14f }, { 1.0f, 1.0f }, { 1.0f, 1.0f },
 		{ 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f },
 		{ 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f },
-		{ 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 0.32f, 0.32f }
+		{ 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f }
 	};
 
 	render::color app::ink ( tone value ) const {
@@ -55,7 +55,7 @@ namespace ui {
 
 	void app::update_theme ( ) {
 
-		spring ( theme_mix, theme_velocity, light ? 1.0f : 0.0f, 210.0f, 26.0f );
+		settle ( theme_mix, light ? 1.0f : 0.0f );
 
 		float t = math::saturate ( theme_mix );
 
@@ -371,8 +371,8 @@ namespace ui {
 		hit_rect entry = { id, area, kind };
 
 		next_hits.push ( entry );
-		approach ( item.hover, hot == id ? 1.0f : 0.0f, 22.0f );
-		approach ( item.press, active_id == id && mouse_down && hot == id ? 1.0f : 0.0f, 30.0f );
+		settle ( item.hover, hot == id ? 1.0f : 0.0f );
+		settle ( item.press, active_id == id && mouse_down && hot == id ? 1.0f : 0.0f );
 
 		return clicked_id == id;
 
@@ -383,7 +383,6 @@ namespace ui {
 		hit_rect entry = { id, area, hit::CLIENT };
 
 		next_scrolls.push ( entry );
-		halt_glide = press_event && over ( area );
 
 	}
 
@@ -411,40 +410,9 @@ namespace ui {
 
 	}
 
-	void app::approach ( float& value, float target, float rate ) {
+	void app::settle ( float& value, float target ) {
 
-		float step = 1.0f - math::exp ( -rate * dt );
-
-		value += ( target - value ) * step;
-
-		if ( math::abs ( target - value ) < 0.002f )
-			value = target;
-		else
-			animating = true;
-
-	}
-
-	void app::spring ( float& value, float& velocity, float target, float stiffness, float damping ) {
-
-		float remaining = dt;
-
-		while ( remaining > 0.0f ) {
-
-			float step = base::min ( remaining, 1.0f / 240.0f );
-
-			velocity += ( stiffness * ( target - value ) - damping * velocity ) * step;
-			value += velocity * step;
-			remaining -= step;
-
-		}
-
-		if ( math::abs ( target - value ) < 0.0008f && math::abs ( velocity ) < 0.01f ) {
-
-			value = target;
-			velocity = 0.0f;
-
-		} else
-			animating = true;
+		value = target;
 
 	}
 
@@ -452,73 +420,10 @@ namespace ui {
 
 		float pixels = base::max ( unit * dpi, 0.001f );
 
-		if ( halt_glide ) {
-
-			item.target = item.offset;
-			item.goal = item.offset;
-			item.velocity = 0.0f;
-			item.elapsed = item.duration;
-
-		}
-
 		item.limit = base::max ( limit, 0.0f );
 		item.target = base::clamp ( item.target, 0.0f, item.limit );
-
-		if ( item.target != item.goal ) {
-
-			float distance = math::abs ( item.target - item.offset ) * pixels;
-			float reach = 900.0f * dpi / pixels;
-
-			if ( math::abs ( item.target - item.offset ) > reach ) {
-
-				item.offset = item.target - ( item.target < item.offset ? -reach : reach );
-				item.velocity = 0.0f;
-
-			}
-
-			item.from = item.offset;
-			item.from_velocity = item.velocity;
-			item.goal = item.target;
-			item.elapsed = 0.0f;
-			item.duration = 0.2f + 0.08f * base::min ( distance / ( 900.0f * dpi ), 1.0f );
-
-		}
-
-		if ( item.elapsed >= item.duration || item.duration <= 0.0f ) {
-
-			item.offset = item.goal;
-			item.velocity = 0.0f;
-			item.shown = math::round ( item.offset * pixels ) / pixels;
-
-			return;
-
-		}
-
-		item.elapsed = base::min ( item.elapsed + dt, item.duration );
-
-		float span = item.duration;
-		float s = item.elapsed / span;
-		float s2 = s * s;
-		float s3 = s2 * s;
-		float h00 = 2.0f * s3 - 3.0f * s2 + 1.0f;
-		float h10 = s3 - 2.0f * s2 + s;
-		float h01 = -2.0f * s3 + 3.0f * s2;
-		float d00 = 6.0f * s2 - 6.0f * s;
-		float d10 = 3.0f * s2 - 4.0f * s + 1.0f;
-		float d01 = -6.0f * s2 + 6.0f * s;
-
-		item.offset = h00 * item.from + h10 * span * item.from_velocity + h01 * item.goal;
-		item.velocity = ( d00 * item.from + d10 * span * item.from_velocity + d01 * item.goal ) / span;
-
-		if ( item.elapsed >= item.duration ) {
-
-			item.offset = item.goal;
-			item.velocity = 0.0f;
-
-		}
-
+		item.offset = item.target;
 		item.shown = math::round ( item.offset * pixels ) / pixels;
-		animating = true;
 
 	}
 
@@ -625,7 +530,6 @@ namespace ui {
 		middle_event = false;
 		wheel_steps = 0.0f;
 		wheel_side = 0.0f;
-		halt_glide = false;
 		keys.clear ( );
 		typed.clear ( );
 		hits = base::move ( next_hits );
@@ -703,17 +607,17 @@ namespace ui {
 	void app::layout ( ) {
 
 		bool has = file.loaded ( );
-		float top = 38.0f;
-		float bottom = h - 24.0f;
+		float top = metric::title;
+		float bottom = h - metric::status;
 
 		title_area = math::rect ( 0.0f, 0.0f, w, top );
-		status_area = math::rect ( 0.0f, bottom, w, 24.0f );
-		approach ( welcome_show, has ? 0.0f : 1.0f, 12.0f );
-		spring ( browser_show, browser_velocity, browser_open && has ? 1.0f : 0.0f, 320.0f, 34.0f );
-		spring ( output_show, output_velocity, output_open && has ? 1.0f : 0.0f, 320.0f, 34.0f );
+		status_area = math::rect ( 0.0f, bottom, w, metric::status );
+		settle ( welcome_show, has ? 0.0f : 1.0f );
+		settle ( browser_show, browser_open && has ? 1.0f : 0.0f );
+		settle ( output_show, output_open && has ? 1.0f : 0.0f );
 
 		float file_show = 1.0f - welcome_show;
-		float rail = 46.0f * file_show;
+		float rail = metric::rail * file_show;
 
 		float tall = bottom - top;
 
@@ -805,7 +709,7 @@ namespace ui {
 
 		browser_fit = docks [ 0 ] == dock_side::BOTTOM ? browser_area.w : side_fit [ static_cast < int32_t > ( docks [ 0 ] ) ];
 
-		float strip = has ? 34.0f : 0.0f;
+		float strip = has ? metric::strip : 0.0f;
 
 		if ( pane_count == 2 ) {
 

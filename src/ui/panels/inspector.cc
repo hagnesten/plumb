@@ -57,8 +57,8 @@ namespace ui {
 	void app::draw_inspector ( math::rect area, float inner ) {
 
 		render::canvas& c = canvas;
-		float x = area.right ( ) - inner + 16.0f;
-		float value_x = x + 104.0f;
+		float x = area.right ( ) - inner + 10.0f;
+		float value_x = x + 96.0f;
 		uint64_t offset = 0;
 		bool mapped = file.offset_of ( now->cursor_address, offset );
 		int32_t owner = file.section_at ( now->cursor_address );
@@ -76,29 +76,27 @@ namespace ui {
 		scroll_region ( id, area );
 		inspector_scroll.target -= take_wheel ( id ) * 60.0f;
 
-		float y = area.y + 12.0f - inspector_scroll.shown;
-		float row = 22.0f;
+		float y = area.y + metric::header - inspector_scroll.shown;
+		float row = metric::list_row;
 
 		auto pair = [ & ] ( const wchar_t* key, const wchar_t* value, render::font role, render::color tint ) {
 
 			c.text ( key, render::font::SMALL, math::vec2 ( x, y + row * 0.5f ), ink ( tone::INK_SOFT ) );
-			c.text ( value, role, math::vec2 ( value_x, y + row * 0.5f ), tint, render::align::LEFT, inner - 132.0f );
+			c.text ( value, role, math::vec2 ( value_x, y + row * 0.5f ), tint, render::align::LEFT, inner - 116.0f );
 			y += row;
 
 		};
 
 		auto heading = [ & ] ( const wchar_t* title ) {
 
-			y += 8.0f;
-			section_heading ( math::rect ( x, y, inner - 32.0f, 18.0f ), title, nullptr );
-			y += 22.0f;
-			c.fill ( math::rect ( x, y - 3.0f, inner - 32.0f, 1.0f ), 0.0f, ink ( tone::LINE ) );
-			y += 3.0f;
+			y += 6.0f;
+			section_heading ( math::rect ( x, y, inner - 20.0f, 18.0f ), title, nullptr );
+			y += 20.0f;
+			c.fill ( math::rect ( x, y - 2.0f, inner - 20.0f, 1.0f ), 0.0f, ink ( tone::LINE ) );
+			y += 2.0f;
 
 		};
 
-		c.text ( L"Inspector", render::font::HEADING, math::vec2 ( x, y + 10.0f ), ink ( tone::INK ) );
-		y += 26.0f;
 
 		if ( debug_state.state != debugger::status::IDLE ) {
 
@@ -375,9 +373,12 @@ namespace ui {
 
 		}
 
-		float content = y + inspector_scroll.shown - area.y + 16.0f;
+		float content = y + inspector_scroll.shown - area.y + 12.0f;
 
 		glide ( inspector_scroll, content - area.h );
+		c.fill ( math::rect ( area.x, area.y, area.w, metric::header ), 0.0f, ink ( tone::PANEL ) );
+		c.text ( L"INSPECTOR", render::font::TINY, math::vec2 ( x, area.y + metric::header * 0.5f ), ink ( tone::INK_SOFT ) );
+		c.fill ( math::rect ( area.x, area.y + metric::header - 1.0f, area.w, 1.0f ), 0.0f, ink ( tone::LINE ) );
 		draw_scrollbar ( make_id ( "inspector_bar" ), area, inspector_scroll, content, area.h );
 
 	}

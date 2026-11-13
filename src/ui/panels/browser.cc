@@ -5,6 +5,11 @@ namespace ui {
 
 	static const uint32_t panel_glyphs [ static_cast < int32_t > ( panel::COUNT ) ] = { icons::CODE, icons::IMPORT, icons::EXPORT, icons::FONT, icons::LAYERS, icons::PUZZLE, icons::FORM, icons::LINK, icons::SEARCH, icons::INFO };
 	static const wchar_t* panel_titles [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Functions", L"Imports", L"Exports", L"Strings", L"Sections", L"Classes", L"Structures", L"References", L"Search", L"Inspector" };
+	static const wchar_t* panel_captions [ static_cast < int32_t > ( panel::COUNT ) ] = { L"FUNCTIONS", L"IMPORTS", L"EXPORTS", L"STRINGS", L"SECTIONS", L"CLASSES", L"STRUCTURES", L"REFERENCES", L"SEARCH", L"INSPECTOR" };
+	static const wchar_t* panel_columns [ static_cast < int32_t > ( panel::COUNT ) ] [ 3 ] = {
+		{ L"Name", L"Address", L"Size" }, { L"Name", nullptr, L"Slot" }, { L"Name", nullptr, L"Address" }, { L"Text", nullptr, L"Address" }, { L"Name", L"Access", L"Address" },
+		{ L"Class", nullptr, L"Virtuals" }, { L"Struct", nullptr, L"Size" }, { L"Kind", L"From", nullptr }, { L"Address", L"Where", nullptr }, { nullptr, nullptr, nullptr }
+	};
 	static const wchar_t* panel_hints [ static_cast < int32_t > ( panel::COUNT ) ] = { L"Filter functions", L"Filter imports or modules", L"Filter exports", L"Search strings", L"Filter sections", L"Filter classes", L"Filter structures", L"Filter by function", L"Filter results", L"" };
 
 	static const wchar_t* ref_word ( analysis::ref type ) {
@@ -50,14 +55,11 @@ namespace ui {
 		c.fill ( area, 0.0f, ink ( tone::TITLE ) );
 		c.fill ( math::rect ( area.right ( ) - 1.0f, area.y, 1.0f, area.h ), 0.0f, ink ( tone::LINE ) );
 
-		float slot = 44.0f;
-		float top = area.y + 8.0f;
-		float target = static_cast < float > ( static_cast < int32_t > ( browsing ) );
-
-		spring ( rail_marker, rail_velocity, target, 520.0f, 40.0f );
+		float slot = metric::rail_slot;
+		float top = area.y + 4.0f;
 
 		if ( browser_open )
-			c.fill ( math::rect ( area.x, top + rail_marker * slot + 10.0f, 2.5f, slot - 20.0f ), 1.0f, ink ( tone::ACCENT ) );
+			c.fill ( math::rect ( area.x, top + static_cast < float > ( static_cast < int32_t > ( browsing ) ) * slot + 7.0f, 2.0f, slot - 14.0f ), 0.0f, ink ( tone::ACCENT ) );
 
 		for ( int32_t i = 0; i < static_cast < int32_t > ( panel::COUNT ); i++ ) {
 
@@ -80,18 +82,18 @@ namespace ui {
 
 			}
 
-			c.fill ( math::rect ( center.x - 16.0f, center.y - 16.0f, 32.0f, 32.0f ), 4.0f, ink ( tone::HOVER ).fade ( item.hover * 1.4f ) );
-			c.icon ( panel_glyphs [ i ], center, 16.0f, selected ? ink ( tone::INK ) : render::mix ( ink ( tone::INK_FAINT ), ink ( tone::INK_SOFT ), item.hover ) );
+			c.fill ( math::rect ( center.x - 13.0f, center.y - 13.0f, 26.0f, 26.0f ), metric::radius, ink ( tone::HOVER ).fade ( item.hover * 1.5f ) );
+			c.icon ( panel_glyphs [ i ], center, 14.0f, selected ? ink ( tone::INK ) : ( item.hover > 0.5f ? ink ( tone::INK_SOFT ) : ink ( tone::INK_FAINT ) ) );
 			tip ( id, panel_titles [ i ], hit_area );
 
 		}
 
-		float bottom = area.bottom ( ) - 8.0f;
+		float bottom = area.bottom ( ) - 6.0f;
 
-		if ( icon_button ( make_id ( "rail_theme" ), math::vec2 ( area.x + area.w * 0.5f, bottom - 22.0f ), 32.0f, light ? icons::MOON : icons::SUN, 15.0f, light ? L"Dark theme" : L"Light theme" ) )
+		if ( icon_button ( make_id ( "rail_theme" ), math::vec2 ( area.x + area.w * 0.5f, bottom - 16.0f ), 26.0f, light ? icons::MOON : icons::SUN, 13.0f, light ? L"Dark theme" : L"Light theme" ) )
 			run ( command::THEME );
 
-		if ( icon_button ( make_id ( "rail_palette" ), math::vec2 ( area.x + area.w * 0.5f, bottom - 62.0f ), 32.0f, icons::MENU, 15.0f, L"Command palette" ) )
+		if ( icon_button ( make_id ( "rail_palette" ), math::vec2 ( area.x + area.w * 0.5f, bottom - 48.0f ), 26.0f, icons::MENU, 13.0f, L"Command palette" ) )
 			run ( command::PALETTE );
 
 	}
@@ -168,9 +170,10 @@ namespace ui {
 
 		count.grouped ( static_cast < uint64_t > ( total ) );
 
-		math::rect header ( x + 14.0f, area.y + 10.0f, inner_w - 28.0f, 20.0f );
+		math::rect header ( x + 10.0f, area.y, inner_w - 20.0f, metric::header );
+		bool subject_line = browsing == panel::REFERENCES || browsing == panel::SEARCH;
 
-		c.text ( panel_titles [ slot ], render::font::HEADING, math::vec2 ( header.x, header.center ( ).y ), ink ( tone::INK ) );
+		c.text ( panel_captions [ slot ], render::font::TINY, math::vec2 ( header.x, header.center ( ).y ), ink ( tone::INK_SOFT ) );
 
 		if ( browsing == panel::REFERENCES || browsing == panel::SEARCH ) {
 
@@ -193,19 +196,41 @@ namespace ui {
 			else
 				subject.add ( L"Ctrl+Alt+F to search bytes or a signature" );
 
-			c.text ( subject.text ( ), render::font::SMALL, math::vec2 ( header.x, header.center ( ).y + 18.0f ), ink ( tone::INK_SOFT ), render::align::LEFT, header.w );
+			c.text ( subject.text ( ), render::font::SMALL, math::vec2 ( header.x, header.bottom ( ) + 7.0f ), ink ( tone::INK_SOFT ), render::align::LEFT, header.w );
 
 		}
+
 		c.text ( count.text ( ), render::font::SMALL, math::vec2 ( header.right ( ), header.center ( ).y ), ink ( tone::INK_FAINT ), render::align::RIGHT );
-		float field_y = browsing == panel::REFERENCES || browsing == panel::SEARCH ? 56.0f : 38.0f;
 
-		text_field ( make_id ( "filter", slot ), filters [ slot ], math::rect ( x + 12.0f, area.y + field_y, inner_w - 24.0f, 30.0f ), panel_hints [ slot ], icons::SEARCH, render::font::UI );
+		float field_y = metric::header + ( subject_line ? 16.0f : 0.0f );
 
-		float list_top = browsing == panel::REFERENCES || browsing == panel::SEARCH ? 96.0f : 78.0f;
+		text_field ( make_id ( "filter", slot ), filters [ slot ], math::rect ( x + 6.0f, area.y + field_y, inner_w - 12.0f, metric::field ), panel_hints [ slot ], icons::SEARCH, render::font::UI );
 
-		math::rect list ( x, area.y + list_top, inner_w, area.h - list_top );
+		float columns_top = field_y + metric::field + 6.0f;
+		math::rect columns ( x, area.y + columns_top, inner_w, 20.0f );
+		const wchar_t* const* names = panel_columns [ slot ];
 
-		c.fill ( math::rect ( x, list.y - 1.0f, inner_w, 1.0f ), 0.0f, ink ( tone::LINE ) );
+		c.fill ( columns, 0.0f, ink ( tone::SUNKEN ) );
+		c.fill ( math::rect ( x, columns.y, inner_w, 1.0f ), 0.0f, ink ( tone::LINE ) );
+		c.fill ( math::rect ( x, columns.bottom ( ) - 1.0f, inner_w, 1.0f ), 0.0f, ink ( tone::LINE ) );
+
+		if ( names [ 0 ] )
+			c.text ( names [ 0 ], render::font::SMALL, math::vec2 ( x + 10.0f, columns.center ( ).y ), ink ( tone::INK_SOFT ) );
+
+		if ( names [ 1 ] ) {
+
+			bool middle_right = browsing == panel::FUNCTIONS;
+			float middle_x = browsing == panel::FUNCTIONS ? x + inner_w - 64.0f : ( browsing == panel::SECTIONS ? x + 106.0f : ( browsing == panel::REFERENCES ? x + 60.0f : x + 100.0f ) );
+
+			c.text ( names [ 1 ], render::font::SMALL, math::vec2 ( middle_x, columns.center ( ).y ), ink ( tone::INK_SOFT ), middle_right ? render::align::RIGHT : render::align::LEFT );
+
+		}
+
+		if ( names [ 2 ] )
+			c.text ( names [ 2 ], render::font::SMALL, math::vec2 ( x + inner_w - 10.0f, columns.center ( ).y ), ink ( tone::INK_SOFT ), render::align::RIGHT );
+
+		math::rect list ( x, columns.bottom ( ), inner_w, area.bottom ( ) - columns.bottom ( ) );
+
 		draw_browser_rows ( browsing, list );
 		c.pop_clip ( );
 
@@ -217,8 +242,8 @@ namespace ui {
 		int32_t slot = static_cast < int32_t > ( which );
 		base::list < int32_t >& list = shown [ slot ];
 		scroller& scroll = browser_scroll [ slot ];
-		float row_h = 26.0f;
-		float content = static_cast < float > ( list.count ( ) ) * row_h + 8.0f;
+		float row_h = metric::list_row;
+		float content = static_cast < float > ( list.count ( ) ) * row_h + 4.0f;
 		uint64_t list_id = make_id ( "browser_list", slot );
 
 		scroll_region ( list_id, area );
@@ -236,7 +261,7 @@ namespace ui {
 			else if ( which == panel::SEARCH )
 				empty = search_query.empty ( ) ? L"No search yet." : L"No matches.";
 
-			c.text ( empty, render::font::UI, math::vec2 ( area.x + 16.0f, area.y + 24.0f ), ink ( tone::INK_FAINT ) );
+			c.text ( empty, render::font::UI, math::vec2 ( area.x + 10.0f, area.y + 16.0f ), ink ( tone::INK_FAINT ) );
 
 			return;
 
@@ -253,7 +278,7 @@ namespace ui {
 			for ( int32_t i = first; i < last; i++ ) {
 
 				int32_t value = list [ static_cast < size_t > ( i ) ];
-				math::rect row ( area.x + 6.0f, area.y + 4.0f + static_cast < float > ( i ) * row_h - scroll.shown, area.w - 12.0f, row_h );
+				math::rect row ( area.x + 2.0f, area.y + 2.0f + static_cast < float > ( i ) * row_h - scroll.shown, area.w - 4.0f, row_h );
 				uint64_t id = make_id ( "browser_row", static_cast < int64_t > ( slot ) * 0x100000000ll + i );
 				bool header = which == panel::IMPORTS && value < 0;
 				float cy = row.center ( ).y;
@@ -272,9 +297,9 @@ namespace ui {
 					}
 
 					if ( browser_pick [ slot ] == i )
-						c.fill ( row, 3.0f, ink ( tone::SELECT ) );
+						c.fill ( row, 0.0f, ink ( tone::SELECT ) );
 
-					c.fill ( row, 3.0f, ink ( tone::HOVER ).fade ( item.hover ) );
+					c.fill ( row, 0.0f, ink ( tone::HOVER ).fade ( item.hover ) );
 
 					if ( clicked ) {
 
@@ -440,13 +465,14 @@ namespace ui {
 
 							const analysis::function_info& info = db->functions [ static_cast < size_t > ( value ) ];
 							wchar_t name [ 200 ];
-							tone tag = ( info.flags & analysis::THUNK ) ? tone::IMPORT : ( ( info.flags & analysis::FROM_ENTRY ) ? tone::ACCENT : ( ( info.flags & ( analysis::FROM_EXPORT | analysis::NAMED ) ) || user_text ( renamed, info.start ) ? tone::FUNCTION : tone::INK_FAINT ) );
+							tone tag = ( info.flags & analysis::THUNK ) ? tone::IMPORT : ( ( info.flags & ( analysis::FROM_ENTRY | analysis::FROM_EXPORT | analysis::NAMED ) ) || user_text ( renamed, info.start ) ? tone::FUNCTION : tone::INK );
 							base::writer size_text;
 
 							function_name ( value, name, 200 );
-							c.fill ( math::rect ( row.x + 8.0f, cy - 3.0f, 6.0f, 6.0f ), 1.0f, ink ( tag ) );
-							c.text ( name, render::font::MONO_SMALL, math::vec2 ( row.x + 22.0f, cy ), ink ( tone::INK ), render::align::LEFT, row.w - 110.0f );
-							size_text.grouped ( info.end - info.start );
+							c.text ( name, render::font::MONO_SMALL, math::vec2 ( row.x + 8.0f, cy ), ink ( tag ), render::align::LEFT, row.w - 136.0f );
+							where.hex ( info.start, wide ? 9 : 8 );
+							c.text ( where.text ( ), render::font::MONO_SMALL, math::vec2 ( row.right ( ) - 62.0f, cy ), ink ( tone::ADDRESS ), render::align::RIGHT );
+							size_text.add ( L"0x" ).hex ( info.end - info.start );
 							c.text ( size_text.text ( ), render::font::MONO_SMALL, math::vec2 ( row.right ( ) - 8.0f, cy ), ink ( tone::INK_FAINT ), render::align::RIGHT );
 
 							break;
@@ -457,8 +483,8 @@ namespace ui {
 						render::color tag = item.type == loader::symbol_kind::ENTRY ? ink ( tone::ACCENT ) : ( item.type == loader::symbol_kind::TLS ? ink ( tone::WARNING ) : ink ( tone::NAME ) );
 
 						c.fill ( math::rect ( row.x + 8.0f, cy - 3.0f, 6.0f, 6.0f ), 1.0f, tag );
-						where.hex ( item.address, wide ? 16 : 8 );
-						c.text ( item.name.get ( ), render::font::UI, math::vec2 ( row.x + 22.0f, cy ), ink ( tone::INK ), render::align::LEFT, row.w - 150.0f );
+						where.hex ( item.address, wide ? 9 : 8 );
+						c.text ( item.name.get ( ), render::font::UI, math::vec2 ( row.x + 22.0f, cy ), ink ( tone::INK ), render::align::LEFT, row.w - 100.0f );
 						c.text ( where.text ( ), render::font::MONO_SMALL, math::vec2 ( row.right ( ) - 8.0f, cy ), ink ( tone::ADDRESS ), render::align::RIGHT );
 
 						break;
@@ -488,8 +514,8 @@ namespace ui {
 						else
 							label.add ( item.name.get ( ) );
 
-						where.hex ( item.slot, wide ? 16 : 8 );
-						c.text ( label.text ( ), render::font::UI, math::vec2 ( row.x + 26.0f, cy ), item.by_ordinal ? ink ( tone::INK_SOFT ) : ink ( tone::INK ), render::align::LEFT, row.w - 160.0f );
+						where.hex ( item.slot, wide ? 9 : 8 );
+						c.text ( label.text ( ), render::font::UI, math::vec2 ( row.x + 26.0f, cy ), item.by_ordinal ? ink ( tone::INK_SOFT ) : ink ( tone::INK ), render::align::LEFT, row.w - 110.0f );
 						c.text ( where.text ( ), render::font::MONO_SMALL, math::vec2 ( row.right ( ) - 8.0f, cy ), ink ( tone::ADDRESS ), render::align::RIGHT );
 
 						break;
@@ -507,11 +533,11 @@ namespace ui {
 							label.add ( item.name.get ( ) );
 
 						if ( item.forward.empty ( ) )
-							where.hex ( item.address, wide ? 16 : 8 );
+							where.hex ( item.address, wide ? 9 : 8 );
 						else
 							where.add ( L"\x2192 " ).add ( item.forward.get ( ) );
 
-						c.text ( label.text ( ), render::font::UI, math::vec2 ( row.x + 10.0f, cy ), ink ( tone::INK ), render::align::LEFT, row.w - 160.0f );
+						c.text ( label.text ( ), render::font::UI, math::vec2 ( row.x + 10.0f, cy ), ink ( tone::INK ), render::align::LEFT, row.w - 110.0f );
 						c.text ( where.text ( ), item.forward.empty ( ) ? render::font::MONO_SMALL : render::font::SMALL, math::vec2 ( row.right ( ) - 8.0f, cy ), item.forward.empty ( ) ? ink ( tone::ADDRESS ) : ink ( tone::INK_SOFT ), render::align::RIGHT, 140.0f );
 
 						break;
@@ -531,12 +557,12 @@ namespace ui {
 						preview [ length ] = 0;
 
 						if ( file.address_of ( item.offset, address ) )
-							where.hex ( address, wide ? 16 : 8 );
+							where.hex ( address, wide ? 9 : 8 );
 						else
 							where.add ( L"@" ).hex ( item.offset );
 
 						c.text ( item.wide ? L"W" : L"A", render::font::TINY, math::vec2 ( row.x + 8.0f, cy ), item.wide ? ink ( tone::NAME ) : ink ( tone::INK_FAINT ) );
-						c.text ( preview, render::font::MONO_SMALL, math::vec2 ( row.x + 24.0f, cy ), ink ( tone::INK ), render::align::LEFT, row.w - 154.0f );
+						c.text ( preview, render::font::MONO_SMALL, math::vec2 ( row.x + 24.0f, cy ), ink ( tone::INK ), render::align::LEFT, row.w - 104.0f );
 						c.text ( where.text ( ), render::font::MONO_SMALL, math::vec2 ( row.right ( ) - 8.0f, cy ), ink ( tone::ADDRESS ), render::align::RIGHT );
 
 						break;
@@ -705,7 +731,7 @@ namespace ui {
 						c.fill ( math::rect ( row.x + 8.0f, cy - 6.0f, 3.0f, 12.0f ), 1.0f, chip );
 						c.text ( item.name, render::font::MONO_STRONG, math::vec2 ( row.x + 20.0f, cy ), ink ( tone::INK ) );
 						c.text ( perms, render::font::MONO_SMALL, math::vec2 ( row.x + 104.0f, cy ), ink ( tone::INK_SOFT ) );
-						where.hex ( item.address, wide ? 16 : 8 );
+						where.hex ( item.address, wide ? 9 : 8 );
 						c.text ( where.text ( ), render::font::MONO_SMALL, math::vec2 ( row.right ( ) - 8.0f, cy ), ink ( tone::ADDRESS ), render::align::RIGHT );
 
 						break;

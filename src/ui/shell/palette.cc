@@ -35,7 +35,7 @@ namespace ui {
 
 	void app::draw_palette ( ) {
 
-		spring ( palette_show, palette_velocity, palette_open ? 1.0f : 0.0f, 700.0f, 52.0f );
+		settle ( palette_show, palette_open ? 1.0f : 0.0f );
 
 		if ( palette_show <= 0.004f && !palette_open )
 			return;
@@ -44,7 +44,7 @@ namespace ui {
 		float shown = math::saturate ( palette_show );
 		float width_box = base::min ( 600.0f, w - 40.0f );
 		float x = w * 0.5f - width_box * 0.5f;
-		float y = title_area.bottom ( ) + 54.0f;
+		float y = title_area.bottom ( ) + 40.0f;
 		uint64_t blocker = make_id ( "palette_blocker" );
 		widget& block = state ( blocker );
 
@@ -56,7 +56,7 @@ namespace ui {
 
 		}
 
-		c.fill ( math::rect ( 0.0f, 0.0f, w, h ), 0.0f, ink ( tone::SHADOW ).fade ( 0.35f * shown ) );
+		c.fill ( math::rect ( 0.0f, 0.0f, w, h ), 0.0f, ink ( tone::SHADOW ).fade ( 0.2f * shown ) );
 
 		if ( palette_open && palette_field.revision != palette_seen ) {
 
@@ -93,24 +93,25 @@ namespace ui {
 
 		}
 
-		int32_t visible = base::min ( palette_items.count ( ), 9 );
-		float row_h = 34.0f;
-		float list_h = palette_address ? 48.0f : static_cast < float > ( visible ) * row_h + ( visible ? 10.0f : 0.0f );
-		math::rect box ( x, y, width_box, 52.0f + list_h );
+		int32_t visible = base::min ( palette_items.count ( ), 14 );
+		float row_h = metric::palette_row;
+		float head_h = metric::field + 12.0f;
+		float list_h = palette_address ? 40.0f : static_cast < float > ( visible ) * row_h + ( visible ? 8.0f : 0.0f );
+		math::rect box ( x, y, width_box, head_h + list_h );
 
 		palette_pick = palette_items.count ( ) ? base::clamp ( palette_pick, 0, palette_items.count ( ) - 1 ) : 0;
-		c.push ( math::vec2 ( box.center ( ).x, box.y ), 0.97f + 0.03f * shown, shown, math::vec2 ( 0.0f, -8.0f * ( 1.0f - shown ) ) );
-		c.shadow ( box, 8.0f, 30.0f, ink ( tone::SHADOW ), math::vec2 ( 0.0f, 12.0f ) );
-		c.outline ( box, 8.0f, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
+		c.push ( math::vec2 ( box.center ( ).x, box.y ), 1.0f, shown );
+		c.shadow ( box, metric::radius, 14.0f, ink ( tone::SHADOW ).fade ( 0.7f ), math::vec2 ( 0.0f, 4.0f ) );
+		c.outline ( box, metric::radius, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
 
 		uint64_t surface = make_id ( "palette_surface" );
 		widget& surface_state = state ( surface );
 
 		interact ( surface, box, surface_state );
 
-		bool submitted = text_field ( make_id ( "palette" ), palette_field, math::rect ( box.x + 10.0f, box.y + 10.0f, box.w - 20.0f, 32.0f ), palette_address ? L"Address, RVA (+1A30), symbol or section" : L"Type a command", palette_address ? icons::FORWARD : icons::SEARCH, palette_address ? render::font::MONO : render::font::UI );
+		bool submitted = text_field ( make_id ( "palette" ), palette_field, math::rect ( box.x + 6.0f, box.y + 6.0f, box.w - 12.0f, metric::field ), palette_address ? L"Address, RVA (+1A30), symbol or section" : L"Type a command", palette_address ? icons::FORWARD : icons::SEARCH, palette_address ? render::font::MONO : render::font::UI );
 
-		c.fill ( math::rect ( box.x, box.y + 51.0f, box.w, 1.0f ), 0.0f, ink ( tone::LINE ) );
+		c.fill ( math::rect ( box.x, box.y + head_h - 1.0f, box.w, 1.0f ), 0.0f, ink ( tone::LINE ) );
 
 		if ( palette_address ) {
 
@@ -131,7 +132,7 @@ namespace ui {
 			} else
 				hint.add ( L"That isn't an address or a known name." );
 
-			c.text ( hint.text ( ), render::font::SMALL, math::vec2 ( box.x + 18.0f, box.y + 52.0f + 24.0f ), valid ? ink ( tone::INK_SOFT ) : ink ( tone::INK_FAINT ) );
+			c.text ( hint.text ( ), render::font::SMALL, math::vec2 ( box.x + 12.0f, box.y + head_h + 20.0f ), valid ? ink ( tone::INK_SOFT ) : ink ( tone::INK_FAINT ) );
 
 			if ( submitted && valid ) {
 
@@ -149,17 +150,17 @@ namespace ui {
 			if ( palette_pick_y < -0.5f )
 				palette_pick_y = target;
 
-			spring ( palette_pick_y, palette_pick_velocity, target, 900.0f, 60.0f );
+			settle ( palette_pick_y, target );
 
-			float list_top = box.y + 57.0f;
+			float list_top = box.y + head_h + 4.0f;
 
 			if ( visible )
-				c.fill ( math::rect ( box.x + 6.0f, list_top + palette_pick_y * row_h, box.w - 12.0f, row_h ), 4.0f, ink ( tone::SELECT ) );
+				c.fill ( math::rect ( box.x + 4.0f, list_top + palette_pick_y * row_h, box.w - 8.0f, row_h ), 2.0f, ink ( tone::SELECT ) );
 
 			for ( int32_t i = 0; i < visible; i++ ) {
 
 				const palette_entry& entry = palette_items [ static_cast < size_t > ( i ) ];
-				math::rect row ( box.x + 6.0f, list_top + static_cast < float > ( i ) * row_h, box.w - 12.0f, row_h );
+				math::rect row ( box.x + 4.0f, list_top + static_cast < float > ( i ) * row_h, box.w - 8.0f, row_h );
 				uint64_t id = make_id ( "palette_row", i );
 				widget& item = state ( id );
 				bool usable = enabled ( entry.action );
@@ -174,7 +175,7 @@ namespace ui {
 				if ( item.hover > 0.5f && mouse_inside )
 					palette_pick = i;
 
-				c.text ( command_label ( entry.action ), render::font::UI, math::vec2 ( row.x + 14.0f, row.center ( ).y ), usable ? ink ( tone::INK ) : ink ( tone::INK_FAINT ) );
+				c.text ( command_label ( entry.action ), render::font::UI, math::vec2 ( row.x + 10.0f, row.center ( ).y ), usable ? ink ( tone::INK ) : ink ( tone::INK_FAINT ) );
 
 				if ( !usable )
 					c.text ( L"unavailable", render::font::SMALL, math::vec2 ( row.right ( ) - 14.0f - ( command_keys ( entry.action ) [ 0 ] ? c.measure ( command_keys ( entry.action ), render::font::SMALL ) + 24.0f : 0.0f ), row.center ( ).y ), ink ( tone::INK_FAINT ), render::align::RIGHT );

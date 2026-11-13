@@ -6,8 +6,8 @@ namespace ui {
 
 	void app::draw_dialogs ( ) {
 
-		spring ( about_show, about_velocity, about_open ? 1.0f : 0.0f, 600.0f, 48.0f );
-		spring ( keys_show, keys_velocity, keys_open ? 1.0f : 0.0f, 600.0f, 48.0f );
+		settle ( about_show, about_open ? 1.0f : 0.0f );
+		settle ( keys_show, keys_open ? 1.0f : 0.0f );
 
 		render::canvas& c = canvas;
 		float show = math::saturate ( base::max ( about_show, keys_show ) );
@@ -32,9 +32,9 @@ namespace ui {
 		float box_h = about ? 260.0f : base::min ( h - 60.0f, 640.0f );
 		math::rect box ( w * 0.5f - box_w * 0.5f, h * 0.5f - box_h * 0.5f, box_w, box_h );
 
-		c.push ( box.center ( ), 0.97f + 0.03f * show, show );
-		c.shadow ( box, 6.0f, 30.0f, ink ( tone::SHADOW ), math::vec2 ( 0.0f, 12.0f ) );
-		c.outline ( box, 6.0f, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
+		c.push ( box.center ( ), 1.0f, show );
+		c.shadow ( box, metric::radius, 14.0f, ink ( tone::SHADOW ).fade ( 0.7f ), math::vec2 ( 0.0f, 4.0f ) );
+		c.outline ( box, metric::radius, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
 
 		uint64_t surface = make_id ( "dialog_surface" );
 		widget& surface_state = state ( surface );
@@ -108,7 +108,7 @@ namespace ui {
 
 	void app::draw_prompt ( ) {
 
-		spring ( prompt_show, prompt_velocity, prompt_open ? 1.0f : 0.0f, 640.0f, 50.0f );
+		settle ( prompt_show, prompt_open ? 1.0f : 0.0f );
 
 		float show = math::saturate ( prompt_show );
 
@@ -206,9 +206,9 @@ namespace ui {
 
 		}
 
-		c.push ( box.center ( ), 0.97f + 0.03f * show, show );
-		c.shadow ( box, 6.0f, 26.0f, ink ( tone::SHADOW ), math::vec2 ( 0.0f, 10.0f ) );
-		c.outline ( box, 6.0f, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
+		c.push ( box.center ( ), 1.0f, show );
+		c.shadow ( box, metric::radius, 14.0f, ink ( tone::SHADOW ).fade ( 0.7f ), math::vec2 ( 0.0f, 4.0f ) );
+		c.outline ( box, metric::radius, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
 
 		uint64_t surface = make_id ( "prompt_surface" );
 		widget& surface_state = state ( surface );
@@ -265,7 +265,7 @@ namespace ui {
 
 	void app::draw_signature ( ) {
 
-		spring ( signature_show, signature_velocity, signature_open ? 1.0f : 0.0f, 600.0f, 48.0f );
+		settle ( signature_show, signature_open ? 1.0f : 0.0f );
 
 		float show = math::saturate ( signature_show );
 
@@ -312,9 +312,9 @@ namespace ui {
 
 		status.add ( L"   \x00B7   " ).fixed ( signature_seconds * 1000.0, 1 ).add ( L" ms" );
 
-		c.push ( box.center ( ), 0.97f + 0.03f * show, show );
-		c.shadow ( box, 6.0f, 30.0f, ink ( tone::SHADOW ), math::vec2 ( 0.0f, 12.0f ) );
-		c.outline ( box, 6.0f, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
+		c.push ( box.center ( ), 1.0f, show );
+		c.shadow ( box, metric::radius, 14.0f, ink ( tone::SHADOW ).fade ( 0.7f ), math::vec2 ( 0.0f, 4.0f ) );
+		c.outline ( box, metric::radius, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
 
 		uint64_t surface = make_id ( "signature_surface" );
 		widget& surface_state = state ( surface );
