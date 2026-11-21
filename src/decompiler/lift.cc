@@ -680,6 +680,15 @@ namespace decompiler {
 
 		}
 
+		bool escaped = false;
+
+		for ( const expr& node : exprs ) {
+
+			if ( node.kind == op::ADDRESS && node.a < 0 && node.value >= 0 && node.value < vars.count ( ) && vars [ static_cast < size_t > ( node.value ) ].kind == var_kind::STACK )
+				escaped = true;
+
+		}
+
 		for ( int32_t round = 0; round < 8; round++ ) {
 
 			reads.clear ( );
@@ -721,8 +730,29 @@ namespace decompiler {
 
 				const variable& item = vars [ static_cast < size_t > ( target.value ) ];
 
-				if ( item.kind == var_kind::STACK || ( item.kind == var_kind::PARAMETER && item.family < 0 ) || item.cookie || item.saved || reads [ static_cast < size_t > ( target.value ) ] )
+				if ( ( item.kind == var_kind::PARAMETER && item.family < 0 ) || item.cookie || item.saved || reads [ static_cast < size_t > ( target.value ) ] )
 					continue;
+
+				if ( item.kind == var_kind::STACK ) {
+
+					if ( escaped )
+						continue;
+
+					bool overlapped = false;
+
+					for ( int32_t other = 0; other < vars.count ( ) && !overlapped; other++ ) {
+
+						const variable& near = vars [ static_cast < size_t > ( other ) ];
+
+						if ( near.kind == var_kind::STACK && reads [ static_cast < size_t > ( other ) ] && near.offset < item.offset + item.size && item.offset < near.offset + near.size )
+							overlapped = true;
+
+					}
+
+					if ( overlapped )
+						continue;
+
+				}
 
 				if ( has_effects ( *this, line.right ) ) {
 
