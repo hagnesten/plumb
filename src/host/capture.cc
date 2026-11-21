@@ -916,6 +916,7 @@ static bool psc_mode ( ) {
 
 	app->persist = false;
 	app->analysis_sync = true;
+	app->script_jit = !argument ( L"--no-jit" );
 	x86::prepare ( );
 
 	if ( binary && !app->open_file ( binary ) )

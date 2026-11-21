@@ -142,6 +142,7 @@ namespace ui {
 		}
 
 		bridge.owner = this;
+		engine_ref->jit_enabled = script_jit;
 		script_capture = capture;
 		script_touched = false;
 		script_lines = 0;

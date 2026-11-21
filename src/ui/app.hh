@@ -657,6 +657,7 @@ namespace ui {
 		void script_touch ( );
 
 		base::text last_script;
+		bool script_jit = true;
 		base::list < wchar_t >* script_capture = nullptr;
 		bool script_touched = false;
 		int32_t script_lines = 0;
