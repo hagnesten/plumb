@@ -2597,7 +2597,27 @@ namespace decompiler {
 
 					clobber ( );
 
-					if ( k.long_mode ? ( live_after & 1u ) : ( live_after & 1u ) ) {
+					uint64_t callee = static_cast < uint64_t > ( k.exprs [ static_cast < size_t > ( call ) ].value );
+					const wchar_t* declared = callee && k.names ? k.names->prototype ( callee ) : nullptr;
+					bool nothing = false;
+
+					if ( declared && declared [ 0 ] == L'v' && declared [ 1 ] == L'o' && declared [ 2 ] == L'i' && declared [ 3 ] == L'd' && declared [ 4 ] == L' ' ) {
+
+						const wchar_t* after = declared + 5;
+
+						while ( *after == L' ' )
+							after++;
+
+						nothing = *after != L'*';
+
+					}
+
+					if ( nothing ) {
+
+						emit ( stmt::EXPR, -1, call, ins.address );
+						regs [ 0 ] = -1;
+
+					} else if ( k.long_mode ? ( live_after & 1u ) : ( live_after & 1u ) ) {
 
 						regs [ 0 ] = call;
 						materialize ( 0, ins.address );
@@ -3414,6 +3434,8 @@ namespace decompiler {
 		}
 
 		prune ( );
+		fold_returns ( );
+		split_webs ( );
 
 		return true;
 

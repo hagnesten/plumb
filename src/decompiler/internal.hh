@@ -218,6 +218,14 @@ namespace decompiler {
 
 		void prune ( );
 
+		void fold_returns ( );
+
+		void split_webs ( );
+
+		void coalesce_copies ( );
+
+		base::list < base::text > call_names;
+
 		bool lift ( );
 
 	};
