@@ -652,6 +652,12 @@ struct plain_names : decompiler::namer {
 
 	}
 
+	bool virtual_notes ( ) override {
+
+		return owner->name_virtuals;
+
+	}
+
 	bool expand_ternary ( ) override {
 
 		const wchar_t* style = argument ( L"--ternary" );
