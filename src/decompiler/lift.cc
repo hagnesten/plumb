@@ -702,7 +702,7 @@ namespace decompiler {
 				count_reads ( *this, item.condition, reads );
 				count_reads ( *this, item.selector, reads );
 
-				if ( returns_value )
+				if ( returns_value || item.end == term::TAIL )
 					count_reads ( *this, item.returned, reads );
 
 			}
@@ -2936,7 +2936,41 @@ namespace decompiler {
 			if ( ins.name == mnemonic::ret && !b.float_return )
 				u &= ~( 1u << 16 );
 
-			if ( ins.name == mnemonic::call ) {
+			bool tail = false;
+
+			if ( ins.control == x86::flow::JUMP && b.long_mode && ins.count ) {
+
+				if ( ins.direct ( ) ) {
+
+					uint64_t target = ins.target ( );
+					int32_t here = b.db->function_at ( ins.address );
+
+					tail = b.db->function_starting ( target ) >= 0 && b.db->function_at ( target ) != here;
+
+				} else if ( ins.operands [ 0 ].type == x86::kind::MEM && ins.operands [ 0 ].rip_relative ( ) )
+					tail = true;
+
+			}
+
+			if ( tail ) {
+
+				int32_t count = call_arguments ( b, ins );
+				int32_t highest = -1;
+
+				for ( int32_t p = 0; p < 4; p++ ) {
+
+					if ( written & ( 1u << p ) )
+						highest = p;
+
+				}
+
+				if ( count >= 0 )
+					highest = base::min ( count, 4 ) - 1;
+
+				for ( int32_t p = 0; p <= highest; p++ )
+					u |= ( written & ( 1u << ( 4 + p ) ) ) ? ( 1u << ( 16 + p ) ) : ( 1u << gpr [ p ] );
+
+			} else if ( ins.name == mnemonic::call ) {
 
 				if ( cookie_check ( list, i ) ) {
 
