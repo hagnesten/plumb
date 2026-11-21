@@ -525,27 +525,15 @@ namespace ui {
 			float square = base::min ( pick_w - 26.0f, 170.0f );
 			math::rect field_area ( pick_x, top + 20.0f, square, square );
 			math::rect hue_area ( field_area.right ( ) + 10.0f, field_area.y, 16.0f, square );
-			int32_t cells = 17;
-			float cell = square / static_cast < float > ( cells );
+			c.gradient ( field_area, 0.0f, math::vec2 ( field_area.x, field_area.y ), math::vec2 ( field_area.right ( ), field_area.y ), render::rgb ( 0xFFFFFF ), render::rgb ( base::hsv_to_rgb ( colors_hue, 1.0f, 1.0f ) ) );
+			c.gradient ( field_area, 0.0f, math::vec2 ( field_area.x, field_area.y ), math::vec2 ( field_area.x, field_area.bottom ( ) ), render::rgb ( 0x000000, 0.0f ), render::rgb ( 0x000000 ) );
 
-			for ( int32_t sx = 0; sx < cells; sx++ ) {
+			for ( int32_t k = 0; k < 6; k++ ) {
 
-				for ( int32_t sy = 0; sy < cells; sy++ ) {
+				float segment = square / 6.0f;
+				float top_y = hue_area.y + static_cast < float > ( k ) * segment;
 
-					float s = static_cast < float > ( sx ) / static_cast < float > ( cells - 1 );
-					float v = 1.0f - static_cast < float > ( sy ) / static_cast < float > ( cells - 1 );
-
-					c.fill ( math::rect ( field_area.x + static_cast < float > ( sx ) * cell, field_area.y + static_cast < float > ( sy ) * cell, cell + 0.5f, cell + 0.5f ), 0.0f, render::rgb ( base::hsv_to_rgb ( colors_hue, s, v ) ) );
-
-				}
-
-			}
-
-			for ( int32_t k = 0; k < 36; k++ ) {
-
-				float segment = square / 36.0f;
-
-				c.fill ( math::rect ( hue_area.x, hue_area.y + static_cast < float > ( k ) * segment, hue_area.w, segment + 0.5f ), 0.0f, render::rgb ( base::hsv_to_rgb ( static_cast < float > ( k ) / 36.0f, 1.0f, 1.0f ) ) );
+				c.gradient ( math::rect ( hue_area.x, top_y, hue_area.w, segment + ( k < 5 ? 0.5f : 0.0f ) ), 0.0f, math::vec2 ( hue_area.x, top_y ), math::vec2 ( hue_area.x, top_y + segment ), render::rgb ( base::hsv_to_rgb ( static_cast < float > ( k ) / 6.0f, 1.0f, 1.0f ) ), render::rgb ( base::hsv_to_rgb ( static_cast < float > ( k + 1 ) / 6.0f, 1.0f, 1.0f ) ) );
 
 			}
 
