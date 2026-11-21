@@ -72,6 +72,7 @@ namespace decompiler {
 
 				}
 
+
 				if ( first < 0 )
 					first = 0;
 
@@ -265,8 +266,6 @@ namespace decompiler {
 				uses_in ( block.condition, reaching.data ( ), seen );
 				uses_in ( block.selector, reaching.data ( ), seen );
 				uses_in ( block.returned, reaching.data ( ), seen );
-				uses_in ( block.flag_a, reaching.data ( ), seen );
-				uses_in ( block.flag_b, reaching.data ( ), seen );
 
 			}
 
@@ -351,12 +350,82 @@ namespace decompiler {
 
 	};
 
+	static int32_t own_tree ( builder& b, int32_t e, base::list < uint8_t >& visited, int32_t limit, int32_t depth ) {
+
+		if ( e < 0 || e >= visited.count ( ) || depth > 64 )
+			return e;
+
+		if ( visited [ static_cast < size_t > ( e ) ] ) {
+
+			if ( b.exprs.count ( ) >= limit )
+				return e;
+
+			expr copy = b.exprs [ static_cast < size_t > ( e ) ];
+
+			b.exprs.push ( copy );
+			e = b.exprs.count ( ) - 1;
+			visited.push ( 1 );
+
+		} else
+			visited [ static_cast < size_t > ( e ) ] = 1;
+
+		expr node = b.exprs [ static_cast < size_t > ( e ) ];
+		int32_t a = own_tree ( b, node.a, visited, limit, depth + 1 );
+		int32_t c = own_tree ( b, node.b, visited, limit, depth + 1 );
+		int32_t third = own_tree ( b, node.c, visited, limit, depth + 1 );
+
+		if ( node.arg_count ) {
+
+			base::list < int32_t > list;
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				list.push ( own_tree ( b, b.args [ static_cast < size_t > ( node.first_arg + i ) ], visited, limit, depth + 1 ) );
+
+			node.first_arg = b.args.count ( );
+
+			for ( int32_t item : list )
+				b.args.push ( item );
+
+		}
+
+		node.a = a;
+		node.b = c;
+		node.c = third;
+		b.exprs [ static_cast < size_t > ( e ) ] = node;
+
+		return e;
+
+	}
+
 	void builder::split_webs ( ) {
 
 		for ( const statement& line : statements ) {
 
 			if ( line.kind == stmt::ASM )
 				return;
+
+		}
+
+		base::list < uint8_t > visited;
+		int32_t limit = exprs.count ( ) * 4 + 1024;
+
+		visited.fill ( exprs.size ( ), 0 );
+
+		for ( statement& line : statements ) {
+
+			if ( line.kind == stmt::NOP )
+				continue;
+
+			line.left = own_tree ( *this, line.left, visited, limit, 0 );
+			line.right = own_tree ( *this, line.right, visited, limit, 0 );
+
+		}
+
+		for ( block_code& block : code ) {
+
+			block.condition = own_tree ( *this, block.condition, visited, limit, 0 );
+			block.selector = own_tree ( *this, block.selector, visited, limit, 0 );
+			block.returned = own_tree ( *this, block.returned, visited, limit, 0 );
 
 		}
 
@@ -483,8 +552,6 @@ namespace decompiler {
 			note_use ( block.condition, 0 );
 			note_use ( block.selector, 0 );
 			note_use ( block.returned, returns_value && !returns_float && return_size && return_size <= 4 ? return_size : 0 );
-			note_use ( block.flag_a, 0 );
-			note_use ( block.flag_b, 0 );
 
 		}
 

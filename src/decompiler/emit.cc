@@ -3849,6 +3849,7 @@ namespace decompiler {
 		head.out.finish ( );
 		head.out.indent = 1;
 
+
 		int32_t declared = 0;
 		base::list < int32_t > shown_vars;
 		int64_t lowest = 0;
