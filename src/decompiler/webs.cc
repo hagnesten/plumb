@@ -376,6 +376,7 @@ namespace decompiler {
 		}
 
 		coalesce_copies ( );
+		substitute_known ( );
 		narrow_webs ( );
 
 	}

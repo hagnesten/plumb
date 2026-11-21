@@ -226,6 +226,8 @@ namespace decompiler {
 
 		void narrow_webs ( );
 
+		void substitute_known ( );
+
 		base::list < base::text > call_names;
 
 		bool lift ( );
