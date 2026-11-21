@@ -2265,6 +2265,17 @@ namespace decompiler {
 
 		}
 
+		bool silent_return ( int32_t block ) {
+
+			if ( block < 0 || block >= count )
+				return false;
+
+			const block_code& item = b.code [ static_cast < size_t > ( block ) ];
+
+			return item.end == term::RETURN && !b.returns_value && empty_block ( block ) && pred [ static_cast < size_t > ( block ) ].count ( ) == 1 && !emitted [ static_cast < size_t > ( block ) ];
+
+		}
+
 		int32_t branch ( int32_t block, int32_t stop, const frame& context, bool chained ) {
 
 			const block_code& item = b.code [ static_cast < size_t > ( block ) ];
@@ -2306,6 +2317,25 @@ namespace decompiler {
 
 			}
 
+			bool skip_else = false;
+
+			if ( follow < 0 && context.loop < 0 && silent_return ( then_part ) && !silent_return ( else_part ) && else_part >= 0 ) {
+
+				int32_t held = then_part;
+
+				then_part = else_part;
+				else_part = held;
+				negated = !negated;
+
+			}
+
+			if ( else_part != follow && follow < 0 && context.loop < 0 && silent_return ( else_part ) ) {
+
+				skip_else = true;
+				emitted [ static_cast < size_t > ( else_part ) ] = 1;
+
+			}
+
 			open_brace ( item.last, chained ? L"else if" : L"if", item.condition, negated );
 
 			ended = false;
@@ -2313,11 +2343,13 @@ namespace decompiler {
 			if ( !special ( then_part, -2, context, item.last ) )
 				region ( then_part, follow, context );
 
-			bool then_ends = ended && flatten_else;
+			bool then_ends = ( ended && flatten_else ) || skip_else;
 
 			out.indent--;
 
-			if ( else_part != follow && else_part >= 0 && then_ends ) {
+			if ( skip_else )
+				brace ( L"}" );
+			else if ( else_part != follow && else_part >= 0 && then_ends ) {
 
 				brace ( L"}" );
 
@@ -4024,7 +4056,7 @@ namespace decompiler {
 
 				for ( const block_code& item : b->code ) {
 
-					if ( item.reachable && item.end == term::TAIL && item.returned >= 0 )
+					if ( item.reachable && item.end == term::TAIL && item.returned >= 0 && !b->bare_return )
 						b->returns_value = true;
 
 				}

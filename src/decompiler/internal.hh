@@ -183,6 +183,7 @@ namespace decompiler {
 		base::list < base::text > var_structs;
 		uint8_t param_bits [ 16 ] = { };
 		bool returns_value = false;
+		bool bare_return = false;
 		bool returns_float = false;
 		uint8_t return_size = 0;
 		int32_t locals = 0;

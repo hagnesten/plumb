@@ -3433,6 +3433,9 @@ namespace decompiler {
 
 			block_code& item = code [ static_cast < size_t > ( i ) ];
 
+			if ( item.end == term::RETURN && item.returned < 0 && item.reachable )
+				bare_return = true;
+
 			if ( item.end != term::RETURN || item.returned < 0 )
 				continue;
 
@@ -3459,8 +3462,14 @@ namespace decompiler {
 
 			}
 
-			if ( !defined )
+			if ( !defined ) {
+
+				if ( item.reachable )
+					bare_return = true;
+
 				continue;
+
+			}
 
 			returns_value = true;
 			return_size = base::max ( return_size, exprs [ static_cast < size_t > ( item.returned ) ].size );
