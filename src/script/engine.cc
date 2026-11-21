@@ -78,6 +78,7 @@ namespace script {
 
 		made.type = kind::TEXT;
 		made.ref = index;
+		made.number = index;
 
 		return made;
 
@@ -90,6 +91,7 @@ namespace script {
 		lists.emplace ( );
 		made.type = kind::LIST;
 		made.ref = lists.count ( ) - 1;
+		made.number = made.ref;
 
 		return made;
 
@@ -253,6 +255,7 @@ namespace script {
 		functions.clear ( );
 		params.clear ( );
 		top_level.clear ( );
+		release_jit ( );
 		files.clear ( );
 		global_names.clear ( );
 		globals.clear ( );
@@ -293,16 +296,31 @@ namespace script {
 		globals.resize ( static_cast < size_t > ( global_names.count ( ) ) );
 		stack.clear ( );
 		stack.resize ( static_cast < size_t > ( top_slots ) );
+		jit_used = jit_enabled && compile ( );
 
-		for ( int32_t statement : top_level ) {
+		if ( jit_used ) {
 
-			execute ( statement );
+			reinterpret_cast < int32_t ( * ) ( engine* ) > ( jit_top ) ( this );
 
 			if ( error.set )
 				return false;
 
 			if ( stopped )
 				return true;
+
+		} else {
+
+			for ( int32_t statement : top_level ) {
+
+				execute ( statement );
+
+				if ( error.set )
+					return false;
+
+				if ( stopped )
+					return true;
+
+			}
 
 		}
 
@@ -614,7 +632,7 @@ namespace script {
 
 	}
 
-	static symbol compound_operator ( symbol mark ) {
+	symbol compound_operator ( symbol mark ) {
 
 		switch ( mark ) {
 
@@ -953,6 +971,7 @@ namespace script {
 			case node_kind::TEXT:
 				result.type = kind::TEXT;
 				result.ref = at.text;
+				result.number = at.text;
 				return result;
 
 			case node_kind::NOTHING:
@@ -1290,7 +1309,7 @@ namespace script {
 		depth++;
 		returned = value ( );
 
-		flow outcome = execute ( item.body );
+		flow outcome = jit_used && jit_entries [ static_cast < size_t > ( index ) ] ? static_cast < flow > ( reinterpret_cast < int32_t ( * ) ( engine* ) > ( jit_entries [ static_cast < size_t > ( index ) ] ) ( this ) ) : execute ( item.body );
 
 		depth--;
 		result = outcome == flow::RETURN && !error.set ? returned : value ( );

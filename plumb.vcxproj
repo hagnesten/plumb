@@ -90,6 +90,7 @@
     <ClCompile Include="src\ui\settings.cc" />
     <ClCompile Include="src\script\builtins.cc" />
     <ClCompile Include="src\script\engine.cc" />
+    <ClCompile Include="src\script\jit.cc" />
     <ClCompile Include="src\script\lexer.cc" />
     <ClCompile Include="src\script\parser.cc" />
     <ClCompile Include="src\script\resolver.cc" />
