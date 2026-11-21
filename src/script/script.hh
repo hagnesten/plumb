@@ -154,15 +154,16 @@ namespace script {
 		int32_t first_param = 0;
 		int32_t params = 0;
 		int32_t body = -1;
+		int32_t slots = 0;
 		int32_t line = 0;
 		int32_t file = 0;
 
 	};
 
-	struct binding {
+	struct scope_entry {
 
 		int32_t name = -1;
-		value item;
+		int32_t slot = 0;
 
 	};
 
@@ -267,6 +268,10 @@ namespace script {
 
 		int32_t parse_primary ( );
 
+		bool resolve ( );
+
+		bool resolve_node ( int32_t index, base::list < scope_entry >& scope, int32_t& next, int32_t& most, bool top );
+
 		bool runtime_error ( const node& at, const wchar_t* message );
 
 		enum class flow : uint8_t {
@@ -284,11 +289,11 @@ namespace script {
 
 		bool assign ( const node& target, value item );
 
-		value* lookup ( int32_t name );
+		value evaluate_call ( const node& at );
 
-		bool declare ( int32_t name, value item );
+		value call_function ( const node& at, const value* args, int32_t count );
 
-		value call_function ( const node& at, int32_t name, const value* args, int32_t count );
+		value call_user ( const node& at, int32_t index, const value* args, int32_t count );
 
 		bool builtin ( const node& at, const wchar_t* name, const value* args, int32_t count, value& result );
 
@@ -302,7 +307,13 @@ namespace script {
 
 		bool format ( const node& at, const value* args, int32_t count, base::list < wchar_t >& out );
 
-		bool tick ( const node& at );
+		bool overran ( const node& at );
+
+		bool tick ( const node& at ) {
+
+			return ++steps <= step_limit || overran ( at );
+
+		}
 
 		base::list < base::list < wchar_t > > texts;
 		base::list < base::list < value > > lists;
@@ -314,10 +325,11 @@ namespace script {
 		base::list < int32_t > params;
 		base::list < int32_t > top_level;
 		base::list < base::text > files;
-		base::list < binding > globals;
-		base::list < binding > locals;
+		base::list < int32_t > global_names;
+		base::list < value > globals;
+		base::list < value > stack;
+		int32_t top_slots = 0;
 		int32_t frame_base = 0;
-		int32_t scope_depth = 0;
 		int32_t loops = 0;
 		int32_t depth = 0;
 		int32_t position = 0;

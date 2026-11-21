@@ -92,6 +92,7 @@
     <ClCompile Include="src\script\engine.cc" />
     <ClCompile Include="src\script\lexer.cc" />
     <ClCompile Include="src\script\parser.cc" />
+    <ClCompile Include="src\script\resolver.cc" />
     <ClCompile Include="src\ui\scripting.cc" />
     <ClCompile Include="src\ui\shell\colors.cc" />
     <ClCompile Include="src\ui\shell\dialogs.cc" />

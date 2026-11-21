@@ -254,8 +254,9 @@ namespace script {
 		params.clear ( );
 		top_level.clear ( );
 		files.clear ( );
+		global_names.clear ( );
 		globals.clear ( );
-		locals.clear ( );
+		stack.clear ( );
 		error = problem ( );
 		position = 0;
 		text_chars = 0;
@@ -265,14 +266,11 @@ namespace script {
 		if ( !lex ( source, 0, 0 ) )
 			return false;
 
-		return parse_program ( );
+		return parse_program ( ) && resolve ( );
 
 	}
 
-	bool engine::tick ( const node& at ) {
-
-		if ( ++steps <= step_limit )
-			return true;
+	bool engine::overran ( const node& at ) {
 
 		base::writer message;
 
@@ -288,10 +286,13 @@ namespace script {
 		steps = 0;
 		stopped = false;
 		depth = 0;
+		loops = 0;
 		frame_base = 0;
-		locals.clear ( );
-		globals.clear ( );
 		in_function = false;
+		globals.clear ( );
+		globals.resize ( static_cast < size_t > ( global_names.count ( ) ) );
+		stack.clear ( );
+		stack.resize ( static_cast < size_t > ( top_slots ) );
 
 		for ( int32_t statement : top_level ) {
 
@@ -305,7 +306,9 @@ namespace script {
 
 		}
 
-		for ( const function_def& item : functions ) {
+		for ( int32_t i = 0; i < functions.count ( ); i++ ) {
+
+			const function_def& item = functions [ static_cast < size_t > ( i ) ];
 
 			if ( !base::same_text ( texts [ static_cast < size_t > ( item.name ) ].data ( ), L"main" ) )
 				continue;
@@ -314,67 +317,13 @@ namespace script {
 
 			at.line = item.line;
 			at.file = item.file;
-			call_function ( at, item.name, nullptr, 0 );
+			call_user ( at, i, nullptr, 0 );
 
 			break;
 
 		}
 
 		return !error.set;
-
-	}
-
-	value* engine::lookup ( int32_t name ) {
-
-		for ( int32_t i = locals.count ( ) - 1; i >= frame_base; i-- ) {
-
-			if ( locals [ static_cast < size_t > ( i ) ].name == name )
-				return &locals [ static_cast < size_t > ( i ) ].item;
-
-		}
-
-		for ( binding& item : globals ) {
-
-			if ( item.name == name )
-				return &item.item;
-
-		}
-
-		return nullptr;
-
-	}
-
-	bool engine::declare ( int32_t name, value item ) {
-
-		if ( !in_function && locals.count ( ) == frame_base && scope_depth == 0 ) {
-
-			for ( binding& known : globals ) {
-
-				if ( known.name == name ) {
-
-					known.item = item;
-
-					return true;
-
-				}
-
-			}
-
-			binding& made = globals.emplace ( );
-
-			made.name = name;
-			made.item = item;
-
-			return true;
-
-		}
-
-		binding& made = locals.emplace ( );
-
-		made.name = name;
-		made.item = item;
-
-		return true;
 
 	}
 
@@ -603,6 +552,68 @@ namespace script {
 
 	}
 
+	static inline bool fast_arithmetic ( symbol mark, int64_t x, int64_t y, int64_t& out ) {
+
+		uint64_t ux = static_cast < uint64_t > ( x );
+		uint64_t uy = static_cast < uint64_t > ( y );
+
+		switch ( mark ) {
+
+			case symbol::PLUS:
+				out = static_cast < int64_t > ( ux + uy );
+				return true;
+
+			case symbol::MINUS:
+				out = static_cast < int64_t > ( ux - uy );
+				return true;
+
+			case symbol::STAR:
+				out = static_cast < int64_t > ( ux * uy );
+				return true;
+
+			case symbol::AMPERSAND:
+				out = x & y;
+				return true;
+
+			case symbol::PIPE:
+				out = x | y;
+				return true;
+
+			case symbol::CARET:
+				out = x ^ y;
+				return true;
+
+			case symbol::LESS:
+				out = x < y;
+				return true;
+
+			case symbol::LESS_EQUAL:
+				out = x <= y;
+				return true;
+
+			case symbol::GREATER:
+				out = x > y;
+				return true;
+
+			case symbol::GREATER_EQUAL:
+				out = x >= y;
+				return true;
+
+			case symbol::EQUAL_EQUAL:
+				out = x == y;
+				return true;
+
+			case symbol::BANG_EQUAL:
+				out = x != y;
+				return true;
+
+			default:
+				return false;
+
+		}
+
+	}
+
 	static symbol compound_operator ( symbol mark ) {
 
 		switch ( mark ) {
@@ -648,19 +659,10 @@ namespace script {
 
 		if ( target.type == node_kind::NAME ) {
 
-			value* slot = lookup ( target.text );
-
-			if ( !slot ) {
-
-				base::writer message;
-
-				message.add ( L"'" ).add ( texts [ static_cast < size_t > ( target.text ) ].data ( ) ).add ( L"' isn't declared. Declare it with var first." );
-
-				return runtime_error ( target, message.text ( ) );
-
-			}
-
-			*slot = item;
+			if ( target.b == 1 )
+				globals [ static_cast < size_t > ( target.c ) ] = item;
+			else
+				stack [ static_cast < size_t > ( frame_base + target.c ) ] = item;
 
 			return true;
 
@@ -699,7 +701,7 @@ namespace script {
 
 	engine::flow engine::execute ( int32_t index ) {
 
-		const node at = nodes [ static_cast < size_t > ( index ) ];
+		const node& at = nodes [ static_cast < size_t > ( index ) ];
 
 		if ( !tick ( at ) || error.set || stopped )
 			return flow::RETURN;
@@ -708,31 +710,14 @@ namespace script {
 
 			case node_kind::BLOCK: {
 
-				int32_t mark = locals.count ( );
-
-				scope_depth++;
-
 				for ( int32_t i = 0; i < at.count; i++ ) {
 
 					flow result = execute ( items [ static_cast < size_t > ( at.first + i ) ] );
 
-					if ( result != flow::NEXT ) {
-
-						scope_depth--;
-
-						while ( locals.count ( ) > mark )
-							locals.pop ( );
-
+					if ( result != flow::NEXT )
 						return result;
 
-					}
-
 				}
-
-				scope_depth--;
-
-				while ( locals.count ( ) > mark )
-					locals.pop ( );
 
 				return flow::NEXT;
 
@@ -742,7 +727,7 @@ namespace script {
 
 				for ( int32_t i = 0; i < at.count; i++ ) {
 
-					const node item = nodes [ static_cast < size_t > ( items [ static_cast < size_t > ( at.first + i ) ] ) ];
+					const node& item = nodes [ static_cast < size_t > ( items [ static_cast < size_t > ( at.first + i ) ] ) ];
 					value start;
 
 					if ( item.a >= 0 ) {
@@ -754,7 +739,7 @@ namespace script {
 
 					}
 
-					declare ( item.text, start );
+					assign ( item, start );
 
 				}
 
@@ -851,10 +836,8 @@ namespace script {
 
 			case node_kind::FOR: {
 
-				int32_t mark = locals.count ( );
 				flow outcome = flow::NEXT;
 
-				scope_depth++;
 				loops++;
 
 				if ( at.a >= 0 && execute ( at.a ) == flow::RETURN )
@@ -909,10 +892,6 @@ namespace script {
 				}
 
 				loops--;
-				scope_depth--;
-
-				while ( locals.count ( ) > mark )
-					locals.pop ( );
 
 				return outcome;
 
@@ -958,7 +937,7 @@ namespace script {
 
 	value engine::evaluate ( int32_t index ) {
 
-		const node at = nodes [ static_cast < size_t > ( index ) ];
+		const node& at = nodes [ static_cast < size_t > ( index ) ];
 		value result;
 
 		if ( !tick ( at ) )
@@ -979,25 +958,8 @@ namespace script {
 			case node_kind::NOTHING:
 				return result;
 
-			case node_kind::NAME: {
-
-				value* slot = lookup ( at.text );
-
-				if ( slot )
-					return *slot;
-
-				base::writer message;
-				bool function = false;
-
-				for ( const function_def& item : functions )
-					function = function || item.name == at.text;
-
-				message.add ( L"'" ).add ( texts [ static_cast < size_t > ( at.text ) ].data ( ) ).add ( function ? L"' is a function. Call it with ()." : L"' isn't defined." );
-				runtime_error ( at, message.text ( ) );
-
-				return result;
-
-			}
+			case node_kind::NAME:
+				return at.b == 1 ? globals [ static_cast < size_t > ( at.c ) ] : stack [ static_cast < size_t > ( frame_base + at.c ) ];
 
 			case node_kind::LIST: {
 
@@ -1064,24 +1026,8 @@ namespace script {
 
 			}
 
-			case node_kind::CALL: {
-
-				base::list < value > args;
-
-				for ( int32_t i = 0; i < at.count; i++ ) {
-
-					value item = evaluate ( items [ static_cast < size_t > ( at.first + i ) ] );
-
-					if ( error.set )
-						return result;
-
-					args.push ( item );
-
-				}
-
-				return call_function ( at, at.text, args.data ( ), args.count ( ) );
-
-			}
+			case node_kind::CALL:
+				return evaluate_call ( at );
 
 			case node_kind::UNARY: {
 
@@ -1125,6 +1071,14 @@ namespace script {
 
 				if ( error.set )
 					return result;
+
+				if ( left.type == kind::NUMBER && right.type == kind::NUMBER && fast_arithmetic ( at.mark, left.number, right.number, result.number ) ) {
+
+					result.type = kind::NUMBER;
+
+					return result;
+
+				}
 
 				return binary_op ( at, at.mark, left, right );
 
@@ -1174,11 +1128,28 @@ namespace script {
 
 			case node_kind::ASSIGN: {
 
-				const node target = nodes [ static_cast < size_t > ( at.a ) ];
+				const node& target = nodes [ static_cast < size_t > ( at.a ) ];
 				value right = evaluate ( at.b );
 
 				if ( error.set )
 					return result;
+
+				if ( target.type == node_kind::NAME ) {
+
+					value& slot = target.b == 1 ? globals [ static_cast < size_t > ( target.c ) ] : stack [ static_cast < size_t > ( frame_base + target.c ) ];
+
+					if ( at.mark == symbol::ASSIGN ) {
+
+						slot = right;
+
+						return right;
+
+					}
+
+					if ( slot.type == kind::NUMBER && right.type == kind::NUMBER && fast_arithmetic ( compound_operator ( at.mark ), slot.number, right.number, slot.number ) )
+						return slot;
+
+				}
 
 				if ( at.mark != symbol::ASSIGN ) {
 
@@ -1203,7 +1174,24 @@ namespace script {
 			case node_kind::PREFIX:
 			case node_kind::POSTFIX: {
 
-				const node target = nodes [ static_cast < size_t > ( at.a ) ];
+				const node& target = nodes [ static_cast < size_t > ( at.a ) ];
+
+				if ( target.type == node_kind::NAME ) {
+
+					value& slot = target.b == 1 ? globals [ static_cast < size_t > ( target.c ) ] : stack [ static_cast < size_t > ( frame_base + target.c ) ];
+
+					if ( slot.type == kind::NUMBER ) {
+
+						value before = slot;
+
+						slot.number = static_cast < int64_t > ( static_cast < uint64_t > ( slot.number ) + ( at.mark == symbol::PLUS_PLUS ? 1ull : ~0ull ) );
+
+						return at.type == node_kind::PREFIX ? slot : before;
+
+					}
+
+				}
+
 				value old = evaluate ( at.a );
 
 				if ( error.set )
@@ -1233,75 +1221,93 @@ namespace script {
 
 	}
 
-	value engine::call_function ( const node& at, int32_t name, const value* args, int32_t count ) {
+	value engine::evaluate_call ( const node& at ) {
+
+		value inline_args [ 8 ];
+		base::list < value > spilled;
+		value* args = inline_args;
+
+		if ( at.count > 8 ) {
+
+			spilled.resize ( static_cast < size_t > ( at.count ) );
+			args = spilled.data ( );
+
+		}
+
+		for ( int32_t i = 0; i < at.count; i++ ) {
+
+			args [ i ] = evaluate ( items [ static_cast < size_t > ( at.first + i ) ] );
+
+			if ( error.set )
+				return value ( );
+
+		}
+
+		if ( at.b == 0 )
+			return call_user ( at, at.c, args, at.count );
+
+		return call_function ( at, args, at.count );
+
+	}
+
+	value engine::call_user ( const node& at, int32_t index, const value* args, int32_t count ) {
 
 		value result;
+		const function_def& item = functions [ static_cast < size_t > ( index ) ];
 
-		for ( const function_def& item : functions ) {
+		if ( count > item.params ) {
 
-			if ( item.name != name )
-				continue;
+			base::writer message;
 
-			if ( count > item.params ) {
-
-				base::writer message;
-
-				message.add ( L"'" ).add ( texts [ static_cast < size_t > ( name ) ].data ( ) ).add ( L"' takes " ).number ( item.params ).add ( item.params == 1 ? L" argument, not " : L" arguments, not " ).number ( count ).add ( L"." );
-				runtime_error ( at, message.text ( ) );
-
-				return result;
-
-			}
-
-			if ( depth >= 200 ) {
-
-				runtime_error ( at, L"Functions are nested more than 200 calls deep." );
-
-				return result;
-
-			}
-
-			int32_t saved_base = frame_base;
-			int32_t saved_scope = scope_depth;
-			int32_t saved_loops = loops;
-			bool saved_function = in_function;
-
-			frame_base = locals.count ( );
-			scope_depth = 0;
-			loops = 0;
-			in_function = true;
-
-			for ( int32_t i = 0; i < item.params; i++ ) {
-
-				binding& made = locals.emplace ( );
-
-				made.name = params [ static_cast < size_t > ( item.first_param + i ) ];
-				made.item = i < count ? args [ i ] : value ( );
-
-			}
-
-			depth++;
-			returned = value ( );
-
-			flow outcome = execute ( item.body );
-
-			depth--;
-			result = outcome == flow::RETURN && !error.set ? returned : value ( );
-			returned = value ( );
-
-			while ( locals.count ( ) > frame_base )
-				locals.pop ( );
-
-			frame_base = saved_base;
-			scope_depth = saved_scope;
-			loops = saved_loops;
-			in_function = saved_function;
+			message.add ( L"'" ).add ( texts [ static_cast < size_t > ( item.name ) ].data ( ) ).add ( L"' takes " ).number ( item.params ).add ( item.params == 1 ? L" argument, not " : L" arguments, not " ).number ( count ).add ( L"." );
+			runtime_error ( at, message.text ( ) );
 
 			return result;
 
 		}
 
-		const wchar_t* label = texts [ static_cast < size_t > ( name ) ].data ( );
+		if ( depth >= 200 ) {
+
+			runtime_error ( at, L"Functions are nested more than 200 calls deep." );
+
+			return result;
+
+		}
+
+		int32_t saved_base = frame_base;
+		int32_t saved_loops = loops;
+		bool saved_function = in_function;
+		int32_t base_index = stack.count ( );
+
+		stack.resize ( static_cast < size_t > ( base_index + item.slots ) );
+
+		for ( int32_t i = 0; i < count; i++ )
+			stack [ static_cast < size_t > ( base_index + i ) ] = args [ i ];
+
+		frame_base = base_index;
+		loops = 0;
+		in_function = true;
+		depth++;
+		returned = value ( );
+
+		flow outcome = execute ( item.body );
+
+		depth--;
+		result = outcome == flow::RETURN && !error.set ? returned : value ( );
+		returned = value ( );
+		stack.resize ( static_cast < size_t > ( base_index ) );
+		frame_base = saved_base;
+		loops = saved_loops;
+		in_function = saved_function;
+
+		return result;
+
+	}
+
+	value engine::call_function ( const node& at, const value* args, int32_t count ) {
+
+		value result;
+		const wchar_t* label = texts [ static_cast < size_t > ( at.text ) ].data ( );
 
 		if ( builtin ( at, label, args, count, result ) ) {
 
