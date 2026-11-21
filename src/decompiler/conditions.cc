@@ -416,6 +416,8 @@ namespace decompiler {
 
 		}
 
+		reindex_edges ( );
+
 	}
 
 }

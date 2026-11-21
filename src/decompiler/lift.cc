@@ -3725,10 +3725,39 @@ namespace decompiler {
 			out_block.reachable = true;
 
 			bool pushing = index == 0;
+			int32_t table_at = -1;
+			uint8_t table_reg = 0;
+			int32_t table_selector = -1;
+
+			if ( !list.empty ( ) && list.back ( ).control == x86::flow::JUMP && graph.table >= 0 && item.out_count > 1 ) {
+
+				for ( int32_t i = list.count ( ) - 1; i >= 0 && table_at < 0; i-- ) {
+
+					const x86::instruction& ins = list [ static_cast < size_t > ( i ) ];
+
+					for ( int32_t o = 0; o < ins.count; o++ ) {
+
+						if ( ins.operands [ o ].type == x86::kind::MEM && ins.operands [ o ].index != x86::NONE && ( ins.operands [ o ].size == 1 || ins.operands [ o ].scale >= 4 ) ) {
+
+							table_at = i;
+							table_reg = x86::resize_register ( ins.operands [ o ].index, 4 );
+
+							break;
+
+						}
+
+					}
+
+				}
+
+			}
 
 			for ( int32_t i = 0; i < list.count ( ); i++ ) {
 
 				const x86::instruction& ins = list [ static_cast < size_t > ( i ) ];
+
+				if ( i == table_at )
+					table_selector = state.read_reg ( table_reg );
 
 				if ( pushing && ins.name == mnemonic::push && ins.count && ins.operands [ 0 ].type == x86::kind::REG )
 					pushed += long_mode ? 8 : 4;
@@ -3867,28 +3896,7 @@ namespace decompiler {
 
 				out_block.end = term::SWITCH;
 
-				const analysis::jump_table& table = db->tables [ static_cast < size_t > ( graph.table ) ];
-				int32_t selector = -1;
-
-				for ( int32_t i = list.count ( ) - 1; i >= 0 && selector < 0; i-- ) {
-
-					const x86::instruction& ins = list [ static_cast < size_t > ( i ) ];
-
-					for ( int32_t o = 0; o < ins.count; o++ ) {
-
-						if ( ins.operands [ o ].type == x86::kind::MEM && ins.operands [ o ].index != x86::NONE && ( ins.operands [ o ].size == 1 || ins.operands [ o ].scale >= 4 ) ) {
-
-							selector = state.read_reg ( x86::resize_register ( ins.operands [ o ].index, 4 ) );
-
-							break;
-
-						}
-
-					}
-
-				}
-
-				( void ) table;
+				int32_t selector = table_selector;
 				out_block.selector = selector >= 0 ? selector : make ( op::INTRINSIC, 4, -1, -1, I_FLAGS );
 
 			} else if ( last && last->control == x86::flow::JUMP && item.out_count == 0 ) {

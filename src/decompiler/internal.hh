@@ -233,6 +233,8 @@ namespace decompiler {
 
 		void fold_returns ( );
 
+		void reindex_edges ( );
+
 		void merge_conditions ( );
 
 		void sink_into_tests ( );

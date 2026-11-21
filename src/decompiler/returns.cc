@@ -2,6 +2,37 @@
 
 namespace decompiler {
 
+	void builder::reindex_edges ( ) {
+
+		int32_t total = graph.blocks.count ( );
+		base::list < analysis::edge > sorted;
+
+		for ( analysis::block& item : graph.blocks ) {
+
+			item.first_out = 0;
+			item.out_count = 0;
+
+		}
+
+		for ( int32_t from = 0; from < total; from++ ) {
+
+			graph.blocks [ static_cast < size_t > ( from ) ].first_out = sorted.count ( );
+
+			for ( const analysis::edge& link : graph.edges ) {
+
+				if ( link.from == from )
+					sorted.push ( link );
+
+			}
+
+			graph.blocks [ static_cast < size_t > ( from ) ].out_count = sorted.count ( ) - graph.blocks [ static_cast < size_t > ( from ) ].first_out;
+
+		}
+
+		graph.edges = sorted;
+
+	}
+
 	void builder::fold_returns ( ) {
 
 		int32_t total = code.count ( );
@@ -108,6 +139,8 @@ namespace decompiler {
 
 		if ( total != graph.blocks.count ( ) || total <= 0 )
 			return;
+
+		reindex_edges ( );
 
 		base::list < uint8_t > seen;
 		base::list < int32_t > work;
