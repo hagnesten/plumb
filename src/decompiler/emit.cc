@@ -8,6 +8,7 @@ namespace decompiler {
 		bool open = false;
 		bool terminal = false;
 		bool spaced = false;
+		bool header = false;
 		namer* names = nullptr;
 		uint64_t commented = 0;
 		int32_t indent = 0;
@@ -91,10 +92,207 @@ namespace decompiler {
 
 		}
 
+		void wrap ( ) {
+
+			int32_t start = current.text;
+			int32_t length = r->text.count ( ) - start;
+
+			if ( spaced || length < 4 )
+				return;
+
+			const wchar_t* text = r->text.data ( ) + start;
+			int32_t width = current.indent * 2 + length;
+
+			for ( int32_t i = 0; i + 2 < length; i++ ) {
+
+				bool edge = i == 0 || !( ( text [ i - 1 ] >= L'a' && text [ i - 1 ] <= L'z' ) || ( text [ i - 1 ] >= L'A' && text [ i - 1 ] <= L'Z' ) || ( text [ i - 1 ] >= L'0' && text [ i - 1 ] <= L'9' ) || text [ i - 1 ] == L'_' );
+
+				if ( !edge )
+					continue;
+
+				if ( text [ i ] == L'g' && text [ i + 1 ] == L'_' )
+					width += 4;
+				else if ( text [ i ] == L'f' && text [ i + 1 ] == L'n' && text [ i + 2 ] == L'_' )
+					width += 1;
+
+			}
+
+			if ( width < ( header ? 121 : 120 ) )
+				return;
+
+			int32_t close = header ? length - 1 : length - 2;
+
+			if ( text [ close ] != L')' || ( !header && text [ length - 1 ] != L';' ) )
+				return;
+
+			int32_t open_at = -1;
+			int32_t level = 0;
+			bool quoted = false;
+
+			for ( int32_t i = close; i >= 0; i-- ) {
+
+				wchar_t c = text [ i ];
+
+				if ( c == L'"' && ( i == 0 || text [ i - 1 ] != L'\\' ) )
+					quoted = !quoted;
+
+				if ( quoted )
+					continue;
+
+				if ( c == L')' )
+					level++;
+				else if ( c == L'(' && --level == 0 ) {
+
+					open_at = i;
+
+					break;
+
+				}
+
+			}
+
+			if ( open_at <= 0 )
+				return;
+
+			wchar_t before = text [ open_at - 1 ];
+
+			if ( !( ( before >= L'a' && before <= L'z' ) || ( before >= L'A' && before <= L'Z' ) || ( before >= L'0' && before <= L'9' ) || before == L'_' ) )
+				return;
+
+			int32_t name_at = open_at - 1;
+
+			while ( name_at > 0 ) {
+
+				wchar_t c = text [ name_at - 1 ];
+
+				if ( ( c >= L'a' && c <= L'z' ) || ( c >= L'A' && c <= L'Z' ) || ( c >= L'0' && c <= L'9' ) || c == L'_' || c == L':' )
+					name_at--;
+				else
+					break;
+
+			}
+
+			if ( name_at > 0 && text [ name_at - 1 ] != L' ' )
+				return;
+
+			if ( name_at >= 2 && text [ name_at - 2 ] == L'=' && name_at >= 3 && text [ name_at - 3 ] == L'=' )
+				return;
+
+			base::list < int32_t > cuts;
+
+			level = 0;
+			quoted = false;
+
+			for ( int32_t i = open_at + 1; i < close; i++ ) {
+
+				wchar_t c = text [ i ];
+
+				if ( c == L'"' && text [ i - 1 ] != L'\\' )
+					quoted = !quoted;
+
+				if ( quoted )
+					continue;
+
+				if ( c == L'(' || c == L'[' )
+					level++;
+				else if ( c == L')' || c == L']' )
+					level--;
+				else if ( c == L',' && level == 0 && text [ i + 1 ] == L' ' )
+					cuts.push ( i );
+
+			}
+
+			if ( cuts.count ( ) == 0 && open_at + 1 >= close )
+				return;
+
+			int32_t column = header ? 8 : name_at + 2;
+			base::list < wchar_t > copy;
+
+			for ( int32_t i = 0; i < length; i++ )
+				copy.push ( text [ i ] );
+
+			base::list < int32_t > moved;
+
+			moved.fill ( static_cast < size_t > ( length + 1 ), 0 );
+
+			while ( r->text.count ( ) > start )
+				r->text.pop ( );
+
+			base::list < int32_t > breaks;
+			int32_t cut = 0;
+
+			for ( int32_t i = 0; i < length; i++ ) {
+
+				moved [ static_cast < size_t > ( i ) ] = r->text.count ( ) - start;
+				r->text.push ( copy [ static_cast < size_t > ( i ) ] );
+
+				bool split = i == open_at || ( cut < cuts.count ( ) && i == cuts [ static_cast < size_t > ( cut ) ] );
+
+				if ( !split )
+					continue;
+
+				if ( i != open_at ) {
+
+					cut++;
+					i++;
+					moved [ static_cast < size_t > ( i ) ] = r->text.count ( ) - start;
+
+				}
+
+				breaks.push ( r->text.count ( ) - start );
+
+				for ( int32_t k = 0; k < column; k++ )
+					r->text.push ( L' ' );
+
+			}
+
+			moved [ static_cast < size_t > ( length ) ] = r->text.count ( ) - start;
+
+			for ( int32_t s = current.first_span; s < r->spans.count ( ); s++ ) {
+
+				span& item = r->spans [ static_cast < size_t > ( s ) ];
+				int32_t from = item.start - start;
+				int32_t to = from + item.length;
+
+				if ( from < 0 || to > length || to <= from )
+					continue;
+
+				item.start = start + moved [ static_cast < size_t > ( from ) ];
+				item.length = moved [ static_cast < size_t > ( to - 1 ) ] + 1 - moved [ static_cast < size_t > ( from ) ];
+
+			}
+
+			int32_t from = 0;
+			int32_t span_at = current.first_span;
+
+			for ( int32_t edge : breaks ) {
+
+				line piece = current;
+
+				piece.text = start + from;
+				piece.length = edge - from;
+				piece.first_span = span_at;
+
+				while ( span_at < r->spans.count ( ) && r->spans [ static_cast < size_t > ( span_at ) ].start < start + edge )
+					span_at++;
+
+				piece.span_count = span_at - piece.first_span;
+				r->lines.push ( piece );
+				from = edge;
+
+			}
+
+			current.text = start + from;
+			current.first_span = span_at;
+
+		}
+
 		void finish ( ) {
 
 			if ( !open )
 				return;
+
+			wrap ( );
 
 			if ( slot_note >= 0 ) {
 
@@ -902,7 +1100,7 @@ namespace decompiler {
 
 			}
 
-			if ( b.names->name ( address, true, text, 200 ) ) {
+			if ( address != b.file->base && b.names->name ( address, true, text, 200 ) ) {
 
 				bool code = b.db->function_starting ( address ) >= 0;
 
@@ -918,6 +1116,15 @@ namespace decompiler {
 					out.put ( text, syntax::GLOBAL, address );
 
 				}
+
+				return;
+
+			}
+
+			if ( address != b.file->base && b.names->name ( address, false, text, 200 ) ) {
+
+				out.put ( L"&" );
+				out.put ( text, syntax::GLOBAL, address );
 
 				return;
 
@@ -3934,7 +4141,9 @@ namespace decompiler {
 		}
 
 		head.out.put ( L")" );
+		head.out.header = true;
 		head.out.finish ( );
+		head.out.header = false;
 		head.out.begin ( b.function );
 		head.out.put ( L"{" );
 		head.out.finish ( );
