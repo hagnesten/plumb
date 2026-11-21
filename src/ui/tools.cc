@@ -170,7 +170,35 @@ namespace ui {
 
 	const wchar_t* app::prototype_for ( uint64_t function ) const {
 
-		return prototypes.empty ( ) ? nullptr : user_text ( prototypes, function );
+		const wchar_t* declared = prototypes.empty ( ) ? nullptr : user_text ( prototypes, function );
+
+		if ( declared && declared [ 0 ] )
+			return declared;
+
+		int32_t import = -1;
+
+		for ( int32_t i = 0; i < file.imports.count ( ) && import < 0; i++ ) {
+
+			if ( file.imports [ static_cast < size_t > ( i ) ].slot == function )
+				import = i;
+
+		}
+
+		if ( import < 0 && db && analysis_applied ) {
+
+			int32_t owner = db->function_starting ( function );
+
+			if ( owner >= 0 && ( db->functions [ static_cast < size_t > ( owner ) ].flags & analysis::THUNK ) )
+				import = db->functions [ static_cast < size_t > ( owner ) ].import;
+
+		}
+
+		if ( import < 0 || import >= file.imports.count ( ) )
+			return nullptr;
+
+		const loader::import& item = file.imports [ static_cast < size_t > ( import ) ];
+
+		return item.name.empty ( ) ? nullptr : decompiler::api_prototype ( item.name.get ( ) );
 
 	}
 

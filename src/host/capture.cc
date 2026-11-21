@@ -668,6 +668,12 @@ struct plain_names : decompiler::namer {
 
 	}
 
+	const wchar_t* prototype ( uint64_t function ) override {
+
+		return owner->prototype_for ( function );
+
+	}
+
 	bool virtual_notes ( ) override {
 
 		return owner->name_virtuals;

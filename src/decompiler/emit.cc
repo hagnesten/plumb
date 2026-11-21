@@ -2996,6 +2996,165 @@ namespace decompiler {
 
 	}
 
+	static bool pointee_of ( const wchar_t* type, wchar_t* out, int32_t room ) {
+
+		static const wchar_t* const pairs [ ] [ 2 ] = {
+			{ L"LPDWORD", L"DWORD" }, { L"PDWORD", L"DWORD" }, { L"LPWORD", L"WORD" }, { L"PWORD", L"WORD" }, { L"LPLONG", L"LONG" }, { L"PLONG", L"LONG" },
+			{ L"PULONG", L"ULONG" }, { L"PUINT", L"UINT" }, { L"LPBOOL", L"BOOL" }, { L"PBOOL", L"BOOL" }, { L"PSIZE_T", L"SIZE_T" }, { L"PULONG_PTR", L"ULONG_PTR" },
+			{ L"PDWORD_PTR", L"DWORD_PTR" }, { L"PDWORD64", L"DWORD64" }, { L"LPHANDLE", L"HANDLE" }, { L"PHANDLE", L"HANDLE" }, { L"PHKEY", L"HKEY" },
+			{ L"PLARGE_INTEGER", L"LARGE_INTEGER" }, { L"PULARGE_INTEGER", L"ULARGE_INTEGER" }, { L"LPFILETIME", L"FILETIME" }, { L"PFILETIME", L"FILETIME" },
+			{ L"PLUID", L"LUID" }, { L"PREGHANDLE", L"REGHANDLE" },
+		};
+
+		for ( const auto& pair : pairs ) {
+
+			if ( base::same_text ( pair [ 0 ], type ) ) {
+
+				int32_t k = 0;
+
+				for ( ; pair [ 1 ] [ k ] && k < room - 1; k++ )
+					out [ k ] = pair [ 1 ] [ k ];
+
+				out [ k ] = 0;
+
+				return true;
+
+			}
+
+		}
+
+		int32_t length = 0;
+
+		while ( type [ length ] )
+			length++;
+
+		while ( length && type [ length - 1 ] == L' ' )
+			length--;
+
+		if ( !length || type [ length - 1 ] != L'*' )
+			return false;
+
+		length--;
+
+		while ( length && type [ length - 1 ] == L' ' )
+			length--;
+
+		if ( !length || type [ length - 1 ] == L'*' || length >= room )
+			return false;
+
+		int32_t start = 0;
+
+		if ( length > 6 && type [ 0 ] == L'c' && type [ 1 ] == L'o' && type [ 2 ] == L'n' && type [ 3 ] == L's' && type [ 4 ] == L't' && type [ 5 ] == L' ' )
+			start = 6;
+
+		int32_t k = 0;
+
+		for ( int32_t i = start; i < length; i++ )
+			out [ k++ ] = type [ i ];
+
+		out [ k ] = 0;
+
+		return k > 0 && !base::same_text ( out, L"void" );
+
+	}
+
+	static void infer_call_types ( builder& b, base::list < base::text >& out ) {
+
+		out.clear ( );
+		out.resize ( b.vars.size ( ) );
+
+		if ( !b.names )
+			return;
+
+		uint64_t cached_target = 0;
+		bool cached_ok = false;
+		c_prototype* shape = new c_prototype ( );
+
+		auto load = [ & ] ( uint64_t target ) {
+
+			if ( target == cached_target )
+				return cached_ok;
+
+			cached_target = target;
+			cached_ok = false;
+
+			const wchar_t* declared = target ? b.names->prototype ( target ) : nullptr;
+			base::writer problem;
+
+			if ( declared && parse_prototype ( declared, b.long_mode, *shape, problem ) )
+				cached_ok = true;
+
+			return cached_ok;
+
+		};
+
+		auto offer = [ & ] ( int32_t v, const wchar_t* type ) {
+
+			if ( v < 0 || v >= b.vars.count ( ) || !type || !type [ 0 ] || !out [ static_cast < size_t > ( v ) ].empty ( ) )
+				return;
+
+			c_type parsed;
+			wchar_t clean [ 64 ];
+
+			if ( !parse_type ( type, b.long_mode, parsed, clean, 64 ) || parsed.empty || !parsed.size )
+				return;
+
+			if ( parsed.size != b.vars [ static_cast < size_t > ( v ) ].size )
+				return;
+
+			out [ static_cast < size_t > ( v ) ].set ( clean );
+
+		};
+
+		for ( const statement& item : b.statements ) {
+
+			if ( item.kind != stmt::ASSIGN || item.left < 0 || item.right < 0 )
+				continue;
+
+			const expr& left = b.exprs [ static_cast < size_t > ( item.left ) ];
+			const expr& right = b.exprs [ static_cast < size_t > ( item.right ) ];
+
+			if ( left.kind != op::VAR || right.kind != op::CALL || !load ( static_cast < uint64_t > ( right.value ) ) )
+				continue;
+
+			if ( !shape->result_type.empty )
+				offer ( static_cast < int32_t > ( left.value ), shape->result );
+
+		}
+
+		for ( const expr& item : b.exprs ) {
+
+			if ( item.kind != op::CALL || !item.value || !load ( static_cast < uint64_t > ( item.value ) ) )
+				continue;
+
+			for ( int32_t i = 0; i < item.arg_count && i < shape->count; i++ ) {
+
+				int32_t index = b.args [ static_cast < size_t > ( item.first_arg + i ) ];
+
+				if ( index < 0 )
+					continue;
+
+				const expr& passed = b.exprs [ static_cast < size_t > ( index ) ];
+
+				if ( passed.kind == op::VAR )
+					offer ( static_cast < int32_t > ( passed.value ), shape->types [ i ] );
+				else if ( passed.kind == op::ADDRESS && passed.a < 0 ) {
+
+					wchar_t inner [ 64 ];
+
+					if ( pointee_of ( shape->types [ i ], inner, 64 ) )
+						offer ( static_cast < int32_t > ( passed.value ), inner );
+
+				}
+
+			}
+
+		}
+
+		delete shape;
+
+	}
+
 	bool emit ( builder& b ) {
 
 		emitter body_emitter ( b );
@@ -3045,6 +3204,10 @@ namespace decompiler {
 		b.var_types.resize ( b.vars.size ( ) );
 		b.var_structs.resize ( b.vars.size ( ) );
 
+		base::list < base::text > inferred;
+
+		infer_call_types ( b, inferred );
+
 		bool typed = false;
 
 		for ( int32_t v = 0; v < b.vars.count ( ); v++ ) {
@@ -3066,6 +3229,9 @@ namespace decompiler {
 
 			if ( !declared && item.kind == var_kind::PARAMETER && b.has_prototype && item.position >= 0 && item.position < b.prototype.count )
 				declared = b.prototype.types [ item.position ];
+
+			if ( !declared && !( item.kind == var_kind::PARAMETER && b.has_prototype ) && v < inferred.count ( ) && !inferred [ static_cast < size_t > ( v ) ].empty ( ) )
+				declared = inferred [ static_cast < size_t > ( v ) ].get ( );
 
 			if ( !declared || !parse_type ( declared, b.long_mode, shape, clean, 64 ) || shape.empty )
 				continue;
