@@ -1457,6 +1457,61 @@ namespace analysis {
 				if ( item.end <= item.start )
 					item.end = item.start + 1;
 
+				base::list < uint64_t > jumps;
+				uint64_t scanned = item.start;
+
+				for ( int32_t bridges = 0; bridges < 4096 && item.end < base::min ( next, limit ); bridges++ ) {
+
+					uint64_t gap = item.end;
+					uint64_t stop = base::min ( next, limit );
+					bool padding = true;
+
+					while ( gap < stop && !is_covered ( gap ) && gap - item.end <= 32 && padding ) {
+
+						x86::instruction filler;
+
+						if ( decode ( gap, filler ) && filler.valid ( ) && ( filler.name == x86::mnemonic::nop || filler.name == x86::mnemonic::int3 ) )
+							gap = filler.next ( );
+						else
+							padding = false;
+
+					}
+
+					if ( !padding || gap >= stop || gap - item.end > 32 || !is_covered ( gap ) || !is_start ( gap ) )
+						break;
+
+					while ( scanned < item.end ) {
+
+						x86::instruction step;
+
+						if ( !is_start ( scanned ) || !decode ( scanned, step ) || !step.valid ( ) ) {
+
+							scanned++;
+
+							continue;
+
+						}
+
+						if ( ( step.control == x86::flow::JUMP || step.control == x86::flow::BRANCH ) && step.direct ( ) )
+							jumps.push ( step.target ( ) );
+
+						scanned = step.next ( );
+
+					}
+
+					uint64_t run_end = covered_end ( gap, stop );
+					bool reached = false;
+
+					for ( uint64_t landing : jumps )
+						reached = reached || ( landing >= gap && landing < run_end );
+
+					if ( !reached )
+						break;
+
+					item.end = base::min ( covered_end ( gap, stop ), next );
+
+				}
+
 			}
 
 			x86::instruction first;
