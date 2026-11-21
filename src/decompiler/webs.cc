@@ -376,6 +376,164 @@ namespace decompiler {
 		}
 
 		coalesce_copies ( );
+		narrow_webs ( );
+
+	}
+
+	void builder::narrow_webs ( ) {
+
+		int32_t total = vars.count ( );
+		base::list < uint8_t > widest;
+		base::list < uint8_t > blocked;
+		base::list < uint8_t > defined;
+
+		widest.fill ( static_cast < size_t > ( total ), 0 );
+		blocked.fill ( static_cast < size_t > ( total ), 0 );
+		defined.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			const variable& item = vars [ static_cast < size_t > ( v ) ];
+			bool candidate = ( item.kind == var_kind::REGISTER || item.kind == var_kind::PARAMETER ) && item.family >= 0 && item.family < 16 && !item.cookie && !item.saved && !( item.bits & ( FLOATING | POINTER ) ) && item.size == 8;
+
+			if ( !candidate )
+				blocked [ static_cast < size_t > ( v ) ] = 1;
+
+		}
+
+		auto note_use = [ & ] ( int32_t child, int32_t width ) {
+
+			if ( child < 0 || child >= exprs.count ( ) )
+				return;
+
+			const expr& node = exprs [ static_cast < size_t > ( child ) ];
+
+			if ( node.kind != op::VAR || node.value < 0 || node.value >= total )
+				return;
+
+			size_t v = static_cast < size_t > ( node.value );
+
+			if ( width <= 0 || width > 4 )
+				blocked [ v ] = 1;
+			else
+				widest [ v ] = static_cast < uint8_t > ( base::max ( static_cast < int32_t > ( widest [ v ] ), width ) );
+
+		};
+
+		for ( const expr& node : exprs ) {
+
+			if ( node.kind == op::VAR )
+				continue;
+
+			if ( node.kind == op::CAST ) {
+
+				note_use ( node.a, node.size );
+
+				continue;
+
+			}
+
+			note_use ( node.a, 0 );
+			note_use ( node.b, 0 );
+			note_use ( node.c, 0 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				note_use ( args [ static_cast < size_t > ( node.first_arg + i ) ], 0 );
+
+		}
+
+		for ( const statement& line : statements ) {
+
+			if ( line.kind == stmt::NOP )
+				continue;
+
+			bool defines = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+
+			if ( defines ) {
+
+				int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+				if ( v >= 0 && v < total && line.right >= 0 ) {
+
+					const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
+					uint8_t size = source.kind == op::CALL || source.kind == op::CONST ? 1 : source.size;
+
+					defined [ static_cast < size_t > ( v ) ] = 1;
+
+					if ( source.kind == op::CONST && ( source.value > 0x7FFFFFFFll || source.value < -0x80000000ll ) )
+						blocked [ static_cast < size_t > ( v ) ] = 1;
+
+					if ( size > 4 || ( source.bits & ( POINTER | FLOATING ) ) )
+						blocked [ static_cast < size_t > ( v ) ] = 1;
+					else
+						widest [ static_cast < size_t > ( v ) ] = base::max ( widest [ static_cast < size_t > ( v ) ], size );
+
+				}
+
+			} else
+				note_use ( line.left, 0 );
+
+			note_use ( line.right, 0 );
+
+		}
+
+		for ( const block_code& block : code ) {
+
+			note_use ( block.condition, 0 );
+			note_use ( block.selector, 0 );
+			note_use ( block.returned, returns_value && !returns_float && return_size && return_size <= 4 ? return_size : 0 );
+			note_use ( block.flag_a, 0 );
+			note_use ( block.flag_b, 0 );
+
+		}
+
+		base::list < uint8_t > chosen;
+
+		chosen.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			uint8_t width = widest [ static_cast < size_t > ( v ) ];
+
+			if ( blocked [ static_cast < size_t > ( v ) ] || !width )
+				continue;
+
+			if ( vars [ static_cast < size_t > ( v ) ].kind == var_kind::REGISTER && !defined [ static_cast < size_t > ( v ) ] )
+				continue;
+
+			if ( width == 3 )
+				width = 4;
+
+			chosen [ static_cast < size_t > ( v ) ] = width;
+			vars [ static_cast < size_t > ( v ) ].size = width;
+
+		}
+
+		for ( expr& node : exprs ) {
+
+			if ( node.kind == op::VAR && node.value >= 0 && node.value < total && chosen [ static_cast < size_t > ( node.value ) ] )
+				node.size = chosen [ static_cast < size_t > ( node.value ) ];
+
+		}
+
+		for ( expr& node : exprs ) {
+
+			if ( node.kind != op::CAST || node.a < 0 )
+				continue;
+
+			const expr inner = exprs [ static_cast < size_t > ( node.a ) ];
+
+			if ( inner.kind != op::VAR || inner.value < 0 || inner.value >= total || !chosen [ static_cast < size_t > ( inner.value ) ] || inner.size != node.size )
+				continue;
+
+			uint8_t bits = node.bits;
+
+			node = inner;
+
+			if ( bits & ( SIGNED | UNSIGNED ) )
+				node.bits = static_cast < uint8_t > ( ( node.bits & ~( SIGNED | UNSIGNED ) ) | ( bits & ( SIGNED | UNSIGNED ) ) );
+
+		}
 
 	}
 

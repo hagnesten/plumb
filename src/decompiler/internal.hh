@@ -224,6 +224,8 @@ namespace decompiler {
 
 		void coalesce_copies ( );
 
+		void narrow_webs ( );
+
 		base::list < base::text > call_names;
 
 		bool lift ( );
