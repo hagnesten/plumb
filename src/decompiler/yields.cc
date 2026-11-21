@@ -4,20 +4,42 @@ namespace decompiler {
 
 	using x86::mnemonic;
 
-	static bool declared_void ( const wchar_t* text ) {
+	static bool starts_with ( const wchar_t* text, const wchar_t* head ) {
 
-		if ( !text || text [ 0 ] != L'v' || text [ 1 ] != L'o' || text [ 2 ] != L'i' || text [ 3 ] != L'd' )
-			return false;
+		for ( ; *head; head++, text++ ) {
 
-		const wchar_t* after = text + 4;
+			if ( *text != *head )
+				return false;
 
-		if ( *after != L' ' && *after != L'*' )
-			return false;
+		}
 
-		while ( *after == L' ' )
-			after++;
+		return *text == L' ';
 
-		return *after != L'*';
+	}
+
+	static int32_t declared_width ( const wchar_t* text ) {
+
+		if ( !text )
+			return -1;
+
+		const wchar_t* star = text;
+
+		while ( *star && *star != L'(' && *star != L'*' )
+			star++;
+
+		if ( *star == L'*' )
+			return 8;
+
+		if ( starts_with ( text, L"void" ) )
+			return 0;
+
+		if ( starts_with ( text, L"bool" ) )
+			return 2;
+
+		if ( starts_with ( text, L"char" ) || starts_with ( text, L"BOOLEAN" ) || starts_with ( text, L"BYTE" ) || starts_with ( text, L"UCHAR" ) || starts_with ( text, L"_BYTE" ) || starts_with ( text, L"unsigned char" ) )
+			return 1;
+
+		return 8;
 
 	}
 
@@ -26,14 +48,14 @@ namespace decompiler {
 		if ( names ) {
 
 			if ( const wchar_t* declared = names->prototype ( target ) )
-				return declared_void ( declared ) ? 0 : 1;
+				return declared_width ( declared );
 
 			wchar_t name [ 200 ];
 
 			if ( names->name ( target, true, name, 200 ) ) {
 
 				if ( const wchar_t* api = api_prototype ( name ) )
-					return declared_void ( api ) ? 0 : 1;
+					return declared_width ( api );
 
 			}
 
@@ -49,7 +71,7 @@ namespace decompiler {
 
 				const wchar_t* api = api_prototype ( file.imports [ static_cast < size_t > ( info.import ) ].name.get ( ) );
 
-				return api && declared_void ( api ) ? 0 : 1;
+				return api ? declared_width ( api ) : 8;
 
 			}
 
@@ -73,38 +95,68 @@ namespace decompiler {
 
 	}
 
-	static bool callee_yields ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t target, bool long_mode, int32_t depth ) {
+	static int32_t callee_width ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t target, bool long_mode, int32_t depth ) {
 
 		if ( !target )
-			return true;
+			return 8;
 
 		int32_t known = known_result ( db, file, names, target );
 
 		if ( known >= 0 )
-			return known == 1;
+			return known;
 
 		if ( depth >= 3 || db.function_starting ( target ) < 0 )
-			return true;
+			return 8;
 
 		return yields_value ( db, file, names, target, long_mode, depth + 1 );
 
 	}
 
-	bool yields_value ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, bool long_mode, int32_t depth ) {
+	static bool zeroing ( const x86::instruction& ins ) {
+
+		return ins.name == mnemonic::xor_ && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::REG && ins.operands [ 1 ].reg == ins.operands [ 0 ].reg;
+
+	}
+
+	static int32_t def_width ( const x86::instruction& ins, bool zeroed ) {
+
+		if ( ins.count > 0 && ins.operands [ 0 ].type == x86::kind::REG ) {
+
+			if ( zeroing ( ins ) )
+				return 0;
+
+			if ( ins.operands [ 0 ].reg == x86::AL ) {
+
+				if ( static_cast < int32_t > ( ins.name ) >= static_cast < int32_t > ( mnemonic::seto ) && static_cast < int32_t > ( ins.name ) <= static_cast < int32_t > ( mnemonic::setg ) )
+					return zeroed ? 3 : 2;
+
+				return 1;
+
+			}
+
+		}
+
+		return 8;
+
+	}
+
+	int32_t yields_value ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, bool long_mode, int32_t depth ) {
 
 		analysis::function_graph graph;
 
 		if ( !analysis::build_graph ( db, function, graph ) )
-			return true;
+			return 8;
 
 		int32_t count = graph.blocks.count ( );
 		base::list < int8_t > state;
 		base::list < uint8_t > exits;
+		base::list < uint8_t > zeroed;
 		base::list < x86::instruction > last_def;
 		base::list < x86::instruction > last_ins;
 
 		state.fill ( static_cast < size_t > ( count ), 0 );
 		exits.fill ( static_cast < size_t > ( count ), 0 );
+		zeroed.fill ( static_cast < size_t > ( count ), 0 );
 		last_def.resize ( static_cast < size_t > ( count ) );
 		last_ins.resize ( static_cast < size_t > ( count ) );
 
@@ -127,6 +179,11 @@ namespace decompiler {
 				effects ( ins, long_mode, use, def );
 
 				if ( def & 1u ) {
+
+					bool partial = ins.count > 0 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 0 ].reg == x86::AL;
+
+					if ( !partial )
+						zeroed [ static_cast < size_t > ( i ) ] = zeroing ( ins ) ? 1 : 0;
 
 					last_def [ static_cast < size_t > ( i ) ] = ins;
 					state [ static_cast < size_t > ( i ) ] = 1;
@@ -161,11 +218,11 @@ namespace decompiler {
 				return static_cast < int32_t > ( verdict [ static_cast < size_t > ( block ) ] );
 
 			const x86::instruction& ins = last_def [ static_cast < size_t > ( block ) ];
-			int32_t kind = ins.name != mnemonic::call ? 1 : ( callee_yields ( db, file, names, call_target ( ins ), long_mode, depth ) ? 2 : 0 );
+			int32_t width = ins.name != mnemonic::call ? def_width ( ins, zeroed [ static_cast < size_t > ( block ) ] != 0 ) + 16 : callee_width ( db, file, names, call_target ( ins ), long_mode, depth );
 
-			verdict [ static_cast < size_t > ( block ) ] = static_cast < int8_t > ( kind );
+			verdict [ static_cast < size_t > ( block ) ] = static_cast < int8_t > ( width );
 
-			return kind;
+			return width;
 
 		};
 
@@ -175,15 +232,35 @@ namespace decompiler {
 		bool found_call = false;
 		bool found_void = false;
 		bool found_undefined = false;
+		uint32_t kinds = 0;
+
+		auto note = [ & ] ( int32_t kind ) {
+
+			if ( kind == 0 ) {
+
+				found_void = true;
+
+				return;
+
+			}
+
+			if ( kind >= 16 ) {
+
+				found_plain = true;
+				kind -= 16;
+
+			} else
+				found_call = true;
+
+			kinds |= 1u << kind;
+
+		};
 
 		for ( int32_t i = 0; i < count; i++ ) {
 
 			if ( exits [ static_cast < size_t > ( i ) ] == 2 ) {
 
-				if ( callee_yields ( db, file, names, call_target ( last_ins [ static_cast < size_t > ( i ) ] ), long_mode, depth ) )
-					found_call = true;
-				else
-					found_void = true;
+				note ( callee_width ( db, file, names, call_target ( last_ins [ static_cast < size_t > ( i ) ] ), long_mode, depth ) );
 
 				continue;
 
@@ -206,11 +283,7 @@ namespace decompiler {
 
 				if ( state [ static_cast < size_t > ( at ) ] ) {
 
-					int32_t kind = judge ( at );
-
-					found_plain = found_plain || kind == 1;
-					found_call = found_call || kind == 2;
-					found_void = found_void || kind == 0;
+					note ( judge ( at ) );
 
 					continue;
 
@@ -233,7 +306,22 @@ namespace decompiler {
 
 		}
 
-		return !found_void && ( found_plain || ( found_call && !found_undefined ) );
+		if ( found_void || !( found_plain || ( found_call && !found_undefined ) ) )
+			return 0;
+
+		if ( kinds & ( 1u << 8 ) )
+			return 8;
+
+		if ( kinds & ( 1u << 1 ) )
+			return 1;
+
+		if ( kinds & ( 1u << 3 ) )
+			return 3;
+
+		if ( kinds & ( 1u << 2 ) )
+			return 2;
+
+		return 8;
 
 	}
 

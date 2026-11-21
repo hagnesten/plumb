@@ -3691,7 +3691,9 @@ namespace decompiler {
 
 		}
 
-		if ( !has_prototype && !returns_float && !yields_value ( *db, *file, names, function, long_mode, 0 ) ) {
+		int32_t width = has_prototype || returns_float ? -1 : yields_value ( *db, *file, names, function, long_mode, 0 );
+
+		if ( width == 0 ) {
 
 			returns_value = false;
 			bare_return = true;
@@ -3703,7 +3705,8 @@ namespace decompiler {
 
 			}
 
-		}
+		} else if ( width >= 1 && width <= 3 )
+			result_width = static_cast < uint8_t > ( width );
 
 		prune ( );
 		fold_returns ( );

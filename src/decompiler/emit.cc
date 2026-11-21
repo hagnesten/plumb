@@ -2380,7 +2380,7 @@ namespace decompiler {
 				out.put ( L" " );
 
 				if ( back.kind == op::CONST && !( back.bits & POINTER ) && !b.has_prototype && !b.returns_float && b.long_mode )
-					number ( back.value, 8, !simple_constant ( back.value ), false );
+					number ( b.result_width == 1 || b.result_width == 2 ? static_cast < int8_t > ( back.value ) : back.value, b.result_width == 1 || b.result_width == 2 ? 4 : 8, !simple_constant ( back.value ), false );
 				else
 					value ( item.returned, 0 );
 
@@ -4069,8 +4069,12 @@ namespace decompiler {
 
 			if ( b.returns_float )
 				head.type_name ( b.return_size ? b.return_size : 4, FLOATING, false );
+			else if ( b.result_width == 2 )
+				head.out.put ( L"bool", syntax::TYPE );
+			else if ( b.result_width == 3 )
+				head.out.put ( L"_BOOL8", syntax::TYPE );
 			else
-				head.type_name ( b.long_mode ? 8 : 4, 0, false );
+				head.type_name ( b.result_width == 1 ? 1 : ( b.long_mode ? 8 : 4 ), b.result_width == 1 ? SIGNED : 0, false );
 
 		} else
 			head.out.put ( L"void", syntax::KEYWORD );

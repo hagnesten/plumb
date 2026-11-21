@@ -186,6 +186,7 @@ namespace decompiler {
 		bool bare_return = false;
 		bool returns_float = false;
 		uint8_t return_size = 0;
+		uint8_t result_width = 0;
 		int32_t locals = 0;
 		int64_t pushed = 0;
 
@@ -243,7 +244,7 @@ namespace decompiler {
 
 	void effects ( const x86::instruction& ins, bool long_mode, uint32_t& use, uint32_t& def );
 
-	bool yields_value ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, bool long_mode, int32_t depth );
+	int32_t yields_value ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, bool long_mode, int32_t depth );
 
 	const wchar_t* intrinsic_name ( int32_t id );
 
