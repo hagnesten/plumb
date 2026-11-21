@@ -41,7 +41,7 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 - Multithreaded recursive descent seeded from the entry point, exports, TLS callbacks, `.pdata`, code pointers in data (including vtable runs) and prologue scans. A 19 MB code section is done in about 150 ms on 16 threads.
 - Cross-references for calls, jumps, reads, writes and pointers. X lists the references to the name under the caret, whether that's a call target, a global or the function you're in.
 - MSVC switch table recovery: image-relative, table-relative, pointer tables and byte index tables.
-- RTTI class recovery: class names, base class chains, vtables and virtual functions, named `Class::vftable` and `Class::vfunc_N` throughout. The Classes panel (Alt+6) lists them all.
+- RTTI class recovery: class names, base class chains, vtables and virtual functions, named `Class::vftable` and `Class::vfunc_N` throughout, so a function's slot is in its name. The Classes panel (Alt+6) lists them all. The naming can be turned off in Settings.
 - Tools > Export classes as C++ writes a header with every recovered class: its direct bases, its virtual functions in vtable order using your prototypes, and which slots are inherited. It's also copied to the clipboard.
 - Call graph (Ctrl+4) shows two levels of callers and callees around a function. Double-click a node to center it, Enter opens it in the disassembly.
 - Function queries in the command line: `functions where calls VirtualAlloc and size > 0x100 and not thunk`. Conditions are `calls`, `calledby`, `refs` (strings or names), `name`, `size`, `callers`, `blocks`, `instructions`, `thunk`, `leaf`, `noreturn`, `exported`, `entry`, `named`, `noted`, `typed` and `covered`, each optionally prefixed with `not`.
@@ -61,12 +61,16 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 ### Decompiler
 
 - F5 shows a function as C. Tab switches between C and disassembly, and each function can have its own tab.
+- The output reads like Hex-Rays: `__int64 __fastcall` signatures, `_DWORD`, `unsigned __int8` and the other IDA types, `a1` for arguments and `v1` or `result` for locals with their register or `[rsp+30h] [rbp-18h]` slot beside them, `LABEL_n` gotos, `0i64` and `0xEu` constants, and two-space indentation with braces on their own lines. It's checked against IDA 8.3's decompiler on four binaries.
 - Structured output: `if`/`else` chains, `while`, `do`/`while`, `switch` and `goto` only as a last resort. Dead stores and duplicate expressions are removed, and stack arguments are matched to calls.
 - Inferred struct layouts for pointer parameters, and float literals where the types show them.
+- Every number can be shown its own way: H toggles hex and decimal, R makes it a character constant (`'\x01'`, `'MZ'`), B shows binary and Shift+H puts it back. It works on the number under the caret or under the mouse, in any C pane, and is saved with the project.
+- `\` hides casts and Ctrl+Num − collapses the local declarations, the same keys as IDA. Everything is also on the right-click menu.
+- Calls through a vtable say which slot they use, like `(v1)(a1); // vfunc 3`, including calls that go through Control Flow Guard's dispatch stub.
 - Rename a variable (N) or set its type (Y), then the function decompiles again with that type. Y on the function name edits the whole prototype, including return type, name and parameters. Callers pick up the new argument count, and bad types produce a warning instead of failing silently.
 - User-defined structs. Press S on a pointer variable to build a struct from how the function uses it, then rename fields (N) and retype them (Y) right in the C. Structs can also be built and edited in the Structures panel (Alt+7), and any variable typed `Name*` reads as `v->field`.
-- Comments (;) show up in both the disassembly and the C.
-- Line numbers, VS-style coloring, and an optional `call ( arg )` spacing style.
+- Comments (; or /) show up in both the disassembly and the C.
+- Line numbers, Cascadia Mono, and an optional `call ( arg )` spacing style in Settings.
 - Tools > Write ternaries as if and else turns every `a ? b : c` into an `if`/`else`. Nested ones are moved into a temporary filled just before the statement. The only ones left are inside `while` and `else if` conditions, where moving them would change when they run.
 
 ### Debugger
@@ -90,7 +94,9 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 - Tools > Export report writes a Markdown report beside the binary with the file summary, sections, notes, named functions with prototypes, bookmarks, comments, patches, classes and imported modules.
 - Browser lists sort by clicking a column header.
 - Command palette (Ctrl+Shift+P), go to address or name (G), back and forward history, and a command line in the output pane.
-- Dark and light themes.
+- Dark and light themes with a brass accent.
+- Settings (Ctrl+,) picks the font and size for the interface, the disassembly and the C, along with the decompiler options, with a preview that follows every change.
+- Colors (Ctrl+Shift+,) edits every color of both themes. Click anything in the sample listing, C or interface to select its color, then change it with the picker or a hex value. Changes show everywhere at once, and Cancel puts them back.
 
 | | |
 | --- | --- |
@@ -99,6 +105,8 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 | ![Call graph](docs/media/calls.png) | ![An instruction assembled over the original, with the patched bytes in yellow](docs/media/patch.png) |
 
 ![The light theme with C and disassembly side by side](docs/media/light.png)
+
+![The Colors window with the C sample and the color picker](docs/media/colors.png)
 
 ## AI assistants
 
@@ -119,8 +127,10 @@ The tools are `open_binary`, `binary_info`, `list_functions`, `disassemble`, `de
 | G | Go to address or name | F5 | Decompile |
 | Space | Graph or text | Tab | Switch between C and disassembly |
 | X | References | N | Rename |
-| Y | Set type or prototype | ; | Comment |
+| Y | Set type or prototype | ; or / | Comment |
 | H R B F | Number format | Ctrl+D | Bookmark |
+| \\ | Hide casts in C | Ctrl+Num − / + | Collapse or expand locals |
+| Ctrl+, | Settings | Ctrl+Shift+, | Colors |
 | F9 | Start or continue | F7 / F8 | Step into / over |
 | F2 | Breakpoint | Ctrl+F2 | Stop debugging |
 | Ctrl+Alt+S | Make signature | Ctrl+Alt+F | Find signature |
