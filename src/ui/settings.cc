@@ -158,6 +158,7 @@ namespace ui {
 		write_list ( L"note", notes );
 		write_list ( L"condition", conditions );
 		write_list ( L"number", number_forms );
+		write_list ( L"cnumber", code_numbers );
 		write_list ( L"proto", prototypes );
 
 		for ( uint64_t item : breakpoints ) {
@@ -218,6 +219,7 @@ namespace ui {
 		notes.clear ( );
 		conditions.clear ( );
 		number_forms.clear ( );
+		code_numbers.clear ( );
 		prototypes.clear ( );
 		locals.clear ( );
 		breakpoints.clear ( );
@@ -303,6 +305,8 @@ namespace ui {
 				set_user_text ( conditions, address, at );
 			else if ( base::same_text ( key, L"number" ) )
 				set_user_text ( number_forms, address, at );
+			else if ( base::same_text ( key, L"cnumber" ) )
+				set_user_text ( code_numbers, address, at );
 			else if ( base::same_text ( key, L"proto" ) )
 				set_user_text ( prototypes, address, at );
 			else if ( base::same_text ( key, L"bp" ) )
@@ -572,8 +576,10 @@ namespace ui {
 		wchar_t path [ 600 ];
 
 		put_line ( out, "theme", light ? L"light" : L"dark" );
-		put_line ( out, "c_spaced", c_spaced ? L"1" : L"0" );
+		put_line ( out, "c_paren_spaces", c_spaced ? L"1" : L"0" );
 		put_line ( out, "c_no_ternary", c_no_ternary ? L"1" : L"0" );
+		put_line ( out, "c_hide_casts", c_hide_casts ? L"1" : L"0" );
+		put_line ( out, "c_collapse_locals", c_collapse_locals ? L"1" : L"0" );
 		put_line ( out, "autosave", autosave ? L"1" : L"0" );
 		put_line ( out, "opcode_bytes", show_bytes ? L"1" : L"0" );
 		value.number ( static_cast < int64_t > ( dock_size [ 0 ] ) ).add ( L',' ).number ( static_cast < int64_t > ( dock_size [ 1 ] ) ).add ( L',' ).number ( static_cast < int64_t > ( dock_size [ 2 ] ) );
@@ -694,10 +700,14 @@ namespace ui {
 
 			if ( named ( "theme" ) )
 				light = base::same_text ( value, L"light" );
-			else if ( named ( "c_spaced" ) )
+			else if ( named ( "c_paren_spaces" ) )
 				c_spaced = value [ 0 ] == L'1';
 			else if ( named ( "c_no_ternary" ) )
 				c_no_ternary = value [ 0 ] == L'1';
+			else if ( named ( "c_hide_casts" ) )
+				c_hide_casts = value [ 0 ] == L'1';
+			else if ( named ( "c_collapse_locals" ) )
+				c_collapse_locals = value [ 0 ] == L'1';
 			else if ( named ( "autosave" ) )
 				autosave = value [ 0 ] == L'1';
 			else if ( named ( "opcode_bytes" ) )

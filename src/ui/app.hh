@@ -212,6 +212,8 @@ namespace ui {
 		DEBUG_WATCH,
 		DEBUG_CONDITION,
 		EMULATE,
+		HIDE_CASTS,
+		COLLAPSE_LOCALS,
 		COUNT,
 
 	};
@@ -682,6 +684,8 @@ namespace ui {
 
 		const wchar_t* comment_at ( uint64_t address ) const;
 
+		wchar_t code_number_form ( uint64_t address, int64_t value ) const;
+
 		bool code_field ( int32_t& index, int32_t& offset ) const;
 
 		bool known_type ( const decompiler::c_type& shape, base::writer& problem ) const;
@@ -893,6 +897,7 @@ namespace ui {
 		view_state* now = &spare_state;
 		uint32_t drawing_serial = 0;
 
+		static constexpr int32_t code_menu_index = 100;
 		int32_t menu_open = -1;
 		float menu_show = 0.0f;
 		math::rect menu_rect;
@@ -976,8 +981,13 @@ namespace ui {
 		base::list < uint64_t > breakpoints;
 		debugger::snapshot debug_state;
 		uint64_t debug_pc = 0;
-		bool c_spaced = true;
+		bool c_spaced = false;
 		bool c_no_ternary = false;
+		bool c_hide_casts = false;
+		bool c_collapse_locals = false;
+		math::vec2 code_menu_at;
+		int32_t code_hover_line = -1;
+		int32_t code_hover_col = -1;
 		uint64_t reference_target = ~0ull;
 		double blink_from = 0.0;
 		bool caret_live = false;
@@ -1002,6 +1012,7 @@ namespace ui {
 		base::text library_path;
 		uint32_t notes_seen = 0;
 		base::list < user_name > number_forms;
+		base::list < user_name > code_numbers;
 		base::list < user_name > prototypes;
 		base::list < local_entry > locals;
 		base::list < user_struct > structs;
@@ -1141,6 +1152,12 @@ namespace ui {
 		void open_code_prompt ( command action, int32_t mode, const wchar_t* key, const wchar_t* fill );
 
 		bool code_variable ( wchar_t* key, wchar_t* shown ) const;
+
+		bool code_number ( uint64_t& key, int64_t& value, bool& hex_now ) const;
+
+		bool number_in_line ( const decompiler::result& code, const decompiler::line& item, int32_t column, uint64_t& key, int64_t& value, bool& hex_now ) const;
+
+		uint64_t code_number_key ( uint64_t address, int64_t value ) const;
 
 		void set_local ( uint64_t function, const wchar_t* key, const wchar_t* name, const wchar_t* type );
 

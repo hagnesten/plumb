@@ -143,6 +143,7 @@ namespace decompiler {
 		int32_t next_number = 0;
 		int32_t result_var = -1;
 		bool operand = false;
+		bool no_casts = false;
 		int32_t gotos = 0;
 		int32_t depth = 0;
 		bool no_ternary = false;
@@ -156,6 +157,7 @@ namespace decompiler {
 			out.names = owner.names;
 			next_number = owner.params;
 			no_ternary = owner.names && owner.names->expand_ternary ( );
+			no_casts = owner.names && owner.names->hide_casts ( );
 
 		}
 
@@ -487,8 +489,31 @@ namespace decompiler {
 
 			bool fits = negative ? magnitude <= 0x80000000ull : magnitude <= ( is_unsigned ? 0xFFFFFFFFull : 0x7FFFFFFFull );
 			bool unsigned_suffix = is_unsigned && !negative;
+			wchar_t form = b.names && !dry ? b.names->number_form ( out.open ? out.current.address : 0, value ) : 0;
 
 			hex_form = hex_form || unsigned_suffix || magnitude > 0xFFFFFFFFull;
+
+			if ( form == L'h' )
+				hex_form = true;
+			else if ( form == L'd' )
+				hex_form = false;
+			else if ( form == L'c' && value >= 0x20 && value <= 0x7E ) {
+
+				wchar_t c = static_cast < wchar_t > ( value );
+
+				text [ length++ ] = L'\'';
+
+				if ( c == L'\'' || c == L'\\' )
+					text [ length++ ] = L'\\';
+
+				text [ length++ ] = c;
+				text [ length++ ] = L'\'';
+				text [ length ] = 0;
+				put_number ( text, value );
+
+				return;
+
+			}
 
 			if ( negative )
 				text [ length++ ] = L'-';
@@ -534,7 +559,18 @@ namespace decompiler {
 				text [ length++ ] = L'u';
 
 			text [ length ] = 0;
+			put_number ( text, value );
+
+		}
+
+		void put_number ( const wchar_t* text, int64_t value ) {
+
+			int32_t before = out.r->spans.count ( );
+
 			out.put ( text, syntax::NUMBER );
+
+			if ( out.r->spans.count ( ) > before )
+				out.r->spans.back ( ).value = value;
 
 		}
 
@@ -933,7 +969,7 @@ namespace decompiler {
 						if ( i )
 							out.put ( L", " );
 
-						if ( passed.kind == op::CONST && ( passed.bits & POINTER ) && b.db->function_starting ( static_cast < uint64_t > ( passed.value ) ) >= 0 && !( target && b.names->prototype ( target ) ) ) {
+						if ( !no_casts && passed.kind == op::CONST && ( passed.bits & POINTER ) && b.db->function_starting ( static_cast < uint64_t > ( passed.value ) ) >= 0 && !( target && b.names->prototype ( target ) ) ) {
 
 							out.put ( L"(" );
 							type_name ( 8, 0, false );
@@ -974,7 +1010,7 @@ namespace decompiler {
 
 					const expr& inner = b.exprs [ static_cast < size_t > ( item.a ) ];
 					bool float_change = ( inner.bits & FLOATING ) != ( item.bits & FLOATING );
-					bool shown = float_change || inner.size != item.size;
+					bool shown = ( float_change || inner.size != item.size ) && !no_casts;
 
 					if ( ( item.bits & POINTER ) && ( item.bits & FLOATING ) ) {
 
@@ -2998,6 +3034,16 @@ namespace decompiler {
 		}
 
 		base::sort ( shown_vars.data ( ), shown_vars.count ( ), [ & ] ( int32_t x, int32_t y ) { return head.var_number [ static_cast < size_t > ( x ) ] < head.var_number [ static_cast < size_t > ( y ) ]; } );
+
+		if ( !shown_vars.empty ( ) && b.names && b.names->collapse_locals ( ) ) {
+
+			head.out.begin ( b.function );
+			head.out.put ( L"// [COLLAPSED LOCAL DECLARATIONS. PRESS KEYPAD CTRL-\"+\" TO EXPAND]", syntax::COMMENT );
+			head.out.finish ( );
+			declared = shown_vars.count ( );
+			shown_vars.clear ( );
+
+		}
 
 		for ( int32_t v : shown_vars ) {
 

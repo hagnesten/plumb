@@ -476,6 +476,14 @@ namespace ui {
 						run ( command::SPLIT );
 						break;
 
+					case VK_SUBTRACT:
+					case VK_ADD:
+
+						if ( showing == view::PSEUDOCODE && c_collapse_locals != ( code == VK_SUBTRACT ) )
+							run ( command::COLLAPSE_LOCALS );
+
+						break;
+
 					case VK_TAB:
 						run ( command::NEXT_TAB );
 						break;
@@ -573,6 +581,21 @@ namespace ui {
 
 				case VK_OEM_1:
 					run ( command::COMMENT );
+					continue;
+
+				case VK_OEM_5:
+
+					if ( showing == view::PSEUDOCODE )
+						run ( command::HIDE_CASTS );
+
+					continue;
+
+				case VK_SUBTRACT:
+				case VK_ADD:
+
+					if ( showing == view::PSEUDOCODE && c_collapse_locals != ( code == VK_SUBTRACT ) )
+						run ( command::COLLAPSE_LOCALS );
+
 					continue;
 
 				case VK_TAB:

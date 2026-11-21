@@ -975,6 +975,24 @@ namespace ui {
 
 		}
 
+		bool hide_casts ( ) override {
+
+			return owner->c_hide_casts;
+
+		}
+
+		bool collapse_locals ( ) override {
+
+			return owner->c_collapse_locals;
+
+		}
+
+		wchar_t number_form ( uint64_t address, int64_t value ) override {
+
+			return owner->code_number_form ( address, value );
+
+		}
+
 		bool struct_field ( const wchar_t* type, int64_t offset, wchar_t* out, int32_t room, uint64_t& tag, int32_t& size ) override {
 
 			int32_t index = owner->struct_named ( type );

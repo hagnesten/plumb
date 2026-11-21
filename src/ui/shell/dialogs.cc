@@ -80,7 +80,7 @@ namespace ui {
 			const command order [ ] = {
 				command::OPEN, command::PALETTE, command::GO_ADDRESS, command::GO_ENTRY, command::BACK, command::FORWARD, command::FOLLOW,
 				command::TOGGLE_GRAPH, command::VIEW_PSEUDOCODE, command::SWAP_VIEW, command::VIEW_LISTING, command::VIEW_HEX, command::SPLIT,
-				command::CLOSE_TAB, command::NEXT_TAB, command::RENAME, command::SET_TYPE, command::COMMENT, command::BOOKMARK, command::NUMBER_RADIX, command::NUMBER_CHAR, command::SHOW_REFERENCES,
+				command::CLOSE_TAB, command::NEXT_TAB, command::RENAME, command::SET_TYPE, command::COMMENT, command::BOOKMARK, command::NUMBER_RADIX, command::NUMBER_CHAR, command::HIDE_CASTS, command::COLLAPSE_LOCALS, command::SHOW_REFERENCES,
 				command::MAKE_SIGNATURE, command::FIND_SIGNATURE, command::SEARCH_ALL, command::ASSEMBLE, command::PATCH_BYTES, command::REVERT_PATCH, command::XOR_DECODE, command::VIEW_CALLS,
 				command::COPY, command::COPY_FUNCTION, command::FIND, command::SHOW_FUNCTIONS, command::SAVE_PROJECT, command::UNDO,
 				command::DEBUG_RUN, command::DEBUG_STEP_INTO, command::DEBUG_STEP_OVER, command::DEBUG_BREAKPOINT, command::DEBUG_STOP,

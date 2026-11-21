@@ -78,6 +78,79 @@ namespace ui {
 
 	}
 
+	uint64_t app::code_number_key ( uint64_t address, int64_t value ) const {
+
+		return address ^ ( static_cast < uint64_t > ( value ) * 0x9E3779B97F4A7C15ull );
+
+	}
+
+	wchar_t app::code_number_form ( uint64_t address, int64_t value ) const {
+
+		if ( !address || code_numbers.empty ( ) )
+			return 0;
+
+		const wchar_t* form = user_text ( code_numbers, code_number_key ( address, value ) );
+
+		return form ? form [ 0 ] : 0;
+
+	}
+
+	bool app::code_number ( uint64_t& key, int64_t& value, bool& hex_now ) const {
+
+		const decompiler::result* code = const_cast < app* > ( this )->pseudocode_for ( now->function );
+
+		if ( !code )
+			return false;
+
+		for ( int32_t attempt = 0; attempt < 2; attempt++ ) {
+
+			int32_t row = attempt ? code_hover_line : now->code_line;
+			int32_t col = attempt ? code_hover_col : now->code_col;
+
+			if ( row < 0 || row >= code->lines.count ( ) )
+				continue;
+
+			const decompiler::line& item = code->lines [ static_cast < size_t > ( row ) ];
+
+			if ( number_in_line ( *code, item, col - item.indent * 4, key, value, hex_now ) )
+				return true;
+
+		}
+
+		return false;
+
+	}
+
+	bool app::number_in_line ( const decompiler::result& code_ref, const decompiler::line& item, int32_t column, uint64_t& key, int64_t& value, bool& hex_now ) const {
+
+		const decompiler::result* code = &code_ref;
+
+		if ( !item.address )
+			return false;
+
+		for ( int32_t s = 0; s < item.span_count; s++ ) {
+
+			const decompiler::span& part = code->spans [ static_cast < size_t > ( item.first_span + s ) ];
+			int32_t start = part.start - item.text;
+
+			if ( part.kind != decompiler::syntax::NUMBER || column < start || column > start + part.length )
+				continue;
+
+			const wchar_t* text = code->text.data ( ) + part.start;
+			int32_t skip = part.length > 0 && text [ 0 ] == L'-' ? 1 : 0;
+
+			value = part.value;
+			key = code_number_key ( item.address, value );
+			hex_now = part.length > skip + 1 && text [ skip ] == L'0' && text [ skip + 1 ] == L'x';
+
+			return true;
+
+		}
+
+		return false;
+
+	}
+
 	const local_entry* app::local_for ( uint64_t function, const wchar_t* key ) const {
 
 		for ( const local_entry& entry : locals ) {

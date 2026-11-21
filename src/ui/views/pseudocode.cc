@@ -78,7 +78,7 @@ namespace ui {
 		}
 
 		float row_h = metric::code_row;
-		float adv = c.measure ( L"0000000000", render::font::MONO ) * 0.1f;
+		float adv = c.measure ( L"0000000000", render::font::CODE ) * 0.1f;
 		uint64_t id = make_id ( "code", drawing_serial );
 		widget& surface = state ( id );
 		int32_t total = code->lines.count ( );
@@ -263,9 +263,42 @@ namespace ui {
 
 		}
 
+		if ( right_id == id && total && over ( text_area ) ) {
+
+			float local = ( mouse.y - area.y + shift ) / row_h;
+			int32_t row = base::clamp ( first + static_cast < int32_t > ( local < 0.0f ? local - 1.0f : local ), 0, total - 1 );
+			wchar_t line [ 1024 ];
+			int32_t length = 0;
+
+			line_text ( row, line, length );
+
+			bool inside_range = now->code_ranged && row >= base::min ( now->code_anchor, now->code_line ) && row <= base::max ( now->code_anchor, now->code_line );
+
+			if ( !inside_range ) {
+
+				now->code_line = row;
+				now->code_col = base::clamp ( static_cast < int32_t > ( math::floor ( ( mouse.x - x_text ) / adv ) ), 0, length );
+				now->code_anchor = row;
+				now->code_anchor_col = now->code_col;
+				now->code_ranged = false;
+
+			}
+
+			if ( code->lines [ static_cast < size_t > ( now->code_line ) ].address )
+				now->cursor_address = code->lines [ static_cast < size_t > ( now->code_line ) ].address;
+
+			code_menu_at = mouse;
+			menu_open = code_menu_index;
+			menu_focus = -1;
+			menu_show = 1.0f;
+
+		}
+
 		if ( !mouse_down )
 			now->code_selecting = false;
 
+		code_hover_line = -1;
+		code_hover_col = -1;
 		now->code_y = static_cast < float > ( now->code_line );
 		now->code_ready = true;
 
@@ -436,9 +469,16 @@ namespace ui {
 				if ( highlighted ( piece, length ) )
 					c.fill ( math::rect ( px, y + 1.0f, static_cast < float > ( length ) * adv, row_h - 2.0f ), 0.0f, ink ( tone::SELECT ).fade ( 0.75f ) );
 
-				c.text ( piece, render::font::MONO, math::vec2 ( px, cy ), ink ( color ) );
+				c.text ( piece, render::font::CODE, math::vec2 ( px, cy ), ink ( color ) );
 
 				if ( part && part->start <= at ) {
+
+					if ( part->kind == decompiler::syntax::NUMBER && over ( math::rect ( px, y, static_cast < float > ( length ) * adv, row_h ) ) && over ( text_area ) ) {
+
+						code_hover_line = row;
+						code_hover_col = item.indent * 4 + ( at - item.text );
+
+					}
 
 					if ( part->target && part->target != code->function && !now->code_selecting && over ( math::rect ( px, y, static_cast < float > ( length ) * adv, row_h ) ) && over ( text_area ) ) {
 

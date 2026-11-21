@@ -16,12 +16,16 @@ namespace ui {
 		{ L"File", { command::OPEN, command::SAVE_PROJECT, command::CLOSE, command::COUNT, command::TOGGLE_AUTOSAVE, command::COUNT, command::EXIT }, 7 },
 		{ L"Edit", { command::UNDO, command::REDO, command::COUNT, command::COPY, command::COPY_FUNCTION, command::COUNT, command::RENAME, command::COMMENT, command::NOTE, command::SET_TYPE, command::BOOKMARK, command::COUNT, command::NUMBER_RADIX, command::NUMBER_CHAR, command::NUMBER_BINARY, command::NUMBER_FLOAT, command::NUMBER_RESET }, 17 },
 		{ L"Jump", { command::GO_ADDRESS, command::GO_ENTRY, command::FOLLOW, command::COUNT, command::BACK, command::FORWARD, command::COUNT, command::NEXT_SECTION, command::PREVIOUS_SECTION, command::COUNT, command::FIND, command::PALETTE }, 12 },
-		{ L"View", { command::TOGGLE_GRAPH, command::VIEW_PSEUDOCODE, command::SWAP_VIEW, command::COUNT, command::VIEW_LISTING, command::VIEW_HEX, command::VIEW_HEADERS, command::VIEW_CALLS, command::COUNT, command::SPLIT, command::NEXT_TAB, command::CLOSE_TAB, command::COUNT, command::THEME, command::TOGGLE_BYTES, command::TOGGLE_SPACING }, 16 },
+		{ L"View", { command::TOGGLE_GRAPH, command::VIEW_PSEUDOCODE, command::SWAP_VIEW, command::COUNT, command::VIEW_LISTING, command::VIEW_HEX, command::VIEW_HEADERS, command::VIEW_CALLS, command::COUNT, command::SPLIT, command::NEXT_TAB, command::CLOSE_TAB, command::COUNT, command::THEME, command::TOGGLE_BYTES, command::TOGGLE_SPACING, command::COUNT, command::HIDE_CASTS, command::COLLAPSE_LOCALS }, 19 },
 		{ L"Window", { command::SHOW_FUNCTIONS, command::SHOW_IMPORTS, command::SHOW_EXPORTS, command::SHOW_STRINGS, command::SHOW_SECTIONS, command::SHOW_CLASSES, command::SHOW_STRUCTS, command::SHOW_REFERENCES, command::SHOW_SEARCH, command::SHOW_NOTES, command::COUNT, command::TOGGLE_BROWSER, command::TOGGLE_INSPECTOR, command::TOGGLE_OUTPUT, command::RESET_LAYOUT }, 15 },
 		{ L"Tools", { command::SEARCH_ALL, command::SHOW_REFERENCES, command::COUNT, command::MAKE_SIGNATURE, command::FIND_SIGNATURE, command::COUNT, command::XOR_DECODE, command::STRUCT_FROM_VAR, command::EXPORT_CLASSES, command::EXPORT_REPORT, command::COUNT, command::LEARN_LIBRARY, command::COMPARE_FILE, command::EMULATE, command::COUNT, command::TOGGLE_TERNARY }, 16 },
 		{ L"Patch", { command::ASSEMBLE, command::PATCH_BYTES, command::REVERT_PATCH, command::COUNT, command::EXPORT_PATCHED }, 5 },
 		{ L"Debug", { command::DEBUG_RUN, command::DEBUG_COVERAGE, command::DEBUG_PAUSE, command::DEBUG_STOP, command::COUNT, command::DEBUG_STEP_INTO, command::DEBUG_STEP_OVER, command::COUNT, command::DEBUG_BREAKPOINT, command::DEBUG_CONDITION, command::DEBUG_WATCH }, 11 },
 		{ L"Help", { command::SHORTCUTS, command::COUNT, command::ABOUT }, 3 }
+	};
+
+	static const menu_spec code_menu = {
+		L"C", { command::RENAME, command::SET_TYPE, command::COMMENT, command::STRUCT_FROM_VAR, command::COUNT, command::NUMBER_RADIX, command::NUMBER_CHAR, command::NUMBER_RESET, command::COUNT, command::HIDE_CASTS, command::COLLAPSE_LOCALS, command::TOGGLE_TERNARY, command::COUNT, command::SHOW_REFERENCES, command::SWAP_VIEW, command::COUNT, command::COPY, command::COPY_FUNCTION }, 18
 	};
 
 	static constexpr int32_t menu_count = 9;
@@ -137,7 +141,17 @@ namespace ui {
 		}
 
 		render::canvas& c = canvas;
-		const menu_spec& spec = menus [ menu_open ];
+		bool context = menu_open == code_menu_index;
+
+		if ( !context && menu_open >= menu_count ) {
+
+			menu_open = -1;
+
+			return;
+
+		}
+
+		const menu_spec& spec = context ? code_menu : menus [ menu_open ];
 		float row_h = metric::menu_row;
 		float width_menu = 270.0f;
 		float height_menu = 6.0f;
@@ -145,11 +159,21 @@ namespace ui {
 		for ( int32_t i = 0; i < spec.count; i++ )
 			height_menu += spec.items [ i ] == command::COUNT ? 7.0f : row_h;
 
-		math::rect area ( menu_x [ menu_open ], title_area.bottom ( ) - 1.0f, width_menu, height_menu );
+		math::rect area ( context ? 0.0f : menu_x [ menu_open ], title_area.bottom ( ) - 1.0f, width_menu, height_menu );
+
+		if ( context ) {
+
+			area.x = math::floor ( base::min ( code_menu_at.x, w - width_menu - 4.0f ) );
+			area.y = math::floor ( base::min ( code_menu_at.y, h - height_menu - 4.0f ) );
+			area.y = base::max ( area.y, title_area.bottom ( ) );
+
+		}
+
 		uint64_t blocker = make_id ( "menu_blocker" );
 		widget& block = state ( blocker );
+		math::rect shade = context ? math::rect ( 0.0f, 0.0f, w, h ) : math::rect ( 0.0f, title_area.bottom ( ), w, h - title_area.bottom ( ) );
 
-		if ( interact ( blocker, math::rect ( 0.0f, title_area.bottom ( ), w, h - title_area.bottom ( ) ), block ) )
+		if ( interact ( blocker, shade, block ) || ( context && right_id == blocker ) )
 			menu_open = -1;
 
 		float shown = math::saturate ( menu_show );

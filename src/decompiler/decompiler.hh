@@ -31,6 +31,7 @@ namespace decompiler {
 		int32_t length = 0;
 		syntax kind = syntax::PLAIN;
 		uint64_t target = 0;
+		int64_t value = 0;
 
 	};
 
@@ -134,6 +135,24 @@ namespace decompiler {
 		virtual bool expand_ternary ( ) {
 
 			return false;
+
+		}
+
+		virtual bool hide_casts ( ) {
+
+			return false;
+
+		}
+
+		virtual bool collapse_locals ( ) {
+
+			return false;
+
+		}
+
+		virtual wchar_t number_form ( uint64_t, int64_t ) {
+
+			return 0;
 
 		}
 

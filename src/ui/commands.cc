@@ -93,7 +93,9 @@ namespace ui {
 		{ L"Run and record coverage", L"Shift+F9" },
 		{ L"Add watch", L"" },
 		{ L"Breakpoint condition", L"Shift+F2" },
-		{ L"Emulate function", L"Ctrl+Alt+E" }
+		{ L"Emulate function", L"Ctrl+Alt+E" },
+		{ L"Hide casts in C", L"\\" },
+		{ L"Collapse local declarations", L"Ctrl+Num -" }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -190,10 +192,16 @@ namespace ui {
 
 			case command::NUMBER_RADIX:
 			case command::NUMBER_CHAR:
+			case command::NUMBER_RESET:
+				return analyzed && ( showing == view::PSEUDOCODE || ( ( showing == view::LISTING || showing == view::GRAPH ) && db->is_covered ( now->cursor_address ) ) );
+
 			case command::NUMBER_BINARY:
 			case command::NUMBER_FLOAT:
-			case command::NUMBER_RESET:
 				return analyzed && ( showing == view::LISTING || showing == view::GRAPH ) && db->is_covered ( now->cursor_address );
+
+			case command::HIDE_CASTS:
+			case command::COLLAPSE_LOCALS:
+				return analyzed && showing == view::PSEUDOCODE;
 
 			case command::TOGGLE_GRAPH:
 				return analyzed && ( showing == view::GRAPH || ( showing == view::LISTING && db->function_at ( now->cursor_address ) >= 0 ) );
@@ -239,6 +247,12 @@ namespace ui {
 
 			case command::TOGGLE_TERNARY:
 				return c_no_ternary;
+
+			case command::HIDE_CASTS:
+				return c_hide_casts;
+
+			case command::COLLAPSE_LOCALS:
+				return c_collapse_locals;
 
 			case command::DEBUG_BREAKPOINT:
 				return is_breakpoint ( now->cursor_address );
@@ -703,6 +717,17 @@ namespace ui {
 				log ( log_kind::INFO, c_no_ternary ? L"Ternaries in the C view are written as if and else." : L"Ternaries in the C view are written with ? and : again." );
 				break;
 
+			case command::HIDE_CASTS:
+				c_hide_casts = !c_hide_casts;
+				names_revision++;
+				log ( log_kind::INFO, c_hide_casts ? L"Casts are hidden in the C view. Press \\ to show them again." : L"Casts are shown in the C view." );
+				break;
+
+			case command::COLLAPSE_LOCALS:
+				c_collapse_locals = !c_collapse_locals;
+				names_revision++;
+				break;
+
 			case command::SEARCH_ALL:
 				open_prompt ( action, now->cursor_address );
 				break;
@@ -1133,6 +1158,46 @@ namespace ui {
 			case command::NUMBER_BINARY:
 			case command::NUMBER_FLOAT:
 			case command::NUMBER_RESET: {
+
+				if ( showing == view::PSEUDOCODE ) {
+
+					uint64_t key = 0;
+					int64_t number = 0;
+					bool hex_now = false;
+
+					if ( !code_number ( key, number, hex_now ) ) {
+
+						log ( log_kind::WARN, L"Put the caret on a number in the C view first." );
+
+						break;
+
+					}
+
+					const wchar_t* current = user_text ( code_numbers, key );
+					wchar_t first = current ? current [ 0 ] : 0;
+					const wchar_t* form = L"";
+
+					if ( action == command::NUMBER_RADIX )
+						form = hex_now ? L"d" : L"h";
+					else if ( action == command::NUMBER_CHAR )
+						form = first == L'c' || number < 0x20 || number > 0x7E ? L"" : L"c";
+
+					if ( action == command::NUMBER_CHAR && !form [ 0 ] && first != L'c' ) {
+
+						log ( log_kind::WARN, L"This number isn't a printable character." );
+
+						break;
+
+					}
+
+					remember_undo ( );
+					set_user_text ( code_numbers, key, form );
+					names_revision++;
+					changed ( );
+
+					break;
+
+				}
 
 				uint64_t address = db->instruction_at ( now->cursor_address );
 				x86::instruction ins;
