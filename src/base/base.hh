@@ -168,6 +168,24 @@ namespace base {
 
 	}
 
+	inline bool is_identifier ( const wchar_t* text ) {
+
+		if ( !text [ 0 ] || ( text [ 0 ] >= L'0' && text [ 0 ] <= L'9' ) )
+			return false;
+
+		for ( const wchar_t* at = text; *at; at++ ) {
+
+			wchar_t c = *at;
+
+			if ( !( ( c >= L'a' && c <= L'z' ) || ( c >= L'A' && c <= L'Z' ) || ( c >= L'0' && c <= L'9' ) || c == L'_' ) )
+				return false;
+
+		}
+
+		return true;
+
+	}
+
 	inline void rgb_to_hsv ( uint32_t rgb, float& hue, float& saturation, float& value ) {
 
 		float r = static_cast < float > ( ( rgb >> 16 ) & 255 ) / 255.0f;

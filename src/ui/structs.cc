@@ -210,24 +210,6 @@ namespace ui {
 
 	}
 
-	static bool identifier ( const wchar_t* text ) {
-
-		if ( !text [ 0 ] || ( text [ 0 ] >= L'0' && text [ 0 ] <= L'9' ) )
-			return false;
-
-		for ( const wchar_t* at = text; *at; at++ ) {
-
-			wchar_t c = *at;
-
-			if ( !( ( c >= L'a' && c <= L'z' ) || ( c >= L'A' && c <= L'Z' ) || ( c >= L'0' && c <= L'9' ) || c == L'_' ) )
-				return false;
-
-		}
-
-		return true;
-
-	}
-
 	void app::open_struct_prompt ( int32_t mode, int32_t index, int32_t offset, const wchar_t* fill ) {
 
 		open_code_prompt ( mode == 4 ? command::RENAME : command::SET_TYPE, mode, L"", fill );
@@ -259,7 +241,7 @@ namespace ui {
 
 					if ( prompt_mode == 4 ) {
 
-						if ( !identifier ( text ) ) {
+						if ( !base::is_identifier ( text ) ) {
 
 							log ( log_kind::WARN, L"Field names are letters, digits and underscores, and can't start with a digit." );
 
@@ -293,7 +275,7 @@ namespace ui {
 
 			case 6: {
 
-				if ( !identifier ( text ) ) {
+				if ( !base::is_identifier ( text ) ) {
 
 					log ( log_kind::WARN, L"Struct names are letters, digits and underscores, and can't start with a digit." );
 
@@ -488,7 +470,7 @@ namespace ui {
 					structs.remove_at ( static_cast < size_t > ( prompt_struct ) );
 					expanded_struct = -1;
 
-				} else if ( identifier ( text ) )
+				} else if ( base::is_identifier ( text ) )
 					structs [ static_cast < size_t > ( prompt_struct ) ].name.set ( text );
 				else
 					return false;
