@@ -186,6 +186,7 @@ namespace decompiler {
 		bool returns_float = false;
 		uint8_t return_size = 0;
 		int32_t locals = 0;
+		int64_t pushed = 0;
 
 		int32_t make ( op kind, uint8_t size, int32_t a = -1, int32_t b = -1, int64_t value = 0, uint8_t bits = 0 );
 

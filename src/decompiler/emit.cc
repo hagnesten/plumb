@@ -140,7 +140,8 @@ namespace decompiler {
 		base::list < uint8_t > labeled;
 		base::list < int32_t > var_number;
 		base::list < uint8_t > referenced;
-		int32_t next_number = 1;
+		int32_t next_number = 0;
+		int32_t result_var = -1;
 		int32_t gotos = 0;
 		int32_t depth = 0;
 		bool no_ternary = false;
@@ -152,6 +153,7 @@ namespace decompiler {
 
 			out.spaced = owner.names && owner.names->spaced ( );
 			out.names = owner.names;
+			next_number = owner.params;
 			no_ternary = owner.names && owner.names->expand_ternary ( );
 
 		}
@@ -204,7 +206,6 @@ namespace decompiler {
 
 			const variable& item = b.vars [ static_cast < size_t > ( index ) ];
 			int32_t length = 0;
-			wchar_t digits [ 24 ];
 
 			if ( !dry && index < referenced.count ( ) )
 				referenced [ static_cast < size_t > ( index ) ] = 1;
@@ -238,19 +239,19 @@ namespace decompiler {
 				add ( L"a" );
 				decimal ( item.position + 1 );
 
-			} else if ( item.kind == var_kind::STACK ) {
-
-				hex ( static_cast < uint64_t > ( item.offset < 0 ? -item.offset : item.offset ), digits );
-				add ( item.offset < 0 ? L"local_" : L"home_" );
-				add ( digits );
-
 			} else {
 
-				if ( var_number [ static_cast < size_t > ( index ) ] == 0 )
+				if ( var_number [ static_cast < size_t > ( index ) ] < 0 )
 					var_number [ static_cast < size_t > ( index ) ] = next_number++;
 
-				add ( item.bits & FLOATING ? L"f" : L"v" );
-				decimal ( var_number [ static_cast < size_t > ( index ) ] );
+				if ( index == result_var )
+					add ( L"result" );
+				else {
+
+					add ( L"v" );
+					decimal ( var_number [ static_cast < size_t > ( index ) ] );
+
+				}
 
 			}
 
@@ -2307,7 +2308,7 @@ namespace decompiler {
 			}
 
 			wanted_label.fill ( static_cast < size_t > ( count ), 0 );
-			var_number.fill ( b.vars.size ( ), 0 );
+			var_number.fill ( b.vars.size ( ), -1 );
 			referenced.fill ( b.vars.size ( ), 0 );
 
 		}
@@ -2617,6 +2618,38 @@ namespace decompiler {
 		result body;
 
 		body_emitter.analyze ( );
+
+		if ( b.returns_value && !b.returns_float ) {
+
+			int32_t chosen = -1;
+
+			for ( const block_code& item : b.code ) {
+
+				if ( item.end != term::RETURN || item.returned < 0 || !item.reachable )
+					continue;
+
+				const expr& back = b.exprs [ static_cast < size_t > ( item.returned ) ];
+				int32_t var = back.kind == op::VAR ? static_cast < int32_t > ( back.value ) : -1;
+
+				if ( back.kind == op::CONST )
+					continue;
+
+				if ( var < 0 || b.vars [ static_cast < size_t > ( var ) ].kind != var_kind::REGISTER || b.vars [ static_cast < size_t > ( var ) ].family != 0 || ( chosen >= 0 && chosen != var ) ) {
+
+					chosen = -2;
+
+					break;
+
+				}
+
+				chosen = var;
+
+			}
+
+			body_emitter.result_var = chosen >= 0 ? chosen : -1;
+
+		}
+
 		body_emitter.out.r = &body;
 		body_emitter.dry = true;
 		body_emitter.out.indent = 1;
@@ -2634,7 +2667,7 @@ namespace decompiler {
 
 			variable& item = b.vars [ static_cast < size_t > ( v ) ];
 
-			if ( item.kind == var_kind::REGISTER && body_emitter.var_number [ static_cast < size_t > ( v ) ] == 0 )
+			if ( item.kind == var_kind::REGISTER && body_emitter.var_number [ static_cast < size_t > ( v ) ] < 0 )
 				continue;
 
 			wchar_t key [ 64 ];
@@ -2685,6 +2718,7 @@ namespace decompiler {
 
 		head.var_number = body_emitter.var_number;
 		head.next_number = body_emitter.next_number;
+		head.result_var = body_emitter.result_var;
 		head.out.r = &out;
 
 		for ( int32_t v = 0; v < b.vars.count ( ); v++ ) {
@@ -2760,10 +2794,13 @@ namespace decompiler {
 		} else
 			head.out.put ( L"void", syntax::KEYWORD );
 
-		head.out.put ( L" " );
+		head.name_after_type ( );
 
 		if ( !b.names->name ( b.function, true, name, 300 ) )
 			name [ 0 ] = 0;
+
+		if ( b.long_mode && b.params > 0 && !( b.has_prototype && b.prototype.variadic ) )
+			head.out.put ( L"__fastcall ", syntax::KEYWORD );
 
 		head.out.put ( name, syntax::FUNCTION, b.function );
 		head.out.put ( L"(" );
@@ -2822,9 +2859,6 @@ namespace decompiler {
 
 		}
 
-		if ( !shown_params )
-			head.out.put ( L"void", syntax::KEYWORD );
-
 		head.out.put ( L")" );
 		head.out.finish ( );
 		head.out.begin ( b.function );
@@ -2833,6 +2867,16 @@ namespace decompiler {
 		head.out.indent = 1;
 
 		int32_t declared = 0;
+		base::list < int32_t > shown_vars;
+		int64_t lowest = 0;
+		int64_t saved_size = b.pushed;
+
+		for ( const block_code& item : b.code ) {
+
+			if ( item.delta_known && item.reachable )
+				lowest = base::min ( lowest, item.delta );
+
+		}
 
 		for ( int32_t v = 0; v < b.vars.count ( ); v++ ) {
 
@@ -2841,9 +2885,16 @@ namespace decompiler {
 			if ( item.kind == var_kind::PARAMETER || item.cookie || item.saved )
 				continue;
 
-			if ( !body_emitter.referenced [ static_cast < size_t > ( v ) ] )
-				continue;
+			if ( body_emitter.referenced [ static_cast < size_t > ( v ) ] )
+				shown_vars.push ( v );
 
+		}
+
+		base::sort ( shown_vars.data ( ), shown_vars.count ( ), [ & ] ( int32_t x, int32_t y ) { return head.var_number [ static_cast < size_t > ( x ) ] < head.var_number [ static_cast < size_t > ( y ) ]; } );
+
+		for ( int32_t v : shown_vars ) {
+
+			const variable& item = b.vars [ static_cast < size_t > ( v ) ];
 			wchar_t var [ 64 ];
 
 			head.out.begin ( 0 );
@@ -2855,20 +2906,46 @@ namespace decompiler {
 
 			if ( item.kind == var_kind::REGISTER && item.family >= 0 ) {
 
-				static const wchar_t* const gpr [ 16 ] = { L"rax", L"rcx", L"rdx", L"rbx", L"rsp", L"rbp", L"rsi", L"rdi", L"r8", L"r9", L"r10", L"r11", L"r12", L"r13", L"r14", L"r15" };
-				static const wchar_t* const narrow [ 8 ] = { L"eax", L"ecx", L"edx", L"ebx", L"esp", L"ebp", L"esi", L"edi" };
+				static const wchar_t* const wide [ 16 ] = { L"rax", L"rcx", L"rdx", L"rbx", L"rsp", L"rbp", L"rsi", L"rdi", L"r8", L"r9", L"r10", L"r11", L"r12", L"r13", L"r14", L"r15" };
+				static const wchar_t* const dword [ 8 ] = { L"eax", L"ecx", L"edx", L"ebx", L"esp", L"ebp", L"esi", L"edi" };
+				static const wchar_t* const word [ 8 ] = { L"ax", L"cx", L"dx", L"bx", L"sp", L"bp", L"si", L"di" };
+				static const wchar_t* const byte [ 8 ] = { L"al", L"cl", L"dl", L"bl", L"spl", L"bpl", L"sil", L"dil" };
+				base::writer note;
 
-				head.out.put ( L"  " );
+				note.add ( L" // " );
 
-				if ( item.family < 16 )
-					head.out.put ( base::writer ( ).add ( L"// " ).add ( b.long_mode || item.family >= 8 ? gpr [ item.family ] : narrow [ item.family ] ).text ( ), syntax::COMMENT );
+				if ( item.family >= 16 )
+					note.add ( L"xmm" ).number ( item.family - 16 );
+				else if ( item.family >= 8 )
+					note.add ( wide [ item.family ] ).add ( item.size == 4 ? L"d" : ( item.size == 2 ? L"w" : ( item.size == 1 ? L"b" : L"" ) ) );
+				else if ( item.size == 8 && b.long_mode )
+					note.add ( wide [ item.family ] );
 				else
-					head.out.put ( base::writer ( ).add ( L"// xmm" ).number ( item.family - 16 ).text ( ), syntax::COMMENT );
+					note.add ( item.size == 2 ? word [ item.family ] : ( item.size == 1 ? byte [ item.family ] : dword [ item.family ] ) );
+
+				head.out.put ( note.text ( ), syntax::COMMENT );
 
 			} else if ( item.kind == var_kind::STACK ) {
 
-				head.out.put ( L"  " );
-				head.out.put ( base::writer ( ).add ( L"// [rsp" ).add ( item.offset < 0 ? L"-0x" : L"+0x" ).hex ( static_cast < uint64_t > ( item.offset < 0 ? -item.offset : item.offset ) ).add ( item.offset < 0 ? L"] at entry" : L"] at entry, the caller's home space" ).text ( ), syntax::COMMENT );
+				int64_t from_rsp = item.offset - lowest;
+				int64_t from_rbp = item.offset + saved_size;
+				bool by_reference = false;
+
+				for ( const expr& use : b.exprs ) {
+
+					if ( use.kind == op::ADDRESS && use.a < 0 && use.value == v )
+						by_reference = true;
+
+				}
+
+				base::writer note;
+
+				note.add ( L" // [rsp+" ).hex ( static_cast < uint64_t > ( from_rsp < 0 ? 0 : from_rsp ) ).add ( L"h] [rbp" ).add ( from_rbp < 0 ? L"-" : L"+" ).hex ( static_cast < uint64_t > ( from_rbp < 0 ? -from_rbp : from_rbp ) ).add ( L"h]" );
+
+				if ( by_reference )
+					note.add ( L" BYREF" );
+
+				head.out.put ( note.text ( ), syntax::COMMENT );
 
 			}
 

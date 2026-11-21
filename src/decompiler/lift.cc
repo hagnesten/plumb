@@ -3196,9 +3196,16 @@ namespace decompiler {
 			out_block.first = statements.count ( );
 			out_block.reachable = true;
 
+			bool pushing = index == 0;
+
 			for ( int32_t i = 0; i < list.count ( ); i++ ) {
 
 				const x86::instruction& ins = list [ static_cast < size_t > ( i ) ];
+
+				if ( pushing && ins.name == mnemonic::push && ins.count && ins.operands [ 0 ].type == x86::kind::REG )
+					pushed += long_mode ? 8 : 4;
+				else if ( !( ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::MEM && ins.operands [ 1 ].type == x86::kind::REG ) )
+					pushing = false;
 
 				state.step ( ins, after [ static_cast < size_t > ( i ) ], def_list [ static_cast < size_t > ( i ) ] );
 
