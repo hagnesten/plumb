@@ -270,6 +270,13 @@ namespace render {
 
 		bool save ( const surface& source, const wchar_t* path, color underlay, int32_t width, int32_t height );
 
+		bool set_fonts ( );
+
+		bool has_family ( const wchar_t* name );
+
+		wchar_t font_names [ 3 ] [ 64 ] = { };
+		float font_sizes [ 3 ] = { };
+		wchar_t family_used [ 3 ] [ 64 ] = { };
 		surface scene;
 		surface chrome;
 		surface blurred;

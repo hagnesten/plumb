@@ -293,15 +293,44 @@ namespace render {
 			return false;
 
 		const wchar_t* wanted [ 4 ] [ 2 ] = { { L"Segoe UI Variable Text", L"Segoe UI" }, { L"Segoe UI Variable Display", L"Segoe UI" }, { L"Consolas", L"Cascadia Mono" }, { L"Cascadia Mono", L"Consolas" } };
+		const int32_t group_of [ 4 ] = { 0, 0, 1, 2 };
+		const float base_size [ 3 ] = { 12.0f, 13.0f, 13.0f };
 		const wchar_t* families [ 4 ];
 
 		for ( int32_t i = 0; i < 4; i++ ) {
 
 			UINT32 index = 0;
 			BOOL exists = FALSE;
+			const wchar_t* chosen = font_names [ group_of [ i ] ];
+
+			if ( chosen [ 0 ] ) {
+
+				collection->FindFamilyName ( chosen, &index, &exists );
+
+				if ( exists ) {
+
+					families [ i ] = chosen;
+
+					continue;
+
+				}
+
+			}
 
 			collection->FindFamilyName ( wanted [ i ] [ 0 ], &index, &exists );
 			families [ i ] = exists ? wanted [ i ] [ 0 ] : wanted [ i ] [ 1 ];
+
+		}
+
+		for ( int32_t g = 0; g < 3; g++ ) {
+
+			const wchar_t* used = families [ g == 0 ? 0 : g + 1 ];
+			int32_t k = 0;
+
+			for ( ; used [ k ] && k < 63; k++ )
+				family_used [ g ] [ k ] = used [ k ];
+
+			family_used [ g ] [ k ] = 0;
 
 		}
 
@@ -323,7 +352,11 @@ namespace render {
 
 		for ( int32_t i = 0; i < static_cast < int32_t > ( font::COUNT ); i++ ) {
 
-			const font_role& role = roles [ i ];
+			font_role& role = roles [ i ];
+			int32_t group = group_of [ role.family ];
+
+			if ( font_sizes [ group ] >= 6.0f && i != static_cast < int32_t > ( font::BRAND ) )
+				role.size = role.size * font_sizes [ group ] / base_size [ group ];
 
 			if ( FAILED ( dwrite->CreateTextFormat ( families [ role.family ], collection, role.weight, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, role.size, L"en-us", &formats [ i ] ) ) ) {
 
@@ -408,6 +441,47 @@ namespace render {
 		collection->Release ( );
 
 		return true;
+
+	}
+
+	bool gpu::has_family ( const wchar_t* name ) {
+
+		IDWriteFontCollection* collection = nullptr;
+
+		if ( !dwrite || !name || !name [ 0 ] || FAILED ( dwrite->GetSystemFontCollection ( &collection, FALSE ) ) )
+			return false;
+
+		UINT32 index = 0;
+		BOOL exists = FALSE;
+
+		collection->FindFamilyName ( name, &index, &exists );
+		collection->Release ( );
+
+		return exists != FALSE;
+
+	}
+
+	bool gpu::set_fonts ( ) {
+
+		for ( int32_t i = 0; i < entry_room && entries; i++ ) {
+
+			drop ( entries [ i ].layout );
+			entries [ i ] = text_entry ( );
+
+		}
+
+		entry_count = 0;
+
+		for ( int32_t i = 0; i < static_cast < int32_t > ( font::COUNT ); i++ ) {
+
+			drop ( ellipsis [ i ] );
+			drop ( formats [ i ] );
+
+		}
+
+		drop ( tabular );
+
+		return make_fonts ( );
 
 	}
 
