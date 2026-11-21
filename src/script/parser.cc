@@ -55,6 +55,9 @@ namespace script {
 		if ( accept ( mark ) )
 			return true;
 
+		if ( mark == symbol::SEMICOLON && peek ( ).type == token_kind::END )
+			return true;
+
 		base::writer message;
 
 		message.add ( L"Expected " ).add ( what );
