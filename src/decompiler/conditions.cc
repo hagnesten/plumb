@@ -249,6 +249,211 @@ namespace decompiler {
 
 	}
 
+	static int32_t strip_casts ( const builder& b, int32_t e ) {
+
+		while ( e >= 0 && b.exprs [ static_cast < size_t > ( e ) ].kind == op::CAST )
+			e = b.exprs [ static_cast < size_t > ( e ) ].a;
+
+		return e;
+
+	}
+
+	void builder::fold_switches ( ) {
+
+		int32_t total = code.count ( );
+
+		if ( total != graph.blocks.count ( ) )
+			return;
+
+		base::list < int32_t > uses;
+
+		uses.fill ( vars.size ( ), 0 );
+
+		for ( const statement& line : statements ) {
+
+			if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+				continue;
+
+			bool defines = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+
+			if ( !defines )
+				count_vars ( *this, line.left, uses, 0 );
+
+			count_vars ( *this, line.right, uses, 0 );
+
+		}
+
+		for ( const block_code& item : code ) {
+
+			count_vars ( *this, item.condition, uses, 0 );
+			count_vars ( *this, item.selector, uses, 0 );
+			count_vars ( *this, item.returned, uses, 0 );
+
+		}
+
+		bool changed = false;
+
+		for ( int32_t s = 0; s < total; s++ ) {
+
+			block_code& table = code [ static_cast < size_t > ( s ) ];
+
+			if ( table.end != term::SWITCH || !table.reachable || table.selector < 0 )
+				continue;
+
+			bool empty = true;
+
+			for ( int32_t k = table.first; k < table.first + table.count && k < statements.count ( ); k++ )
+				empty = empty && statements [ static_cast < size_t > ( k ) ].kind == stmt::NOP;
+
+			if ( !empty )
+				continue;
+
+			int32_t guard = -1;
+			int32_t incoming = 0;
+
+			for ( const analysis::edge& link : graph.edges ) {
+
+				if ( link.to == s ) {
+
+					incoming++;
+					guard = link.from;
+
+				}
+
+			}
+
+			if ( incoming != 1 || guard < 0 || guard == s )
+				continue;
+
+			block_code& head = code [ static_cast < size_t > ( guard ) ];
+
+			if ( head.end != term::BRANCH || head.condition < 0 || ( head.taken != s && head.other != s ) || head.taken == head.other )
+				continue;
+
+			int32_t fallback = head.taken == s ? head.other : head.taken;
+			const expr& test = exprs [ static_cast < size_t > ( head.condition ) ];
+			int32_t tested = -1;
+
+			if ( head.taken == fallback && ( test.kind == op::GT || test.kind == op::GE ) && ( test.bits & UNSIGNED ) )
+				tested = strip_casts ( *this, test.a );
+			else if ( head.other == fallback && ( test.kind == op::LE || test.kind == op::LT ) && ( test.bits & UNSIGNED ) )
+				tested = strip_casts ( *this, test.a );
+
+			int32_t picked = strip_casts ( *this, table.selector );
+
+			if ( tested < 0 || picked < 0 || exprs [ static_cast < size_t > ( tested ) ].kind != op::VAR || exprs [ static_cast < size_t > ( picked ) ].kind != op::VAR || exprs [ static_cast < size_t > ( tested ) ].value != exprs [ static_cast < size_t > ( picked ) ].value )
+				continue;
+
+			int64_t v = exprs [ static_cast < size_t > ( picked ) ].value;
+			int32_t selector = table.selector;
+			int64_t shift = 0;
+
+			for ( int32_t k = head.first + head.count - 1; k >= head.first && k < statements.count ( ); k-- ) {
+
+				statement& line = statements [ static_cast < size_t > ( k ) ];
+
+				if ( line.kind == stmt::NOP )
+					continue;
+
+				if ( line.kind != stmt::ASSIGN || line.left < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || exprs [ static_cast < size_t > ( line.left ) ].value != v || line.right < 0 )
+					break;
+
+				const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
+
+				if ( source.kind == op::ADD && source.b >= 0 && exprs [ static_cast < size_t > ( source.b ) ].kind == op::CONST && v < uses.count ( ) && uses [ static_cast < size_t > ( v ) ] == 2 ) {
+
+					shift = -exprs [ static_cast < size_t > ( source.b ) ].value;
+					selector = source.a;
+					line.kind = stmt::NOP;
+
+				} else if ( source.kind == op::SUB && source.b >= 0 && exprs [ static_cast < size_t > ( source.b ) ].kind == op::CONST && v < uses.count ( ) && uses [ static_cast < size_t > ( v ) ] == 2 ) {
+
+					shift = exprs [ static_cast < size_t > ( source.b ) ].value;
+					selector = source.a;
+					line.kind = stmt::NOP;
+
+				}
+
+				break;
+
+			}
+
+			base::list < analysis::edge > cases;
+
+			for ( const analysis::edge& link : graph.edges ) {
+
+				if ( link.from != s || link.kind != analysis::edge_kind::CASE || link.to == fallback )
+					continue;
+
+				analysis::edge moved = link;
+
+				moved.from = guard;
+				moved.value = static_cast < int32_t > ( link.value + shift );
+				cases.push ( moved );
+
+			}
+
+			if ( cases.empty ( ) )
+				continue;
+
+			for ( int32_t i = 1; i < cases.count ( ); i++ ) {
+
+				for ( int32_t j = i; j > 0 && cases [ static_cast < size_t > ( j - 1 ) ].value > cases [ static_cast < size_t > ( j ) ].value; j-- ) {
+
+					analysis::edge swap = cases [ static_cast < size_t > ( j ) ];
+
+					cases [ static_cast < size_t > ( j ) ] = cases [ static_cast < size_t > ( j - 1 ) ];
+					cases [ static_cast < size_t > ( j - 1 ) ] = swap;
+
+				}
+
+			}
+
+			int32_t kept = 0;
+
+			for ( int32_t e = 0; e < graph.edges.count ( ); e++ ) {
+
+				const analysis::edge link = graph.edges [ static_cast < size_t > ( e ) ];
+
+				if ( link.from == s || link.from == guard )
+					continue;
+
+				graph.edges [ static_cast < size_t > ( kept++ ) ] = link;
+
+			}
+
+			while ( graph.edges.count ( ) > kept )
+				graph.edges.pop ( );
+
+			for ( const analysis::edge& link : cases )
+				graph.edges.push ( link );
+
+			analysis::edge otherwise;
+
+			otherwise.from = guard;
+			otherwise.to = fallback;
+			otherwise.kind = analysis::edge_kind::JUMP;
+			graph.edges.push ( otherwise );
+
+			head.end = term::SWITCH;
+			head.selector = selector;
+			head.condition = -1;
+			head.taken = -1;
+			head.other = -1;
+			head.last = table.last;
+
+			table.reachable = false;
+			table.end = term::STOP;
+			table.selector = -1;
+			changed = true;
+
+		}
+
+		if ( changed )
+			reindex_edges ( );
+
+	}
+
 	void builder::merge_conditions ( ) {
 
 		sink_into_tests ( );

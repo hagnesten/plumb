@@ -241,6 +241,8 @@ namespace decompiler {
 
 		void infer_signs ( );
 
+		void fold_switches ( );
+
 		void split_webs ( );
 
 		void coalesce_copies ( );

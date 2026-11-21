@@ -4055,6 +4055,7 @@ namespace decompiler {
 		fold_returns ( );
 		split_webs ( );
 		merge_conditions ( );
+		fold_switches ( );
 		infer_signs ( );
 
 		return true;

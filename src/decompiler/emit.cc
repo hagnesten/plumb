@@ -3034,8 +3034,12 @@ namespace decompiler {
 
 			for ( int32_t e = 0; e < node.out_count; e++ ) {
 
-				int32_t to = b.graph.edges [ static_cast < size_t > ( node.first_out + e ) ].to;
+				const analysis::edge& link = b.graph.edges [ static_cast < size_t > ( node.first_out + e ) ];
+				int32_t to = link.to;
 				bool seen = false;
+
+				if ( link.kind == analysis::edge_kind::JUMP && to == follow )
+					continue;
 
 				for ( int32_t t : targets ) {
 
@@ -3065,9 +3069,17 @@ namespace decompiler {
 							continue;
 
 						out.begin ( b.graph.blocks [ static_cast < size_t > ( target ) ].start );
-						out.put ( L"case", syntax::CONTROL );
-						out.put ( L" " );
-						number ( link.value, 4, false, false );
+
+						if ( link.kind == analysis::edge_kind::JUMP )
+							out.put ( L"default", syntax::CONTROL );
+						else {
+
+							out.put ( L"case", syntax::CONTROL );
+							out.put ( L" " );
+							number ( link.value, 4, false, false );
+
+						}
+
 						out.put ( L":" );
 						out.finish ( );
 
