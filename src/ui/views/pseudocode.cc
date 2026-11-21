@@ -529,31 +529,6 @@ namespace ui {
 
 		}
 
-		float end_y = area.y + ( static_cast < float > ( total ) - offset ) * row_h + 6.0f;
-
-		if ( end_y > area.y && end_y < area.bottom ( ) ) {
-
-			wchar_t name [ 200 ];
-			int32_t owner = db->function_starting ( code->function );
-			base::writer tag;
-
-			if ( owner >= 0 )
-				function_name ( owner, name, 200 );
-			else
-				name [ 0 ] = 0;
-
-			tag.add ( L" end of " ).add ( name ).add ( L"  \x00B7  " ).number ( code->instructions ).add ( L" instructions, " ).number ( code->blocks ).add ( L" blocks" );
-
-			if ( code->gotos )
-				tag.add ( L", " ).number ( code->gotos ).add ( code->gotos == 1 ? L" goto" : L" gotos" );
-
-			tag.add ( L"  \x00B7  " ).fixed ( code->seconds * 1000.0, 2 ).add ( L" ms " );
-			c.fill ( math::rect ( x_base, end_y + 9.0f, area.right ( ) - x_base - 16.0f, 1.0f ), 0.0f, ink ( tone::LINE ) );
-			c.fill ( math::rect ( x_base + 8.0f, end_y + 1.0f, c.measure ( tag.text ( ), render::font::SMALL ) + 8.0f, 16.0f ), 3.0f, ink ( tone::BASE ) );
-			c.text ( tag.text ( ), render::font::SMALL, math::vec2 ( x_base + 12.0f, end_y + 9.0f ), ink ( tone::INK_FAINT ) );
-
-		}
-
 		c.pop_clip ( );
 		draw_scrollbar ( make_id ( "code_bar", drawing_serial ), text_area, now->code_scroll, static_cast < float > ( total + 3 ), visible );
 
