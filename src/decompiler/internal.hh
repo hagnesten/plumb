@@ -88,6 +88,7 @@ namespace decompiler {
 		bool cookie = false;
 		bool saved = false;
 		bool assigned = false;
+		bool flags = false;
 
 	};
 

@@ -3609,6 +3609,79 @@ namespace decompiler {
 		for ( const analysis::edge& link : graph.edges )
 			code [ static_cast < size_t > ( link.to ) ].preds++;
 
+		base::list < int32_t > joined;
+
+		joined.fill ( static_cast < size_t > ( count ), -1 );
+
+		for ( int32_t pass = 0; pass < 4; pass++ )
+		for ( int32_t i = 1; i < count; i++ ) {
+
+			const base::list < x86::instruction >& list = listings [ static_cast < size_t > ( i ) ];
+
+			if ( joined [ static_cast < size_t > ( i ) ] >= 0 || list.empty ( ) )
+				continue;
+
+			if ( code [ static_cast < size_t > ( i ) ].preds < 2 ) {
+
+				bool through = false;
+
+				for ( const analysis::edge& link : graph.edges ) {
+
+					if ( link.to == i && joined [ static_cast < size_t > ( link.from ) ] >= 0 )
+						through = true;
+
+				}
+
+				if ( !through )
+					continue;
+
+			}
+
+			const x86::instruction& last = list [ list.size ( ) - 1 ];
+
+			if ( last.control != x86::flow::BRANCH || last.condition == 0xFF )
+				continue;
+
+			bool neutral = true;
+
+			for ( int32_t k = 0; k + 1 < list.count ( ) && neutral; k++ ) {
+
+				mnemonic name = list [ static_cast < size_t > ( k ) ].name;
+
+				neutral = name == mnemonic::mov || name == mnemonic::lea || name == mnemonic::movzx || name == mnemonic::movsx || name == mnemonic::movsxd || name == mnemonic::nop;
+
+			}
+
+			if ( !neutral )
+				continue;
+
+			bool all_set = true;
+
+			for ( const analysis::edge& link : graph.edges ) {
+
+				if ( link.to != i )
+					continue;
+
+				const base::list < x86::instruction >& before = listings [ static_cast < size_t > ( link.from ) ];
+
+				if ( before.empty ( ) || before [ before.size ( ) - 1 ].control == x86::flow::CALL )
+					all_set = false;
+
+			}
+
+			if ( !all_set )
+				continue;
+
+			variable& made = vars.emplace ( );
+
+			made.kind = var_kind::REGISTER;
+			made.size = 1;
+			made.flags = true;
+			made.offset = last.condition;
+			joined [ static_cast < size_t > ( i ) ] = vars.count ( ) - 1;
+
+		}
+
 		machine state;
 
 		state.b = this;
@@ -3676,6 +3749,40 @@ namespace decompiler {
 
 			out_block.last = item.last;
 
+			if ( joined [ static_cast < size_t > ( index ) ] < 0 ) {
+
+				base::list < int32_t > pending;
+				base::list < uint8_t > done;
+
+				done.fill ( static_cast < size_t > ( count ), 0 );
+
+				for ( int32_t e = 0; e < item.out_count; e++ )
+					pending.push ( graph.edges [ static_cast < size_t > ( item.first_out + e ) ].to );
+
+				while ( pending.count ( ) ) {
+
+					int32_t to = pending [ 0 ];
+
+					pending.remove_at ( 0 );
+
+					if ( to == index || done [ static_cast < size_t > ( to ) ] || joined [ static_cast < size_t > ( to ) ] < 0 )
+						continue;
+
+					done [ static_cast < size_t > ( to ) ] = 1;
+
+					uint8_t code_of = listings [ static_cast < size_t > ( to ) ].back ( ).condition;
+
+					state.emit ( stmt::ASSIGN, var_expr ( joined [ static_cast < size_t > ( to ) ], 1 ), state.condition ( code_of ), item.last );
+
+					const analysis::block& next = graph.blocks [ static_cast < size_t > ( to ) ];
+
+					for ( int32_t e = 0; e < next.out_count; e++ )
+						pending.push ( graph.edges [ static_cast < size_t > ( next.first_out + e ) ].to );
+
+				}
+
+			}
+
 			if ( last && last->control == x86::flow::BRANCH ) {
 
 				if ( state.flag_kind == 1 && state.flag_a >= 0 && state.flag_b >= 0 && last->condition >= 4 && last->condition <= 5 ) {
@@ -3715,7 +3822,10 @@ namespace decompiler {
 				}
 
 				out_block.end = term::BRANCH;
-				out_block.condition = last->condition != 0xFF ? state.condition ( last->condition ) : make ( op::INTRINSIC, 1, -1, -1, I_FLAGS );
+				if ( joined [ static_cast < size_t > ( index ) ] >= 0 )
+					out_block.condition = var_expr ( joined [ static_cast < size_t > ( index ) ], 1 );
+				else
+					out_block.condition = last->condition != 0xFF ? state.condition ( last->condition ) : make ( op::INTRINSIC, 1, -1, -1, I_FLAGS );
 
 				for ( int32_t e = 0; e < item.out_count; e++ ) {
 

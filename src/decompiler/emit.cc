@@ -777,6 +777,14 @@ namespace decompiler {
 
 			}
 
+			if ( item.flags ) {
+
+				out.put ( L"bool", syntax::TYPE );
+
+				return;
+
+			}
+
 			if ( index < element.count ( ) && element [ static_cast < size_t > ( index ) ] ) {
 
 				uint8_t shape = element [ static_cast < size_t > ( index ) ];
@@ -4565,6 +4573,13 @@ namespace decompiler {
 					note.add ( item.size == 2 ? word [ item.family ] : ( item.size == 1 ? byte [ item.family ] : dword [ item.family ] ) );
 
 				head.out.put ( note.text ( ), syntax::COMMENT );
+
+			} else if ( item.flags ) {
+
+				int64_t code = item.offset;
+				const wchar_t* flag = code == 2 || code == 3 ? L" // cf" : ( code == 8 || code == 9 ? L" // sf" : ( code == 0 || code == 1 ? L" // of" : L" // zf" ) );
+
+				head.out.put ( flag, syntax::COMMENT );
 
 			} else if ( item.kind == var_kind::STACK ) {
 
