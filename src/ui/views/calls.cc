@@ -147,9 +147,52 @@ namespace ui {
 		for ( uint64_t item : found )
 			add ( item, 1, 0 );
 
+		int32_t owner = db->function_starting ( function );
+		int32_t data_count = 0;
+
+		for ( const analysis::xref& ref : db->refs ) {
+
+			if ( data_count >= 12 || owner < 0 )
+				break;
+
+			if ( ref.type != analysis::ref::READ && ref.type != analysis::ref::WRITE && ref.type != analysis::ref::ADDRESS && ref.type != analysis::ref::POINTER )
+				continue;
+
+			uint64_t source = file.base + ref.source;
+			uint64_t target = file.base + ref.target;
+
+			if ( db->function_at ( source ) != owner || db->function_starting ( target ) >= 0 || file.section_at ( target ) < 0 )
+				continue;
+
+			bool slot = false;
+
+			for ( const loader::import& item : file.imports )
+				slot = slot || item.slot == target;
+
+			bool seen = slot;
+
+			for ( const call_node& item : call_nodes )
+				seen = seen || ( item.data && item.address == target );
+
+			if ( seen )
+				continue;
+
+			call_node& made = call_nodes.emplace ( );
+
+			made.address = target;
+			made.column = 0;
+			made.parent = 0;
+			made.data = true;
+			data_count++;
+
+		}
+
 		int32_t total = call_nodes.count ( );
 
 		for ( int32_t i = 1; i < total; i++ ) {
+
+			if ( call_nodes [ static_cast < size_t > ( i ) ].data )
+				continue;
 
 			call_node node = call_nodes [ static_cast < size_t > ( i ) ];
 			base::list < uint64_t > more;
@@ -239,10 +282,11 @@ namespace ui {
 		for ( call_node& item : call_nodes ) {
 
 			int32_t slot = item.column + 2;
-			float column_h = static_cast < float > ( per_column [ slot ] ) * ( node_h + spacing ) - spacing;
+			bool has_data = slot == 2 && per_column [ 2 ] > 1;
+			float column_h = static_cast < float > ( per_column [ slot ] ) * ( node_h + spacing ) - spacing + ( has_data ? 28.0f : 0.0f );
 			float y0 = content > room ? top : top + ( room - column_h ) * 0.5f;
 
-			item.box = math::rect ( left + static_cast < float > ( slot ) * ( col_w + gap ), y0 + static_cast < float > ( placed [ slot ]++ ) * ( node_h + spacing ) - shift, col_w, node_h );
+			item.box = math::rect ( left + static_cast < float > ( slot ) * ( col_w + gap ), y0 + static_cast < float > ( placed [ slot ]++ ) * ( node_h + spacing ) + ( item.data ? 28.0f : 0.0f ) - shift, col_w, node_h );
 
 		}
 
@@ -291,7 +335,7 @@ namespace ui {
 
 			const call_node& item = call_nodes [ static_cast < size_t > ( i ) ];
 
-			if ( item.parent < 0 )
+			if ( item.parent < 0 || item.data )
 				continue;
 
 			const call_node& other = call_nodes [ static_cast < size_t > ( item.parent ) ];
@@ -312,6 +356,7 @@ namespace ui {
 		}
 
 		wchar_t name [ 200 ];
+		bool data_heading = false;
 
 		for ( int32_t i = 0; i < call_nodes.count ( ); i++ ) {
 
@@ -321,8 +366,44 @@ namespace ui {
 			int32_t owner = db->function_starting ( item.address );
 			bool external = owner < 0 || ( db->functions [ static_cast < size_t > ( owner ) ].flags & analysis::THUNK );
 			tone color = external ? tone::IMPORT : tone::FUNCTION;
+			int32_t text_index = item.data ? string_at ( item.address ) : -1;
 
-			if ( !symbol_name ( item.address, true, name, 200 ) ) {
+			if ( item.data && !data_heading ) {
+
+				data_heading = true;
+				c.text ( base::writer ( ).add ( L"Data it uses  " ).number ( per_column [ 2 ] - 1 ).text ( ), render::font::TINY, math::vec2 ( item.box.x + 2.0f, item.box.y - 12.0f ), ink ( tone::INK_FAINT ) );
+
+			}
+
+			if ( item.data ) {
+
+				color = text_index >= 0 ? tone::STRING : tone::GLOBAL;
+
+				if ( text_index >= 0 ) {
+
+					wchar_t inner [ 190 ];
+
+					string_label ( text_index, inner, 190 );
+
+					base::writer quoted;
+
+					quoted.add ( L"\"" ).add ( inner ).add ( L"\"" );
+
+					for ( int32_t k = 0; k <= quoted.size ( ) && k < 200; k++ )
+						name [ k ] = quoted.text ( ) [ k ];
+
+				} else if ( !symbol_name ( item.address, false, name, 200 ) ) {
+
+					base::writer fallback;
+
+					fallback.add ( L"g_" ).hex ( item.address );
+
+					for ( int32_t k = 0; k <= fallback.size ( ) && k < 200; k++ )
+						name [ k ] = fallback.text ( ) [ k ];
+
+				}
+
+			} else if ( !symbol_name ( item.address, true, name, 200 ) ) {
 
 				base::writer fallback;
 
