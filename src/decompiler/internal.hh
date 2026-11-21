@@ -236,6 +236,8 @@ namespace decompiler {
 
 		void sink_into_tests ( );
 
+		void infer_signs ( );
+
 		void split_webs ( );
 
 		void coalesce_copies ( );

@@ -3923,6 +3923,7 @@ namespace decompiler {
 		fold_returns ( );
 		split_webs ( );
 		merge_conditions ( );
+		infer_signs ( );
 
 		return true;
 

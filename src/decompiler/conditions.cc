@@ -172,6 +172,83 @@ namespace decompiler {
 
 	}
 
+	static void note_signs ( const builder& b, int32_t e, base::list < uint8_t >& marks, int32_t depth ) {
+
+		if ( e < 0 || depth > 64 )
+			return;
+
+		const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+		bool ordered = node.kind == op::LT || node.kind == op::LE || node.kind == op::GT || node.kind == op::GE;
+
+		if ( ordered && ( node.bits & ( SIGNED | UNSIGNED ) ) ) {
+
+			const int32_t sides [ 2 ] = { node.a, node.b };
+
+			for ( int32_t side : sides ) {
+
+				if ( side < 0 )
+					continue;
+
+				const expr& operand = b.exprs [ static_cast < size_t > ( side ) ];
+
+				if ( operand.kind != op::VAR || operand.value < 0 || operand.value >= marks.count ( ) )
+					continue;
+
+				if ( b.vars [ static_cast < size_t > ( operand.value ) ].size != operand.size )
+					continue;
+
+				marks [ static_cast < size_t > ( operand.value ) ] |= ( node.bits & UNSIGNED ) ? 1 : 2;
+
+			}
+
+		}
+
+		note_signs ( b, node.a, marks, depth + 1 );
+		note_signs ( b, node.b, marks, depth + 1 );
+		note_signs ( b, node.c, marks, depth + 1 );
+
+		for ( int32_t i = 0; i < node.arg_count; i++ )
+			note_signs ( b, b.args [ static_cast < size_t > ( node.first_arg + i ) ], marks, depth + 1 );
+
+	}
+
+	void builder::infer_signs ( ) {
+
+		base::list < uint8_t > marks;
+
+		marks.fill ( vars.size ( ), 0 );
+
+		for ( const statement& line : statements ) {
+
+			if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+				continue;
+
+			note_signs ( *this, line.left, marks, 0 );
+			note_signs ( *this, line.right, marks, 0 );
+
+		}
+
+		for ( const block_code& item : code ) {
+
+			if ( !item.reachable )
+				continue;
+
+			note_signs ( *this, item.condition, marks, 0 );
+			note_signs ( *this, item.returned, marks, 0 );
+
+		}
+
+		for ( int32_t v = 0; v < vars.count ( ); v++ ) {
+
+			variable& item = vars [ static_cast < size_t > ( v ) ];
+
+			if ( marks [ static_cast < size_t > ( v ) ] == 1 && !( item.bits & ( FLOATING | POINTER ) ) )
+				item.bits = static_cast < uint8_t > ( ( item.bits & ~SIGNED ) | UNSIGNED );
+
+		}
+
+	}
+
 	void builder::merge_conditions ( ) {
 
 		sink_into_tests ( );
