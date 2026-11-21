@@ -94,7 +94,13 @@
     <ClCompile Include="src\script\lexer.cc" />
     <ClCompile Include="src\script\parser.cc" />
     <ClCompile Include="src\script\resolver.cc" />
-    <ClCompile Include="src\ui\scripting.cc" />
+    <ClCompile Include="src\ui\scripting\script_code.cc" />
+    <ClCompile Include="src\ui\scripting\script_control.cc" />
+    <ClCompile Include="src\ui\scripting\script_core.cc" />
+    <ClCompile Include="src\ui\scripting\script_data.cc" />
+    <ClCompile Include="src\ui\scripting\script_run.cc" />
+    <ClCompile Include="src\ui\scripting\script_structs.cc" />
+    <ClCompile Include="src\ui\scripting\script_tools.cc" />
     <ClCompile Include="src\ui\shell\colors.cc" />
     <ClCompile Include="src\ui\shell\dialogs.cc" />
     <ClCompile Include="src\ui\shell\docking.cc" />

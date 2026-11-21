@@ -279,6 +279,8 @@ namespace ui {
 
 	};
 
+	struct script_context;
+
 	struct sample_token {
 
 		const wchar_t* text;
@@ -652,9 +654,23 @@ namespace ui {
 
 		bool script_call ( script::engine& owner, const wchar_t* name, const script::value* args, int32_t count, script::value& result );
 
+		bool script_control ( script_context& call );
+
+		bool script_core ( script_context& call );
+
+		bool script_data ( script_context& call );
+
+		bool script_code ( script_context& call );
+
+		bool script_structs ( script_context& call );
+
+		bool script_tools ( script_context& call );
+
 		void script_print ( const wchar_t* text );
 
 		void script_touch ( );
+
+		void script_changed ( panel which );
 
 		base::text last_script;
 		bool script_jit = true;
