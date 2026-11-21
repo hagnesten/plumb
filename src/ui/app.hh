@@ -370,6 +370,7 @@ namespace ui {
 		scroller hex_scroll;
 		uint64_t hex_cursor = 0;
 		uint64_t hex_anchor = 0;
+		int32_t hex_nibble = 0;
 		bool hex_selecting = false;
 		scroller headers_scroll;
 		scroller code_scroll;
@@ -838,6 +839,12 @@ namespace ui {
 
 		void build_calls ( uint64_t function );
 
+		bool live_address ( uint64_t offset, uint64_t& runtime ) const;
+
+		bool live_byte ( uint64_t offset, uint8_t& value ) const;
+
+		void hex_type ( int32_t nibble );
+
 
 		render::gpu* gpu = nullptr;
 		void* window = nullptr;
@@ -861,6 +868,7 @@ namespace ui {
 		bool fixed_step = false;
 		bool persist = true;
 		bool load_pdb = true;
+		int32_t runtime_logged = -1;
 		bool settings_frozen = false;
 		bool maximized = false;
 		bool focused = true;

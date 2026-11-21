@@ -4,6 +4,92 @@
 
 namespace ui {
 
+	bool app::live_address ( uint64_t offset, uint64_t& runtime ) const {
+
+		uint64_t address = 0;
+
+		if ( debug_state.state != debugger::status::PAUSED || !debug_state.image_base || !file.address_of ( offset, address ) )
+			return false;
+
+		runtime = address - file.base + debug_state.image_base;
+
+		return true;
+
+	}
+
+	bool app::live_byte ( uint64_t offset, uint8_t& value ) const {
+
+		uint64_t runtime = 0;
+
+		return live_address ( offset, runtime ) && debugger::peek ( runtime, &value, 1 );
+
+	}
+
+	void app::hex_type ( int32_t nibble ) {
+
+		uint64_t offset = now->hex_cursor;
+
+		if ( offset >= file.size )
+			return;
+
+		uint64_t runtime = 0;
+		bool live = live_address ( offset, runtime );
+		uint8_t current = file.byte ( offset );
+
+		if ( live && !debugger::peek ( runtime, &current, 1 ) )
+			live = false;
+
+		uint8_t value = now->hex_nibble == 0 ? static_cast < uint8_t > ( ( current & 0x0F ) | ( nibble << 4 ) ) : static_cast < uint8_t > ( ( current & 0xF0 ) | nibble );
+
+		if ( live ) {
+
+			if ( !debugger::poke ( runtime, &value, 1 ) ) {
+
+				log ( log_kind::WARN, base::writer ( ).add ( L"Couldn't write to the process at " ).hex ( runtime ).text ( ) );
+
+				return;
+
+			}
+
+		} else {
+
+			uint64_t address = 0;
+
+			if ( !file.address_of ( offset, address ) ) {
+
+				log ( log_kind::WARN, L"Only bytes that load into memory can be patched here." );
+
+				return;
+
+			}
+
+			if ( !patch_bytes ( address, &value, 1 ) )
+				return;
+
+		}
+
+		if ( now->hex_nibble == 0 )
+			now->hex_nibble = 1;
+		else {
+
+			now->hex_nibble = 0;
+
+			if ( now->hex_cursor + 1 < file.size )
+				now->hex_cursor++;
+
+			now->hex_anchor = now->hex_cursor;
+
+			uint64_t address = 0;
+
+			if ( file.address_of ( now->hex_cursor, address ) )
+				now->cursor_address = address;
+
+		}
+
+		pending = base::max ( pending, 2 );
+
+	}
+
 	void app::draw_hex ( math::rect area ) {
 
 		render::canvas& c = canvas;
@@ -58,6 +144,7 @@ namespace ui {
 				if ( press_event ) {
 
 					now->hex_cursor = target;
+					now->hex_nibble = 0;
 
 					if ( !key_shift )
 						now->hex_anchor = target;
@@ -90,6 +177,11 @@ namespace ui {
 		}
 
 		c.text ( L"ASCII", render::font::SMALL_STRONG, math::vec2 ( x_ascii, header.center ( ).y ), ink ( tone::INK_SOFT ) );
+
+		bool live = debug_state.state == debugger::status::PAUSED && debug_state.image_base;
+
+		if ( live )
+			c.text ( L"Live process memory  \x00B7  typing writes to the process", render::font::SMALL, math::vec2 ( area.right ( ) - 22.0f, header.center ( ).y ), ink ( tone::WARNING ), render::align::RIGHT );
 
 		uint64_t low = base::min ( now->hex_cursor, now->hex_anchor );
 		uint64_t high = base::max ( now->hex_cursor, now->hex_anchor );
@@ -150,12 +242,40 @@ namespace ui {
 				c.text ( position.text ( ), render::font::MONO, math::vec2 ( x_off, cy ), ink ( tone::ADDRESS ) );
 
 				int32_t filled = 0;
+				uint8_t row_live [ 16 ] = { };
+				bool row_known [ 16 ] = { };
+
+				if ( live ) {
+
+					uint64_t first_runtime = 0;
+					uint64_t last_runtime = 0;
+					uint64_t span = base::min ( file.size - start, 16ull );
+
+					if ( live_address ( start, first_runtime ) && live_address ( start + span - 1, last_runtime ) && last_runtime == first_runtime + span - 1 && debugger::peek ( first_runtime, row_live, static_cast < size_t > ( span ) ) ) {
+
+						for ( uint64_t i = 0; i < span; i++ )
+							row_known [ i ] = true;
+
+					} else {
+
+						for ( uint64_t i = 0; i < span; i++ )
+							row_known [ i ] = live_byte ( start + i, row_live [ i ] );
+
+					}
+
+				}
 
 				for ( int32_t i = 0; i < 16 && start + static_cast < uint64_t > ( i ) < file.size; i++ ) {
 
-					uint8_t value = file.byte ( start + static_cast < uint64_t > ( i ) );
+					uint8_t stored = file.byte ( start + static_cast < uint64_t > ( i ) );
+					uint8_t value = row_known [ i ] ? row_live [ i ] : stored;
 					base::writer pair;
 					render::color tint = value == 0 ? ink ( tone::INK_FAINT ) : ( value >= 0x20 && value < 0x7F ? ink ( tone::INK ) : ( value == 0xFF ? ink ( tone::NUMBER ) : ink ( tone::INK_SOFT ) ) );
+
+					if ( row_known [ i ] && value != stored )
+						tint = ink ( tone::WARNING );
+					else if ( live && !row_known [ i ] )
+						tint = ink ( tone::INK_FAINT ).fade ( 0.5f );
 
 					pair.hex ( value, 2 );
 					c.text ( pair.text ( ), render::font::MONO, math::vec2 ( byte_x ( i ), cy ), tint );

@@ -573,6 +573,20 @@ namespace ui {
 			if ( focused_field )
 				continue;
 
+			if ( showing == view::HEX && file.size && !key_control && !key_alt ) {
+
+				int32_t nibble = code >= '0' && code <= '9' ? static_cast < int32_t > ( code - '0' ) : ( code >= 'A' && code <= 'F' ? static_cast < int32_t > ( code - 'A' + 10 ) : ( code >= VK_NUMPAD0 && code <= VK_NUMPAD9 ? static_cast < int32_t > ( code - VK_NUMPAD0 ) : -1 ) );
+
+				if ( nibble >= 0 ) {
+
+					hex_type ( nibble );
+
+					continue;
+
+				}
+
+			}
+
 			switch ( code ) {
 
 				case 'G':
@@ -860,6 +874,7 @@ namespace ui {
 					int64_t target = base::clamp < int64_t > ( static_cast < int64_t > ( now->hex_cursor ) + move, 0, static_cast < int64_t > ( file.size ) - 1 );
 
 					now->hex_cursor = static_cast < uint64_t > ( target );
+					now->hex_nibble = 0;
 
 					if ( !key_shift )
 						now->hex_anchor = now->hex_cursor;
