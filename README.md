@@ -35,6 +35,7 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 
 - Matching PDB files load on open, from beside the binary, from the path recorded in it, or from local symbol caches (`_NT_SYMBOL_PATH`, `C:\symbols`, `C:\ProgramData\dbg\sym`). Public symbols and every procedure in the module streams become function names, and globals get their real names. The PDB reader is Plumb's own.
 - Tools > Learn names from this file adds every named function to a name library, keyed by a hash of its body with relocations masked out. Every file opened afterwards gets matching functions named automatically. Learning from a build with symbols names the same functions in a stripped build of related code.
+- Statically linked runtime code is recognized out of the box: about 6,000 MSVC CRT and STL functions (`memset`, `__security_check_cookie`, `__scrt_common_main_seh`, `std::basic_string` members and so on) for x64 and x86, learned from builds of Plumb's own test programs with the current toolset.
 
 ### Analysis
 
@@ -43,7 +44,7 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 - MSVC switch table recovery: image-relative, table-relative, pointer tables and byte index tables.
 - RTTI class recovery: class names, base class chains, vtables and virtual functions, named `Class::vftable` and `Class::vfunc_N` throughout, so a function's slot is in its name. The Classes panel (Alt+6) lists them all. The naming can be turned off in Settings.
 - Tools > Export classes as C++ writes a header with every recovered class: its direct bases, its virtual functions in vtable order using your prototypes, and which slots are inherited. It's also copied to the clipboard.
-- Call graph (Ctrl+4) shows two levels of callers and callees around a function. Double-click a node to center it, Enter opens it in the disassembly.
+- Call graph (Ctrl+4) shows two levels of callers and callees around a function, and the strings and globals it uses. Double-click a node to center it, Enter opens it in the disassembly.
 - Function queries in the command line: `functions where calls VirtualAlloc and size > 0x100 and not thunk`. Conditions are `calls`, `calledby`, `refs` (strings or names), `name`, `size`, `callers`, `blocks`, `instructions`, `thunk`, `leaf`, `noreturn`, `exported`, `entry`, `named`, `noted`, `typed` and `covered`, each optionally prefixed with `not`.
 - Search everything (Ctrl+Shift+F) looks through the text of every instruction. `#0x40` finds immediates and displacements with that value, and `c:text` searches the C of every function.
 - XOR decoding (Ctrl+Alt+X) takes a key in hex, with an optional length, or `auto` to try every single-byte key. The decoded text is logged and added as a comment.
@@ -61,6 +62,7 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 ### Decompiler
 
 - F5 shows a function as C. Tab switches between C and disassembly, and each function can have its own tab.
+- About 900 Windows and C runtime functions have built-in prototypes, so calls to them type their arguments and the variables passed in or assigned from them (`HANDLE`, `LPCWSTR`, `FILE *`). Variables filled by `Get*`, `Create*` and `Load*` calls are named after them, like `ProcessHeap = GetProcessHeap()`, and every register gets one variable per value it holds instead of one for the whole function.
 - The output reads like Hex-Rays: `__int64 __fastcall` signatures, `_DWORD`, `unsigned __int8` and the other IDA types, `a1` for arguments and `v1` or `result` for locals with their register or `[rsp+30h] [rbp-18h]` slot beside them, `LABEL_n` gotos, `0i64` and `0xEu` constants, and two-space indentation with braces on their own lines. It's checked against IDA 8.3's decompiler on four binaries.
 - Structured output: `if`/`else` chains, `while`, `do`/`while`, `switch` and `goto` only as a last resort. Dead stores and duplicate expressions are removed, and stack arguments are matched to calls.
 - Inferred struct layouts for pointer parameters, and float literals where the types show them.
@@ -75,8 +77,13 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 
 ### Debugger
 
-- F9 starts the program and stops at its entry point. F7 steps into, F8 steps over, F12 pauses and Ctrl+F2 stops.
+- F9 starts the program and stops at its entry point. F7 steps into, F8 steps over, Shift+F8 steps out, F4 runs to the cursor, F12 pauses and Ctrl+F2 stops.
+- DLLs debug too: F9 loads the DLL in `rundll32` (or any host set in Debug > Process command line) and stops at its entry point once it loads, with breakpoints moved to wherever it lands.
+- Ctrl+Alt+P attaches to a running process by name or ID, or to the one running the open file. Debug > Detach lets it keep running.
 - F2 toggles a breakpoint, which shows as a dot in the listing. Breakpoints are kept with the project and moved to the runtime base when ASLR relocates the image.
+- Alt+F2 sets one of four hardware breakpoints: `x` stops when the instruction runs, `w 4` on writes and `rw 8` on any access, without changing any code.
+- While paused, the hex view shows the process's live memory with changed bytes highlighted, and typing hex digits writes to it. When nothing is running, typing in the hex view patches the file.
+- The inspector lists every loaded module with its base and size.
 - Registers appear in the inspector tab while paused, the current instruction is marked in the listing, and `OutputDebugString` messages go to the output pane.
 - Shift+F2 sets a condition on a breakpoint, like `rax == 0` or `rcx > 0x10`. The program only stops when it holds.
 - While paused, the inspector shows the call stack, the top of the stack with return addresses named, and watch expressions like `[rsp+0x28]` or `g_count+8`.
@@ -89,11 +96,11 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 - The browser on the left holds functions, imports, exports, strings, sections, classes, structures, references, search results and the inspector as tabs along its edge. The inspector (Ctrl+I) shows the address, RVA, file offset and section under the caret, the bytes there read as every integer and float type, the image details and, while debugging, the registers.
 - The browser and output windows dock to the left, right or bottom: drag a window's header to move it. Window > Reset window layout puts everything back.
 - Ctrl+S saves the project next to the binary under the same name, so `C:\tools\app.exe` gets `C:\tools\app.plumb`. It holds names, comments, bookmarks, number formats, variable names, types, prototypes, structs, breakpoints and patches, and opening that file opens the binary with everything restored. Projects saved by older versions as `app.exe.plumb` still load and move to the new name on the next save. If `app.plumb` already belongs to another binary in the same folder, such as `app.dll` next to `app.exe`, that one is saved as `app.dll.plumb` instead. Autosave is a setting in the File menu, and closing with unsaved changes asks first.
-- Undo and redo (Ctrl+Z, Ctrl+Y) for every edit.
+- Undo and redo (Ctrl+Z, Ctrl+Y) for every edit. Ctrl+H opens the undo history, which names every step, like `Rename at 140001AD8: parse_args`, and jumps back or forward to any of them.
 - Shift+N writes a note on what a function does. Notes show in the function header and the peek, and the Notes panel (Alt+0) lists every note, bookmark and comment in one place.
 - Tools > Export report writes a Markdown report beside the binary with the file summary, sections, notes, named functions with prototypes, bookmarks, comments, patches, classes and imported modules.
 - Browser lists sort by clicking a column header.
-- Command palette (Ctrl+Shift+P), go to address or name (G), back and forward history, and a command line in the output pane.
+- Command palette (Ctrl+Shift+P) that also jumps to any function, import, export, name, struct, bookmark, note, comment or string. Go to address or name (G), back and forward history, and a command line in the output pane.
 - Dark and light themes with a brass accent.
 - Settings (Ctrl+,) picks the font and size for the interface, the disassembly and the C, along with the decompiler options, with a preview that follows every change.
 - Colors (Ctrl+Shift+,) edits every color of both themes. Click anything in the sample listing, C or interface to select its color, then change it with the picker or a hex value. Changes show everywhere at once, and Cancel puts them back.
@@ -147,6 +154,9 @@ The tools are `open_binary`, `binary_info`, `list_functions`, `disassemble`, `de
 | Alt+F7 | Run script file | Ctrl+F7 | Run the last script again |
 | F9 | Start or continue | F7 / F8 | Step into / over |
 | F2 | Breakpoint | Ctrl+F2 | Stop debugging |
+| Shift+F8 | Step out | F4 | Run to cursor |
+| Alt+F2 | Hardware breakpoint | Ctrl+Alt+P | Attach to process |
+| Ctrl+H | Undo history | | |
 | Ctrl+Alt+S | Make signature | Ctrl+Alt+F | Find signature |
 | S | Struct from variable | Alt+7 | Structures |
 | Ctrl+Alt+A | Assemble | Ctrl+Alt+B | Patch bytes |
