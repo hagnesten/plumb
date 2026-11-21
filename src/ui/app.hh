@@ -6,6 +6,7 @@
 #include "analysis/database.hh"
 #include "analysis/signatures.hh"
 #include "decompiler/decompiler.hh"
+#include "script/script.hh"
 #include "ui/metrics.hh"
 
 namespace json {
@@ -641,6 +642,20 @@ namespace ui {
 		void save_settings ( );
 
 		void log ( log_kind kind, const wchar_t* text );
+
+		bool run_script_file ( const wchar_t* path, base::list < wchar_t >* capture );
+
+		bool run_script_text ( const wchar_t* source, const wchar_t* label, base::list < wchar_t >* capture );
+
+		bool script_call ( script::engine& owner, const wchar_t* name, const script::value* args, int32_t count, script::value& result );
+
+		void script_print ( const wchar_t* text );
+
+		void script_touch ( );
+
+		base::list < wchar_t >* script_capture = nullptr;
+		bool script_touched = false;
+		int32_t script_lines = 0;
 
 		void analysis_finished ( );
 

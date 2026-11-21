@@ -88,6 +88,11 @@
     <ClCompile Include="src\ui\rows.cc" />
     <ClCompile Include="src\ui\session.cc" />
     <ClCompile Include="src\ui\settings.cc" />
+    <ClCompile Include="src\script\builtins.cc" />
+    <ClCompile Include="src\script\engine.cc" />
+    <ClCompile Include="src\script\lexer.cc" />
+    <ClCompile Include="src\script\parser.cc" />
+    <ClCompile Include="src\ui\scripting.cc" />
     <ClCompile Include="src\ui\shell\colors.cc" />
     <ClCompile Include="src\ui\shell\dialogs.cc" />
     <ClCompile Include="src\ui\shell\docking.cc" />
@@ -126,6 +131,8 @@
     <ClInclude Include="src\debugger\debugger.hh" />
     <ClInclude Include="src\decompiler\decompiler.hh" />
     <ClInclude Include="src\decompiler\internal.hh" />
+    <ClInclude Include="src\script\script.hh" />
+    <ClInclude Include="src\ui\scripting.hh" />
     <ClInclude Include="src\loader\binary.hh" />
     <ClInclude Include="src\loader\symbols.hh" />
     <ClInclude Include="src\render\render.hh" />

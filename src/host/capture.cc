@@ -901,12 +901,52 @@ static bool assemble_mode ( ) {
 
 }
 
+static bool psc_mode ( ) {
+
+	const wchar_t* script_path = argument ( L"--psc" );
+	const wchar_t* target = argument ( L"--out" );
+	const wchar_t* binary = argument ( L"--open" );
+
+	if ( !script_path || !target )
+		return false;
+
+	ui::app* app = new ui::app ( );
+	base::list < wchar_t > captured;
+	base::list < char > out;
+
+	app->persist = false;
+	app->analysis_sync = true;
+	x86::prepare ( );
+
+	if ( binary && !app->open_file ( binary ) )
+		return true;
+
+	app->run_script_file ( script_path, &captured );
+
+	int32_t length = WideCharToMultiByte ( CP_UTF8, 0, captured.data ( ), captured.count ( ), nullptr, 0, nullptr, nullptr );
+
+	if ( length > 0 ) {
+
+		out.resize ( static_cast < size_t > ( length ) );
+		WideCharToMultiByte ( CP_UTF8, 0, captured.data ( ), captured.count ( ), out.data ( ), length, nullptr, nullptr );
+
+	}
+
+	write_text ( target, out );
+
+	return true;
+
+}
+
 bool debug_main ( ) {
 
 	arguments = CommandLineToArgvW ( GetCommandLineW ( ), &argument_count );
 
 	if ( !arguments || argument_count < 2 )
 		return false;
+
+	if ( psc_mode ( ) )
+		return true;
 
 	if ( disasm_mode ( ) )
 		return true;
