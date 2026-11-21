@@ -259,11 +259,9 @@ namespace ui {
 			return;
 
 		base::list < library_entry > entries;
+		int32_t runtime = 0;
 
 		read_library ( entries );
-
-		if ( entries.empty ( ) )
-			return;
 
 		for ( int32_t i = 0; i < db->functions.count ( ); i++ ) {
 
@@ -273,24 +271,40 @@ namespace ui {
 			if ( info.name >= 0 || user_text ( renamed, info.start ) || !analysis::function_key ( *db, i, key ) )
 				continue;
 
-			int32_t found = find_entry ( entries, key );
+			int32_t found = entries.empty ( ) ? -1 : find_entry ( entries, key );
+			const wchar_t* chosen = nullptr;
 
-			if ( found < 0 || base::same_text ( entries [ static_cast < size_t > ( found ) ].name.get ( ), L"?" ) )
+			if ( found >= 0 ) {
+
+				if ( base::same_text ( entries [ static_cast < size_t > ( found ) ].name.get ( ), L"?" ) )
+					continue;
+
+				chosen = entries [ static_cast < size_t > ( found ) ].name.get ( );
+
+			} else if ( ( chosen = analysis::runtime_name ( key ) ) != nullptr )
+				runtime++;
+
+			if ( !chosen )
 				continue;
 
 			user_name& item = learned.emplace ( );
 
 			item.address = info.start;
-			item.text.set ( entries [ static_cast < size_t > ( found ) ].name.get ( ) );
+			item.text.set ( chosen );
 
 		}
+
+		if ( runtime )
+			log ( log_kind::GOOD, base::writer ( ).add ( L"Recognized " ).grouped ( static_cast < uint64_t > ( runtime ) ).add ( runtime == 1 ? L" runtime library function." : L" runtime library functions." ).text ( ) );
 
 		names_revision++;
 		code_cache.clear ( );
 		refresh_filter ( panel::FUNCTIONS );
 
-		if ( !learned.empty ( ) )
-			log ( log_kind::GOOD, base::writer ( ).add ( L"Named " ).grouped ( static_cast < uint64_t > ( learned.count ( ) ) ).add ( learned.count ( ) == 1 ? L" function" : L" functions" ).add ( L" from the name library." ).text ( ) );
+		int32_t from_user = learned.count ( ) - runtime;
+
+		if ( from_user > 0 )
+			log ( log_kind::GOOD, base::writer ( ).add ( L"Named " ).grouped ( static_cast < uint64_t > ( from_user ) ).add ( from_user == 1 ? L" function" : L" functions" ).add ( L" from the name library." ).text ( ) );
 
 	}
 

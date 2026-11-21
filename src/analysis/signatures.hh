@@ -46,4 +46,6 @@ namespace analysis {
 
 	bool function_key ( const database& db, int32_t index, uint64_t& key, bool strict = true );
 
+	const wchar_t* runtime_name ( uint64_t key );
+
 }
