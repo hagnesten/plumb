@@ -430,6 +430,22 @@ namespace base {
 
 		}
 
+		void insert ( size_t index, const type& value ) {
+
+			if ( index > length )
+				index = length;
+
+			type held = value;
+
+			push ( type ( ) );
+
+			for ( size_t i = length - 1; i > index; i-- )
+				items [ i ] = move ( items [ i - 1 ] );
+
+			items [ index ] = move ( held );
+
+		}
+
 		void remove_at ( size_t index ) {
 
 			if ( index >= length )
