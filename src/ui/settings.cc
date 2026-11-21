@@ -580,6 +580,57 @@ namespace ui {
 		put_line ( out, "c_no_ternary", c_no_ternary ? L"1" : L"0" );
 		put_line ( out, "c_hide_casts", c_hide_casts ? L"1" : L"0" );
 		put_line ( out, "c_collapse_locals", c_collapse_locals ? L"1" : L"0" );
+		put_line ( out, "virtual_names", name_virtuals ? L"1" : L"0" );
+
+		{
+
+			const char* font_keys [ 3 ] = { "font_interface", "font_disassembly", "font_c" };
+			const char* size_keys [ 3 ] = { "size_interface", "size_disassembly", "size_c" };
+
+			for ( int32_t g = 0; g < 3; g++ ) {
+
+				if ( font_names [ g ] [ 0 ] )
+					put_line ( out, font_keys [ g ], font_names [ g ] );
+
+				if ( font_sizes [ g ] >= 6.0f ) {
+
+					value.clear ( );
+					value.number ( static_cast < int64_t > ( font_sizes [ g ] + 0.5f ) );
+					put_line ( out, size_keys [ g ], value.text ( ) );
+
+				}
+
+			}
+
+			for ( int32_t theme = 0; theme < 2; theme++ ) {
+
+				for ( int32_t i = 0; i < tone_choice_count ( ); i++ ) {
+
+					int32_t slot = static_cast < int32_t > ( tone_choice ( i ) );
+
+					if ( !custom_set [ theme ] [ slot ] )
+						continue;
+
+					char key [ 64 ];
+					int32_t length = 0;
+					const char* prefix = theme ? "color_light_" : "color_dark_";
+
+					for ( ; *prefix; prefix++ )
+						key [ length++ ] = *prefix;
+
+					for ( const char* at = tone_choice_key ( i ); *at && length < 62; at++ )
+						key [ length++ ] = *at;
+
+					key [ length ] = 0;
+					value.clear ( );
+					value.hex ( custom_colors [ theme ] [ slot ], 6 );
+					put_line ( out, key, value.text ( ) );
+
+				}
+
+			}
+
+		}
 		put_line ( out, "autosave", autosave ? L"1" : L"0" );
 		put_line ( out, "opcode_bytes", show_bytes ? L"1" : L"0" );
 		value.number ( static_cast < int64_t > ( dock_size [ 0 ] ) ).add ( L',' ).number ( static_cast < int64_t > ( dock_size [ 1 ] ) ).add ( L',' ).number ( static_cast < int64_t > ( dock_size [ 2 ] ) );
@@ -708,6 +759,65 @@ namespace ui {
 				c_hide_casts = value [ 0 ] == L'1';
 			else if ( named ( "c_collapse_locals" ) )
 				c_collapse_locals = value [ 0 ] == L'1';
+			else if ( named ( "virtual_names" ) )
+				name_virtuals = value [ 0 ] == L'1';
+			else if ( named ( "font_interface" ) || named ( "font_disassembly" ) || named ( "font_c" ) ) {
+
+				int32_t g = named ( "font_interface" ) ? 0 : ( named ( "font_disassembly" ) ? 1 : 2 );
+				int32_t k = 0;
+
+				for ( ; value [ k ] && k < 63; k++ )
+					font_names [ g ] [ k ] = value [ k ];
+
+				font_names [ g ] [ k ] = 0;
+				fonts_dirty = true;
+
+			} else if ( named ( "size_interface" ) || named ( "size_disassembly" ) || named ( "size_c" ) ) {
+
+				int32_t g = named ( "size_interface" ) ? 0 : ( named ( "size_disassembly" ) ? 1 : 2 );
+				int64_t size = read_integer ( value );
+
+				if ( size >= 9 && size <= 20 ) {
+
+					font_sizes [ g ] = static_cast < float > ( size );
+					fonts_dirty = true;
+
+				}
+
+			} else if ( name_length > 6 && name [ 0 ] == 'c' && name [ 1 ] == 'o' && name [ 5 ] == '_' ) {
+
+				for ( int32_t theme = 0; theme < 2; theme++ ) {
+
+					for ( int32_t i = 0; i < tone_choice_count ( ); i++ ) {
+
+						char key [ 64 ];
+						int32_t length = 0;
+						const char* prefix = theme ? "color_light_" : "color_dark_";
+
+						for ( ; *prefix; prefix++ )
+							key [ length++ ] = *prefix;
+
+						for ( const char* at = tone_choice_key ( i ); *at && length < 62; at++ )
+							key [ length++ ] = *at;
+
+						key [ length ] = 0;
+
+						uint64_t color = 0;
+
+						if ( named ( key ) && base::parse_hex ( value, color ) ) {
+
+							int32_t slot = static_cast < int32_t > ( tone_choice ( i ) );
+
+							custom_colors [ theme ] [ slot ] = static_cast < uint32_t > ( color & 0xFFFFFF );
+							custom_set [ theme ] [ slot ] = true;
+
+						}
+
+					}
+
+				}
+
+			}
 			else if ( named ( "autosave" ) )
 				autosave = value [ 0 ] == L'1';
 			else if ( named ( "opcode_bytes" ) )

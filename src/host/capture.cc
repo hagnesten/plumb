@@ -127,10 +127,10 @@ static uint32_t key_code ( const wchar_t* name, bool& control, bool& shift, bool
 
 	}
 
-	const wchar_t* names [ ] = { L"left", L"right", L"up", L"down", L"escape", L"enter", L"pagedown", L"pageup", L"home", L"end", L"f1", L"f5", L"tab", L"back", L"f2", L"f7", L"f8", L"f9", L"f12", L"space", L"backslash", L"numminus", L"numplus" };
-	const uint32_t codes [ ] = { VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_ESCAPE, VK_RETURN, VK_NEXT, VK_PRIOR, VK_HOME, VK_END, VK_F1, VK_F5, VK_TAB, VK_BACK, VK_F2, VK_F7, VK_F8, VK_F9, VK_F12, VK_SPACE, VK_OEM_5, VK_SUBTRACT, VK_ADD };
+	const wchar_t* names [ ] = { L"left", L"right", L"up", L"down", L"escape", L"enter", L"pagedown", L"pageup", L"home", L"end", L"f1", L"f5", L"tab", L"back", L"f2", L"f7", L"f8", L"f9", L"f12", L"space", L"backslash", L"numminus", L"numplus", L"comma" };
+	const uint32_t codes [ ] = { VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_ESCAPE, VK_RETURN, VK_NEXT, VK_PRIOR, VK_HOME, VK_END, VK_F1, VK_F5, VK_TAB, VK_BACK, VK_F2, VK_F7, VK_F8, VK_F9, VK_F12, VK_SPACE, VK_OEM_5, VK_SUBTRACT, VK_ADD, VK_OEM_COMMA };
 
-	for ( int32_t i = 0; i < 23; i++ ) {
+	for ( int32_t i = 0; i < 24; i++ ) {
 
 		if ( base::same_text ( name, names [ i ] ) )
 			return codes [ i ];

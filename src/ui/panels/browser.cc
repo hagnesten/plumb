@@ -64,6 +64,9 @@ namespace ui {
 		if ( icon_button ( make_id ( "rail_palette" ), math::vec2 ( area.x + area.w * 0.5f, bottom - 48.0f ), 26.0f, icons::MENU, 13.0f, L"Command palette" ) )
 			run ( command::PALETTE );
 
+		if ( icon_button ( make_id ( "rail_settings" ), math::vec2 ( area.x + area.w * 0.5f, bottom - 80.0f ), 26.0f, icons::SETTINGS, 13.0f, L"Settings" ) )
+			run ( command::SETTINGS );
+
 	}
 
 	void app::draw_browser ( ) {
