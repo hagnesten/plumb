@@ -728,7 +728,7 @@ namespace decompiler {
 						break;
 
 					case 16:
-						text = L"__m128";
+						text = L"__m128i";
 						break;
 
 					default:

@@ -145,6 +145,16 @@ namespace decompiler {
 
 	};
 
+	struct packed_form {
+
+		x86::mnemonic name;
+		const wchar_t* text;
+		const wchar_t* immediate;
+		uint8_t form = 0;
+		bool floating = false;
+
+	};
+
 	struct field_use {
 
 		int32_t var = -1;
