@@ -106,6 +106,41 @@ namespace decompiler {
 
 		}
 
+		if ( total != graph.blocks.count ( ) || total <= 0 )
+			return;
+
+		base::list < uint8_t > seen;
+		base::list < int32_t > work;
+
+		seen.fill ( static_cast < size_t > ( total ), 0 );
+		seen [ 0 ] = 1;
+		work.push ( 0 );
+
+		while ( work.count ( ) ) {
+
+			int32_t at = work [ static_cast < size_t > ( work.count ( ) - 1 ) ];
+
+			work.pop ( );
+
+			for ( const analysis::edge& link : graph.edges ) {
+
+				if ( link.from != at || link.to < 0 || link.to >= total || seen [ static_cast < size_t > ( link.to ) ] )
+					continue;
+
+				seen [ static_cast < size_t > ( link.to ) ] = 1;
+				work.push ( link.to );
+
+			}
+
+		}
+
+		for ( int32_t i = 0; i < total; i++ ) {
+
+			if ( !seen [ static_cast < size_t > ( i ) ] )
+				code [ static_cast < size_t > ( i ) ].reachable = false;
+
+		}
+
 	}
 
 }

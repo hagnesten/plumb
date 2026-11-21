@@ -2844,6 +2844,10 @@ namespace decompiler {
 
 			emitted.fill ( static_cast < size_t > ( count ), 0 );
 			labeled.fill ( static_cast < size_t > ( count ), 0 );
+
+			if ( !dry )
+				referenced.fill ( b.vars.size ( ), 0 );
+
 			number_addresses.clear ( );
 			number_values.clear ( );
 			gotos = 0;
