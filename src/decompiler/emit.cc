@@ -3805,6 +3805,42 @@ namespace decompiler {
 
 	}
 
+	static bool unique_name ( const base::list < base::text >& taken, const wchar_t* base_name, wchar_t* out ) {
+
+		int32_t length = 0;
+
+		while ( base_name [ length ] && length < 70 ) {
+
+			out [ length ] = base_name [ length ];
+			length++;
+
+		}
+
+		out [ length ] = 0;
+
+		for ( int32_t suffix = -1; suffix < 26; suffix++ ) {
+
+			if ( suffix >= 0 ) {
+
+				out [ length ] = static_cast < wchar_t > ( L'a' + suffix );
+				out [ length + 1 ] = 0;
+
+			}
+
+			bool clash = false;
+
+			for ( const base::text& other : taken )
+				clash = clash || base::same_text ( other.get ( ), out );
+
+			if ( !clash )
+				return true;
+
+		}
+
+		return false;
+
+	}
+
 	static void name_from_calls ( builder& b, int32_t result_var ) {
 
 		b.call_names.clear ( );
@@ -3866,16 +3902,136 @@ namespace decompiler {
 			if ( !rest || !base::is_identifier ( rest ) || !rest [ 1 ] )
 				continue;
 
-			bool clash = false;
+			wchar_t chosen [ 80 ];
 
-			for ( const base::text& other : taken )
-				clash = clash || base::same_text ( other.get ( ), rest );
-
-			if ( clash )
+			if ( !unique_name ( taken, rest, chosen ) )
 				continue;
 
-			taken.push ( base::text ( rest ) );
-			b.call_names [ static_cast < size_t > ( v ) ].set ( rest );
+			taken.push ( base::text ( chosen ) );
+			b.call_names [ static_cast < size_t > ( v ) ].set ( chosen );
+
+		}
+
+		base::list < int32_t > calls;
+
+		auto gather = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+			if ( e < 0 || depth > 64 )
+				return;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind == op::CALL )
+				calls.push ( e );
+
+			self ( self, node.a, depth + 1 );
+			self ( self, node.b, depth + 1 );
+			self ( self, node.c, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+		};
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& item = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( item.kind == stmt::NOP || item.kind == stmt::ASM )
+					continue;
+
+				gather ( gather, item.right, 0 );
+
+				if ( item.kind == stmt::STORE )
+					gather ( gather, item.left, 0 );
+
+			}
+
+			gather ( gather, block.condition, 0 );
+			gather ( gather, block.selector, 0 );
+			gather ( gather, block.returned, 0 );
+
+		}
+
+		for ( int32_t call : calls ) {
+
+			const expr node = b.exprs [ static_cast < size_t > ( call ) ];
+
+			if ( !node.value || !node.arg_count )
+				continue;
+
+			const wchar_t* text = b.names->prototype ( static_cast < uint64_t > ( node.value ) );
+			wchar_t callee [ 200 ];
+
+			if ( !text && b.names->name ( static_cast < uint64_t > ( node.value ), true, callee, 200 ) )
+				text = api_prototype ( callee );
+
+			if ( !text )
+				continue;
+
+			c_prototype shape;
+			base::writer problem;
+
+			if ( !parse_prototype ( text, b.long_mode, shape, problem ) )
+				continue;
+
+			for ( int32_t i = 0; i < node.arg_count && i < shape.count; i++ ) {
+
+				int32_t arg = b.args [ static_cast < size_t > ( node.first_arg + i ) ];
+				bool address = false;
+
+				while ( arg >= 0 && b.exprs [ static_cast < size_t > ( arg ) ].kind == op::CAST )
+					arg = b.exprs [ static_cast < size_t > ( arg ) ].a;
+
+				if ( arg < 0 )
+					continue;
+
+				const expr& item = b.exprs [ static_cast < size_t > ( arg ) ];
+				int32_t v = -1;
+
+				if ( item.kind == op::VAR )
+					v = static_cast < int32_t > ( item.value );
+				else if ( item.kind == op::ADDRESS && item.a < 0 ) {
+
+					v = static_cast < int32_t > ( item.value );
+					address = true;
+
+				}
+
+				if ( v < 0 || v >= b.vars.count ( ) || v == result_var || b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER || !b.call_names [ static_cast < size_t > ( v ) ].empty ( ) )
+					continue;
+
+				const wchar_t* rest = shape.names [ i ];
+
+				if ( !rest [ 0 ] )
+					continue;
+
+				if ( address ) {
+
+					if ( rest [ 0 ] == L'l' && rest [ 1 ] == L'p' && rest [ 2 ] >= L'A' && rest [ 2 ] <= L'Z' )
+						rest += 2;
+					else if ( rest [ 0 ] == L'p' && rest [ 1 ] >= L'A' && rest [ 1 ] <= L'Z' )
+						rest += 1;
+
+				}
+
+				if ( !base::is_identifier ( rest ) )
+					continue;
+
+				wchar_t chosen [ 80 ];
+
+				if ( !unique_name ( taken, rest, chosen ) )
+					continue;
+
+				taken.push ( base::text ( chosen ) );
+				b.call_names [ static_cast < size_t > ( v ) ].set ( chosen );
+
+			}
 
 		}
 
