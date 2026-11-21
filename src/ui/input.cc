@@ -326,6 +326,8 @@ namespace ui {
 
 				} else if ( signature_open )
 					signature_open = false;
+				else if ( history_open )
+					history_open = false;
 				else if ( about_open || keys_open ) {
 
 					about_open = false;
@@ -366,6 +368,17 @@ namespace ui {
 			if ( key_control && code == VK_OEM_COMMA ) {
 
 				run ( key_shift ? command::COLORS : command::SETTINGS );
+
+				continue;
+
+			}
+
+			if ( history_open ) {
+
+				if ( code == VK_UP || code == VK_DOWN )
+					history_pick = base::clamp ( history_pick + ( code == VK_UP ? -1 : 1 ), 0, base::max ( history_rows.count ( ) - 1, 0 ) );
+				else if ( code == VK_RETURN && history_pick >= 0 && history_pick < history_rows.count ( ) )
+					history_jump ( history_pick );
 
 				continue;
 
@@ -449,6 +462,10 @@ namespace ui {
 
 					case 'Y':
 						run ( command::REDO );
+						break;
+
+					case 'H':
+						run ( command::UNDO_HISTORY );
 						break;
 
 					case 'W':

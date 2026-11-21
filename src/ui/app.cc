@@ -893,6 +893,7 @@ namespace ui {
 		draw_prompt ( );
 		draw_discard ( );
 		draw_signature ( );
+		draw_history ( );
 		draw_tip ( );
 
 		if ( focus_id && !focus_drawn && !palette_open && !prompt_open && !signature_open ) {

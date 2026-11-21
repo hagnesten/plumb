@@ -106,7 +106,8 @@ namespace ui {
 		{ L"Step out", L"Shift+F8" },
 		{ L"Run to cursor", L"F4" },
 		{ L"Hardware breakpoint", L"Alt+F2" },
-		{ L"Process command line", L"" }
+		{ L"Process command line", L"" },
+		{ L"Undo history", L"Ctrl+H" }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -873,6 +874,10 @@ namespace ui {
 			case command::DEBUG_HARDWARE:
 			case command::DEBUG_COMMAND_LINE:
 				open_prompt ( action, now->cursor_address );
+				break;
+
+			case command::UNDO_HISTORY:
+				open_history ( );
 				break;
 
 			case command::DEBUG_DETACH:

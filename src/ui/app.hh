@@ -227,6 +227,7 @@ namespace ui {
 		DEBUG_RUN_TO,
 		DEBUG_HARDWARE,
 		DEBUG_COMMAND_LINE,
+		UNDO_HISTORY,
 		COUNT,
 
 	};
@@ -336,11 +337,29 @@ namespace ui {
 
 	};
 
+	enum class jump_kind : int32_t {
+
+		COMMAND,
+		FUNCTION,
+		IMPORT,
+		EXPORT,
+		NAME,
+		STRUCT,
+		BOOKMARK,
+		NOTE,
+		COMMENT,
+		STRING,
+
+	};
+
 	struct palette_entry {
 
 		command action = command::COUNT;
 		int32_t score = 0;
 		int32_t function = -1;
+		jump_kind kind = jump_kind::COMMAND;
+		uint64_t address = 0;
+		int32_t index = -1;
 
 	};
 
@@ -483,6 +502,7 @@ namespace ui {
 		uint64_t address = 0;
 		int32_t column = 0;
 		int32_t parent = -1;
+		bool data = false;
 		math::rect box;
 
 	};
@@ -839,6 +859,16 @@ namespace ui {
 
 		void build_calls ( uint64_t function );
 
+		void open_history ( );
+
+		void history_jump ( int32_t row );
+
+		void describe_change ( const char* before, const char* after, base::writer& out ) const;
+
+		void fill_palette ( const wchar_t* query );
+
+		void palette_label ( const palette_entry& entry, wchar_t* out, int32_t room ) const;
+
 		bool live_address ( uint64_t offset, uint64_t& runtime ) const;
 
 		bool live_byte ( uint64_t offset, uint8_t& value ) const;
@@ -1022,6 +1052,12 @@ namespace ui {
 		base::text prompt_key;
 		uint64_t prompt_function = 0;
 		field prompt_field;
+
+		bool history_open = false;
+		float history_show = 0.0f;
+		int32_t history_pick = 0;
+		base::list < base::text > history_rows;
+		base::list < int32_t > history_steps;
 
 		bool signature_open = false;
 		float signature_show = 0.0f;
@@ -1347,6 +1383,8 @@ namespace ui {
 		void draw_prompt ( );
 
 		void draw_signature ( );
+
+		void draw_history ( );
 
 		void draw_tip ( );
 
