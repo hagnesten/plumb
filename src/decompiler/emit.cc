@@ -2947,7 +2947,27 @@ namespace decompiler {
 
 		skip.fill ( static_cast < size_t > ( total ), 0 );
 
+		for ( int32_t i = 0; i + 2 < total; i++ ) {
+
+			const line& head = r.lines [ static_cast < size_t > ( i ) ];
+			const line& open = r.lines [ static_cast < size_t > ( i + 1 ) ];
+			const line& close = r.lines [ static_cast < size_t > ( i + 2 ) ];
+
+			if ( line_is ( r, head, L"else" ) && line_is ( r, open, L"{" ) && line_is ( r, close, L"}" ) && open.indent == head.indent && close.indent == head.indent ) {
+
+				skip [ static_cast < size_t > ( i ) ] = 1;
+				skip [ static_cast < size_t > ( i + 1 ) ] = 1;
+				skip [ static_cast < size_t > ( i + 2 ) ] = 1;
+
+			}
+
+		}
+
 		for ( int32_t i = 0; i + 3 < total; i++ ) {
+
+			if ( skip [ static_cast < size_t > ( i ) ] )
+				continue;
+
 
 			const line& head = r.lines [ static_cast < size_t > ( i ) ];
 			const line& open = r.lines [ static_cast < size_t > ( i + 1 ) ];
