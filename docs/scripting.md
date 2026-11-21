@@ -73,30 +73,198 @@ C's operators with C's precedence: `+ - * / %`, `& | ^ ~ << >>`, `== != < <= > >
 
 ## The Plumb API
 
-Addresses are numbers, but every function that takes an address also accepts a name (`"CreateFileW"`, `"fn_140001000"`) or `"+1A40"` for an RVA. Functions give `none` when there's nothing there, like the name of an unnamed address or a read from an unmapped one.
+Scripts can do everything you can do by hand: rename, comment, retype, build structs, patch, search, set breakpoints and drive the debugger, change settings and run any menu command.
+
+### Conventions
+
+- **Addresses** are numbers. Every argument written `a` also takes a name (`"CreateFileW"`, `"fn_140001000"`) or an RVA like `"+1A40"`.
+- **Function arguments**, written `f`, can be any address inside the function. Plumb uses the function's start.
+- **Missing results** come back as `none`: the name of an unnamed address, a read from unmapped memory, a struct field that isn't there.
+- **Errors** stop the script and name the line, for example a struct that doesn't exist, a type that doesn't parse or the wrong number of arguments. Check first with `struct_exists`, `is_function` and similar.
+- **Setters** give `1` when they succeed. `del_*` functions give `1` if there was something to delete.
+- **Undo:** everything a script changes is one undo step. Ctrl+Z after a script takes it all back.
+- **Analysis:** functions that read the analysis fail until it has finished. Call `wait()` first in a script that opens a file.
+- **Prompts:** there are no `ask_*` functions, because a script can't stop to wait for a dialog. Put the values at the top of the script instead.
+
+### Files and project
 
 | Function | Result |
 | --- | --- |
-| `here()`, `jump(a)` | The caret's address, and moving the caret |
+| `is_open()` | `1` if a file is open. Works with nothing open |
+| `open(path)`, `close()` | Opens a file (and its project, if there is one), or closes it. Works with nothing open |
+| `wait()` | Waits for the analysis, including a re-analysis after patches. `1` when it's ready |
+| `save()` | Saves the project. `1` when nothing is left unsaved |
+| `undo()`, `redo()` | Steps through the undo history. `1` if there was a step to take |
+| `file_path()`, `file_name()`, `project_path()` | The open file's full path and file name, and the project file (`none` before the first save) |
+| `file_size()`, `machine()`, `is_64bit()`, `is_dll()`, `is_dirty()` | File facts. `machine()` is text such as `"x86-64"` |
 | `image_base()`, `entry()`, `image_end()` | Image layout |
-| `byte(a)`, `word(a)`, `dword(a)`, `qword(a)`, `bytes(a, n)` | Little-endian reads, or a list of bytes |
-| `patch_byte(a, v)`, `patch_bytes(a, list or "90 90")`, `assemble(a, "xor eax, eax")` | Patching, kept in the project and re-analyzed like patches made by hand |
-| `name(a)`, `set_name(a, n)`, `locate(name)` | Names. `set_name` on an address inside a function renames the function |
-| `comment(a)`, `set_comment(a, t)` | Comments, shown in the listing and the C |
-| `note(f)`, `set_note(f, t)` | Function notes |
-| `prototype(f)`, `set_prototype(f, "int __fastcall f(char* s)")` | C prototypes, used by the C view and callers |
-| `functions()` | Every function start |
-| `function_at(a)`, `function_end(a)`, `function_size(a)`, `function_name(a)`, `is_function(a)` | The function containing an address |
-| `is_code(a)` | Whether an instruction starts at `a` |
-| `instruction(a)`, `mnemonic(a)`, `size(a)`, `next(a)`, `operands(a)` | Decoded instructions, as text and their parts |
-| `operand_kind(a, n)`, `operand_value(a, n)`, `operand_register(a, n)` | `"register"`, `"immediate"`, `"memory"` or `"address"`, the immediate, displacement or target, and the register or base register |
-| `refs_to(a)`, `refs_from(a)`, `callers(f)` | Cross-references as lists of addresses |
-| `decompile(f)` | The function's C as text |
-| `strings()`, `string(a)` | String addresses, and the ASCII or UTF-16 text at an address |
 | `sections()`, `section_at(a)` | `[name, start, end, "rwx"]` for each section, and the section name at an address |
-| `imports()`, `exports()` | `[module, name, slot]` and `[name, address]` |
-| `find_bytes("48 8B ?? 05" [, from])` | The first address with those bytes, `??` matching anything |
-| `save()` | Saves the project |
+| `imports()`, `exports()` | `[module, name, slot]` and `[name, address]`. Ordinal imports are named `"#12"` |
+
+### Reading and patching bytes
+
+| Function | Result |
+| --- | --- |
+| `byte(a)`, `word(a)`, `dword(a)`, `qword(a)` | Little-endian reads of the current bytes, patches included |
+| `bytes(a, n)` | A list of up to `n` bytes, shorter if it runs off the mapped image |
+| `original_byte(a)` | The byte from before any patch |
+| `patch_byte(a, v)`, `patch_word(a, v)`, `patch_dword(a, v)`, `patch_qword(a, v)` | Writes a value, little-endian |
+| `patch_bytes(a, bytes)` | Writes a list like `[0x90, 0x90]` or hex text like `"90 90"` |
+| `assemble(a, "xor eax, eax")` | Assembles an instruction and patches it in at `a`, like the Assemble prompt |
+| `is_patched(a [, n])` | Whether any of the `n` bytes at `a` is patched |
+| `patches()` | `[address, original, value]` for every patched byte |
+| `revert(a)`, `revert_all()` | Undoes the patch run touching `a`, or every patch. `revert_all` gives how many bytes it restored |
+| `write_patched()` | Writes the patched file next to the original, like File > Export patched |
+| `xor_decode(a [, key])` | Decodes XOR-encoded bytes at `a` with a hex key like `"5A"` or `"12 34"`, optionally followed by a length, or `"auto"` to guess the key |
+| `string(a)`, `strings()` | The ASCII or UTF-16 text at an address, and every string the loader found |
+| `stack_string(a)` | A string built on the stack by the instructions at `a`, if Plumb recognized one |
+
+Patches are saved in the project and the file is re-analyzed after them, the same as patches made by hand. Call `wait()` before reading the new analysis.
+
+### Names, comments, notes and bookmarks
+
+| Function | Result |
+| --- | --- |
+| `name(a)`, `locate(name)` | The name at an address (user, import, export, symbol or `fn_`), and the address of a name |
+| `set_name(a, n)`, `del_name(a)` | Renames. An address inside a function renames the function, unless it's a label. Odd characters become `_` |
+| `names()` | `[address, name]` for every name set by hand or by a script |
+| `comment(a)`, `set_comment(a, t)`, `del_comment(a)`, `comments()` | Comments, shown in the listing and in the C |
+| `note(f)`, `set_note(f, t)`, `del_note(f)`, `notes()` | Function notes, shown in the Notes panel and the report |
+| `bookmark(a)`, `set_bookmark(a [, label])`, `del_bookmark(a)`, `bookmarks()` | Bookmarks. Without a label the bookmark is named after the address |
+| `prototype(f)`, `set_prototype(f, text)`, `del_prototype(f)`, `prototypes()` | C prototypes like `"int __fastcall parse(char* s, int n)"`, used by the C view and its callers |
+
+Setting a comment, note or name to `""` removes it, the same as the `del_` function.
+
+### Functions and instructions
+
+| Function | Result |
+| --- | --- |
+| `functions()` | Every function start, in address order |
+| `function_at(a)`, `function_end(a)`, `function_size(a)`, `function_name(a)` | The function containing an address |
+| `is_function(a)`, `is_code(a)`, `is_label(a)` | Whether a function starts at `a`, an instruction starts at `a`, or `a` is a jump target |
+| `function_info(f)` | `[start, end, size, instructions, blocks, callers, flags]` |
+| `function_flags(f)` | Words for how the function was found and what it is: `"entry"`, `"export"`, `"tls"`, `"pdata"`, `"called"`, `"pointer"`, `"prologue"`, `"jumped"`, `"symbols"`, `"thunk"`, `"noreturn"`, `"leaf"`, `"named"`, `"virtual"` |
+| `instructions(f)` | Every instruction start in the function, sorted |
+| `blocks(f)` | `[start, end, instructions, successors, returns]` for each basic block |
+| `edges(f)` | `[from, to, kind]` between block starts. Kinds are `"fall"`, `"taken"`, `"not_taken"`, `"jump"` and `"case"`; case edges add the case value |
+| `jump_table(a)` | For a switch jump or its table: `[jump, table, count, [targets]]` |
+| `head(a)`, `prev(a)`, `next(a)` | The instruction containing `a`, the one before it and the one after |
+| `instruction(a)`, `mnemonic(a)`, `size(a)`, `operands(a)` | The instruction as listing text with names, its mnemonic, its length and its operand count |
+| `operand_kind(a, n)` | `"register"`, `"immediate"`, `"memory"`, `"address"` or `"other"` |
+| `operand_value(a, n)` | The immediate, the displacement, or the target of a RIP-relative or direct operand |
+| `operand_register(a, n)`, `operand_size(a, n)` | The register (or base register of a memory operand), and the operand size in bytes |
+| `flow(a)`, `target(a)` | `"call"`, `"jump"`, `"branch"`, `"return"`, `"stop"` or `"none"`, and where a call or jump goes |
+| `disassemble(a [, lines])` | Listing text for `lines` instructions (20 if left out), with labels |
+
+### Cross-references
+
+| Function | Result |
+| --- | --- |
+| `refs_to(a)`, `refs_from(a)` | Addresses that refer to `a`, and addresses `a` refers to |
+| `refs_to_info(a)`, `refs_from_info(a)` | The same as `[address, kind]`, with kinds such as `"call"`, `"jump"`, `"read"`, `"write"` and `"address"` |
+| `callers(f)`, `callees(f)` | Functions that call `f`, and the targets `f` calls (imports included) |
+
+### Decompiler and variables
+
+| Function | Result |
+| --- | --- |
+| `decompile(f)` | The function's C as text, with the current names, types and settings |
+| `c_lines(f)` | `[address, indent, text]` for each line of the C |
+| `locals(f)` | `[key, name, type, "local" or "parameter"]` for every variable in the C. `key` is the decompiler's own name (`v3`, `a1`), which never changes |
+| `local_name(f, v)`, `set_local_name(f, v, name)` | A variable's name. `v` is the key or the current name. `""` resets it |
+| `local_type(f, v)`, `set_local_type(f, v, type)` | A variable's type, like `"uint8_t*"` or `"player_t*"`. `""` goes back to the inferred type |
+| `c_number_form(a, value [, n])`, `set_c_number_form(a, value, form [, n])` | How the `n`th `value` on the C line at `a` is shown: `"hex"`, `"dec"`, `"char"`, `"bin"`, or `""` for the default |
+| `number_form(a)`, `set_number_form(a, form)` | The same for the immediate in the listing at `a`, with `"float"` too |
+
+Variable and type changes show up in the next `decompile` call, so a script can retype a variable and read the new C straight away.
+
+### Structs
+
+| Function | Result |
+| --- | --- |
+| `structs()`, `struct_exists(s)` | Every struct name, and whether one exists |
+| `struct_create(s)`, `struct_delete(s)`, `struct_rename(s, new)` | Struct lifetime. Names are letters, digits and underscores |
+| `struct_size(s)` | The size, up to the end of the last field |
+| `struct_fields(s)` | `[offset, name, type, size]` for each field, by offset |
+| `struct_field(s, field)` | One field as `[offset, name, type, size]`. `field` is an offset or a name |
+| `struct_field_offset(s, name)`, `struct_field_at(s, offset)` | A field's offset, and the field covering an offset |
+| `struct_add_field(s, offset, name, type)` | Adds a field and gives its offset. Offset `-1` appends it at the end. A name like `"buf[32]"` makes an array. Any field already at that offset is replaced |
+| `struct_del_field(s, field)`, `struct_rename_field(s, field, name)`, `struct_set_field_type(s, field, type)` | Field edits, by offset or name |
+| `struct_text(s)` | The struct as a C declaration with offsets |
+
+Types are the built-ins (`int8_t` to `uint64_t`, `char`, `bool`, `float`, `double`, `size_t`, `DWORD`, `HANDLE`...), struct names, and pointers to either. A pointer to a name Plumb doesn't know is allowed, as in C, and treated as an opaque pointer.
+
+```c
+struct_create("player_t");
+struct_add_field("player_t", 0x00, "vtable", "void*");
+struct_add_field("player_t", 0x08, "health", "int32_t");
+struct_add_field("player_t", -1, "name[32]", "char");
+set_local_type("fn_140012A40", "a1", "player_t*");
+print(decompile("fn_140012A40"));
+```
+
+### Classes
+
+| Function | Result |
+| --- | --- |
+| `classes()` | `[name, vtable, methods, locator, offset]` for each class found from RTTI |
+| `class_methods(c)` | The function in each vtable slot. `c` is a name or an index into `classes()` |
+| `class_bases(c)` | Base class names |
+| `vfunc(f)` | `[class, slot]` if `f` sits in a vtable |
+
+### Searching and tools
+
+| Function | Result |
+| --- | --- |
+| `find_bytes(pattern [, from])` | The first address with those bytes. `"48 8B ?? 05"`, with `??` matching anything |
+| `find_all_bytes(pattern [, from [, limit]])` | Every match, up to `limit` (100,000 if left out) |
+| `find_signature(pattern [, limit])` | Matches for an IDA-style pattern, like Search > Find signature |
+| `make_signature(a [, style])`, `signature_info(a [, style])` | A unique signature for `a` in `"ida"`, `"x64dbg"`, `"code"` or `"array"` style. `make_signature` gives `none` if there's no unique one; `signature_info` gives `[pattern, unique, matches, start, via_reference, offset]` |
+| `search(text)` | Search everything, like Ctrl+Shift+F: `[address, length, note]` per hit. `#1234` searches for a number and `c:text` searches the C |
+| `query(text)` | Function starts matching a query, like `"calls VirtualAlloc and size > 0x100 and not thunk"` |
+| `emulate(f [, setup])` | Runs the function in Plumb's emulator and gives its report. `setup` sets registers, like `"rcx=0x10 rdx=0"` |
+| `compare(path)`, `close_compare()` | Compares with another build: `[same, changed, only_here, only_there]` |
+| `reanalyze()` | Runs the analysis again. Call `wait()` after it |
+| `learn_names()`, `apply_names()` | Teaches the name library this file's names, or applies learned names |
+| `is_covered(a)` | Whether a debugger coverage run executed `a` |
+| `export_report()`, `export_classes()` | Writes `name.report.md` or the class header `name.classes.h` next to the file |
+
+### Debugger
+
+| Function | Result |
+| --- | --- |
+| `debug_start()` | Starts the open executable under the debugger. Breakpoints are set first |
+| `debug_state()` | `"idle"`, `"running"`, `"paused"`, `"exited"` or `"failed"`. Works with nothing open |
+| `debug_wait([ms])` | Waits until the process pauses or ends, up to `ms` (10 seconds if left out), and gives the state |
+| `debug_continue()`, `debug_step_into()`, `debug_step_over()` | Resume or step a paused process. Steps wait for the new state |
+| `debug_pause()`, `debug_stop()` | Break into or end the process |
+| `pc()`, `register(name)`, `registers()` | While paused: the instruction pointer, one register, or `[name, value]` for each |
+| `debug_read(a, n)` | Reads `n` bytes of the live process. Image addresses are moved to where the image is loaded |
+| `debug_evaluate(text)` | Evaluates a watch expression like `"[rsp+8]"` or `"rcx+0x10"` |
+| `breakpoints()`, `add_breakpoint(a [, condition])`, `del_breakpoint(a)` | Breakpoints, optionally conditional |
+| `condition(a)`, `set_condition(a, text)` | Breakpoint conditions like `"rax == 0"` or `"rcx > 0x10"`. Setting one adds the breakpoint |
+
+```c
+add_breakpoint(entry());
+debug_start();
+if (debug_wait(5000) == "paused")
+    printf("stopped at %s, rsp = %x", hex(pc()), register("rsp"));
+debug_continue();
+debug_wait();
+```
+
+### Views, settings and commands
+
+| Function | Result |
+| --- | --- |
+| `here()`, `jump(a)` | The caret's address, and moving the caret there with history |
+| `back()`, `forward()` | Navigation history. `1` if there was somewhere to go |
+| `view(kind)`, `current_view()` | Switches to `"listing"`, `"graph"`, `"c"`, `"hex"`, `"headers"` or `"calls"`, and names the current view |
+| `commands()`, `command(label)` | Every menu command's label, and running one by label, like `command("Decompile function")`. `0` if the command isn't available right now |
+| `setting(name)`, `set_setting(name, on)` | `"light"`, `"spaced"`, `"no_ternary"`, `"hide_casts"`, `"collapse_locals"`, `"name_virtuals"`, `"show_bytes"`, `"autosave"` and `"jit"` |
+| `font(role)`, `set_font(role, face [, size])` | `[face, size]` for `"interface"`, `"disassembly"` or `"c"`. Pass `none` as the face to change only the size |
+| `colors()`, `color(name)`, `set_color(name, 0xRRGGBB)`, `reset_color(name)` | Theme colors by key, for the current theme, as in View > Colors |
+| `clear_output()` | Empties the output pane |
 
 ## Examples
 
