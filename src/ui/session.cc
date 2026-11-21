@@ -993,6 +993,12 @@ namespace ui {
 
 		}
 
+		bool guess_structs ( ) override {
+
+			return owner->c_guess_structs;
+
+		}
+
 		wchar_t number_form ( uint64_t address, int64_t value, int32_t occurrence ) override {
 
 			return owner->code_number_form ( address, value, occurrence );

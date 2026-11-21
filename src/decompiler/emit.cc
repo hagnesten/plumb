@@ -636,7 +636,7 @@ namespace decompiler {
 			if ( var < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( var ) ].empty ( ) )
 				return false;
 
-			if ( owner.kind != var_kind::PARAMETER || owner.bits & FLOATING )
+			if ( owner.kind != var_kind::PARAMETER || owner.bits & FLOATING || !b.names || !b.names->guess_structs ( ) )
 				return false;
 
 			for ( const statement& item : b.statements ) {

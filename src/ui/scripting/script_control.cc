@@ -18,6 +18,7 @@ namespace ui {
 		{ L"no_ternary", &app::c_no_ternary, true },
 		{ L"hide_casts", &app::c_hide_casts, true },
 		{ L"collapse_locals", &app::c_collapse_locals, true },
+		{ L"guess_structs", &app::c_guess_structs, true },
 		{ L"name_virtuals", &app::name_virtuals, true },
 		{ L"show_bytes", &app::show_bytes, false },
 		{ L"autosave", &app::autosave, false },

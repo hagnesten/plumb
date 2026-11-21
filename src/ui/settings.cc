@@ -589,6 +589,7 @@ namespace ui {
 		put_line ( out, "c_no_ternary", c_no_ternary ? L"1" : L"0" );
 		put_line ( out, "c_hide_casts", c_hide_casts ? L"1" : L"0" );
 		put_line ( out, "c_collapse_locals", c_collapse_locals ? L"1" : L"0" );
+		put_line ( out, "c_guess_structs", c_guess_structs ? L"1" : L"0" );
 		put_line ( out, "virtual_names", name_virtuals ? L"1" : L"0" );
 
 		{
@@ -768,6 +769,8 @@ namespace ui {
 				c_hide_casts = value [ 0 ] == L'1';
 			else if ( named ( "c_collapse_locals" ) )
 				c_collapse_locals = value [ 0 ] == L'1';
+			else if ( named ( "c_guess_structs" ) )
+				c_guess_structs = value [ 0 ] == L'1';
 			else if ( named ( "virtual_names" ) )
 				name_virtuals = value [ 0 ] == L'1';
 			else if ( named ( "font_interface" ) || named ( "font_disassembly" ) || named ( "font_c" ) ) {

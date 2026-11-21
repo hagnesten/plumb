@@ -169,6 +169,12 @@ namespace decompiler {
 
 		}
 
+		virtual bool guess_structs ( ) {
+
+			return false;
+
+		}
+
 		virtual wchar_t number_form ( uint64_t, int64_t, int32_t ) {
 
 			return 0;

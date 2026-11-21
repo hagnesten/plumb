@@ -267,7 +267,7 @@ debug_wait();
 | `back()`, `forward()` | Navigation history. `1` if there was somewhere to go |
 | `view(kind)`, `current_view()` | Switches to `"listing"`, `"graph"`, `"c"`, `"hex"`, `"headers"` or `"calls"`, and names the current view |
 | `commands()`, `command(label)` | Every menu command's label, and running one by label, like `command("Decompile function")`. `0` if the command isn't available right now |
-| `setting(name)`, `set_setting(name, on)` | `"light"`, `"spaced"`, `"no_ternary"`, `"hide_casts"`, `"collapse_locals"`, `"name_virtuals"`, `"show_bytes"`, `"autosave"` and `"jit"` |
+| `setting(name)`, `set_setting(name, on)` | `"light"`, `"spaced"`, `"no_ternary"`, `"hide_casts"`, `"collapse_locals"`, `"guess_structs"`, `"name_virtuals"`, `"show_bytes"`, `"autosave"` and `"jit"` |
 | `font(role)`, `set_font(role, face [, size])` | `[face, size]` for `"interface"`, `"disassembly"` or `"c"`. Pass `none` as the face to change only the size |
 | `colors()`, `color(name)`, `set_color(name, 0xRRGGBB)`, `reset_color(name)` | Theme colors by key, for the current theme, as in View > Colors |
 | `clear_output()` | Empties the output pane |

@@ -1121,6 +1121,7 @@ namespace ui {
 		bool c_no_ternary = false;
 		bool c_hide_casts = false;
 		bool c_collapse_locals = false;
+		bool c_guess_structs = false;
 		bool name_virtuals = true;
 		math::vec2 code_menu_at;
 		int32_t code_hover_line = -1;
