@@ -626,6 +626,55 @@ namespace ui {
 
 		}
 
+		if ( call.is ( L"debug_write" ) ) {
+
+			int64_t where = 0;
+
+			if ( !call.takes ( 2, 2 ) || !call.number ( 0, where ) )
+				return true;
+
+			base::list < uint8_t > bytes;
+			const script::value& given = call.args [ 1 ];
+
+			if ( given.type == script::kind::NUMBER )
+				bytes.push ( static_cast < uint8_t > ( given.number ) );
+			else if ( given.type == script::kind::LIST ) {
+
+				for ( int32_t i = 0; i < call.engine->list_count ( given ); i++ ) {
+
+					script::value item = call.engine->list_item ( given, i );
+
+					if ( item.type != script::kind::NUMBER )
+						return call.fail ( L"debug_write takes a byte or a list of bytes." );
+
+					bytes.push ( static_cast < uint8_t > ( item.number ) );
+
+				}
+
+			} else
+				return call.fail ( L"debug_write takes a byte or a list of bytes." );
+
+			poll_debugger ( );
+
+			if ( !debugger::active ( ) || debug_state.state != debugger::status::PAUSED ) {
+
+				call.give_number ( 0 );
+
+				return true;
+
+			}
+
+			uint64_t at = static_cast < uint64_t > ( where );
+
+			if ( file.loaded ( ) && at >= file.base && at < file.high ( ) )
+				at = at - file.base + debug_state.image_base;
+
+			call.give_number ( debugger::poke ( at, bytes.data ( ), static_cast < size_t > ( bytes.count ( ) ) ) );
+
+			return true;
+
+		}
+
 		if ( call.is ( L"debug_evaluate" ) ) {
 
 			const wchar_t* given = nullptr;
