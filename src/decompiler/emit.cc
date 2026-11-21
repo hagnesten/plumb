@@ -173,8 +173,6 @@ namespace decompiler {
 		int32_t next_number = 0;
 		int32_t result_var = -1;
 		bool inline_mode = false;
-		bool ended = false;
-		bool flatten_else = false;
 		base::list < uint8_t > hidden;
 		base::list < int8_t > loop_letter;
 		int32_t next_letter = 0;
@@ -1901,7 +1899,6 @@ namespace decompiler {
 
 			wanted_label [ static_cast < size_t > ( block ) ] = 1;
 			gotos++;
-			ended = true;
 
 			if ( dry )
 				return;
@@ -1918,7 +1915,6 @@ namespace decompiler {
 
 		void body ( int32_t block ) {
 
-			ended = false;
 			label ( block );
 			emitted [ static_cast < size_t > ( block ) ] = 1;
 
@@ -1990,7 +1986,6 @@ namespace decompiler {
 
 		void close_brace ( ) {
 
-			ended = false;
 			out.indent--;
 
 			if ( dry )
@@ -2059,7 +2054,6 @@ namespace decompiler {
 
 		void return_line ( const block_code& item ) {
 
-			ended = true;
 
 			if ( dry )
 				return;
@@ -2125,7 +2119,6 @@ namespace decompiler {
 
 		void jump_line ( const wchar_t* keyword, uint64_t address ) {
 
-			ended = false;
 
 			if ( dry )
 				return;
@@ -2338,25 +2331,15 @@ namespace decompiler {
 
 			open_brace ( item.last, chained ? L"else if" : L"if", item.condition, negated );
 
-			ended = false;
 
 			if ( !special ( then_part, -2, context, item.last ) )
 				region ( then_part, follow, context );
-
-			bool then_ends = ( ended && flatten_else ) || skip_else;
 
 			out.indent--;
 
 			if ( skip_else )
 				brace ( L"}" );
-			else if ( else_part != follow && else_part >= 0 && then_ends ) {
-
-				brace ( L"}" );
-
-				if ( !special ( else_part, -2, context, item.last ) )
-					region ( else_part, follow, context );
-
-			} else if ( else_part != follow && else_part >= 0 ) {
+			else if ( else_part != follow && else_part >= 0 ) {
 
 				bool chain = !emitted [ static_cast < size_t > ( else_part ) ] && b.code [ static_cast < size_t > ( else_part ) ].end == term::BRANCH && empty_block ( else_part ) && pred [ static_cast < size_t > ( else_part ) ].count ( ) == 1 && !header [ static_cast < size_t > ( else_part ) ] && follow_of ( else_part, stop, context ) == follow && !wanted_label [ static_cast < size_t > ( else_part ) ];
 
