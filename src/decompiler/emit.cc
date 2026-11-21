@@ -745,6 +745,40 @@ namespace decompiler {
 
 		}
 
+		void extended_load ( const expr& item, int32_t parent, uint8_t sign ) {
+
+			const expr& where = b.exprs [ static_cast < size_t > ( item.a ) ];
+
+			int32_t var = -1;
+
+			if ( where.kind == op::VAR )
+				var = static_cast < int32_t > ( where.value );
+			else if ( where.kind == op::ADD && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST )
+				var = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( where.a ) ].value );
+
+			bool fielded = var >= 0 && ( has_struct ( var ) || ( var < b.var_structs.count ( ) && !b.var_structs [ static_cast < size_t > ( var ) ].empty ( ) ) );
+
+			if ( item.bits & FLOATING || fielded || ( where.kind == op::ADDRESS && where.value >= 0 ) ) {
+
+				lvalue_or_load ( item, parent );
+
+				return;
+
+			}
+
+			if ( parent > 14 )
+				out.put ( L"(" );
+
+			out.put ( L"*(", syntax::OPERATOR );
+			type_name ( item.size, sign, false );
+			out.put ( L" *)" );
+			value ( item.a, 14 );
+
+			if ( parent > 14 )
+				out.put ( L")" );
+
+		}
+
 		void value ( int32_t index, int32_t parent, bool hex_hint = false ) {
 
 			if ( index < 0 ) {
@@ -893,10 +927,21 @@ namespace decompiler {
 
 					for ( int32_t i = 0; i < item.arg_count; i++ ) {
 
+						int32_t argument = b.args [ static_cast < size_t > ( item.first_arg + i ) ];
+						const expr& passed = b.exprs [ static_cast < size_t > ( argument ) ];
+
 						if ( i )
 							out.put ( L", " );
 
-						value ( b.args [ static_cast < size_t > ( item.first_arg + i ) ], 2 );
+						if ( passed.kind == op::CONST && ( passed.bits & POINTER ) && b.db->function_starting ( static_cast < uint64_t > ( passed.value ) ) >= 0 && !( target && b.names->prototype ( target ) ) ) {
+
+							out.put ( L"(" );
+							type_name ( 8, 0, false );
+							out.put ( L")" );
+
+						}
+
+						value ( argument, 2 );
 
 					}
 
@@ -945,6 +990,14 @@ namespace decompiler {
 					if ( ( item.bits & POINTER ) && !float_change ) {
 
 						value ( item.a, parent );
+
+						break;
+
+					}
+
+					if ( inner.kind == op::LOAD && item.size > inner.size && !float_change && !( item.bits & FLOATING ) ) {
+
+						extended_load ( inner, parent, item.bits & SIGNED ? SIGNED : UNSIGNED );
 
 						break;
 
@@ -1489,6 +1542,8 @@ namespace decompiler {
 
 					if ( right.kind == op::CONST && !( right.bits & POINTER ) && ( left.size == 4 || left.size == 8 ) && float_target ( item.left ) )
 						real ( right.value, left.size == 4 ? 4 : 8 );
+					else if ( right.kind == op::LOAD && right.size < left.size && !( left.bits & FLOATING ) && !float_target ( item.left ) )
+						extended_load ( right, 2, UNSIGNED );
 					else
 						value ( item.right, 2 );
 
