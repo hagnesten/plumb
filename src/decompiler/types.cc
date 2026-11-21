@@ -23,15 +23,29 @@ namespace decompiler {
 		{ L"LONG64", 8, SIGNED }, { L"bool", 1, UNSIGNED }, { L"_Bool", 1, UNSIGNED }, { L"float", 4, FLOATING },
 		{ L"FLOAT", 4, FLOATING }, { L"double", 8, FLOATING }, { L"_BYTE", 1, UNSIGNED }, { L"_WORD", 2, UNSIGNED },
 		{ L"_DWORD", 4, UNSIGNED }, { L"_QWORD", 8, UNSIGNED }, { L"_BOOL1", 1, UNSIGNED }, { L"_BOOL4", 4, UNSIGNED },
-		{ L"_BOOL8", 8, UNSIGNED }
+		{ L"_BOOL8", 8, UNSIGNED }, { L"LSTATUS", 4, SIGNED }, { L"errno_t", 4, SIGNED }, { L"ATOM", 2, UNSIGNED },
+		{ L"LANGID", 2, UNSIGNED }, { L"LCID", 4, UNSIGNED }, { L"LCTYPE", 4, UNSIGNED }, { L"COLORREF", 4, UNSIGNED },
+		{ L"ACCESS_MASK", 4, UNSIGNED }, { L"REGSAM", 4, UNSIGNED }, { L"ALG_ID", 4, UNSIGNED }, { L"GROUP", 4, UNSIGNED },
+		{ L"INTERNET_PORT", 2, UNSIGNED }, { L"u_short", 2, UNSIGNED }, { L"u_long", 4, UNSIGNED }, { L"wint_t", 2, UNSIGNED },
+		{ L"OLECHAR", 2, UNSIGNED }, { L"INT8", 1, SIGNED }, { L"UINT8", 1, UNSIGNED }, { L"INT16", 2, SIGNED },
+		{ L"UINT16", 2, UNSIGNED }, { L"INT32", 4, SIGNED }, { L"UINT32", 4, UNSIGNED }, { L"INT64", 8, SIGNED },
+		{ L"UINT64", 8, UNSIGNED }, { L"ULONG32", 4, UNSIGNED }, { L"LONG32", 4, SIGNED }, { L"DWORD32", 4, UNSIGNED },
+		{ L"DWORDLONG", 8, UNSIGNED }, { L"time_t", 8, SIGNED }, { L"__time64_t", 8, SIGNED }, { L"clock_t", 4, SIGNED },
+		{ L"LARGE_INTEGER", 8, SIGNED }, { L"ULARGE_INTEGER", 8, UNSIGNED }, { L"FILETIME", 8, UNSIGNED }, { L"LUID", 8, UNSIGNED },
+		{ L"REGHANDLE", 8, UNSIGNED }, { L"_crt_app_type", 4, SIGNED }, { L"_crt_argv_mode", 4, SIGNED }
 	};
 
 	static const wchar_t* pointer_types [ ] = {
-		L"size_t", L"ssize_t", L"uintptr_t", L"intptr_t", L"ptrdiff_t", L"SIZE_T", L"ULONG_PTR", L"LONG_PTR", L"UINT_PTR", L"DWORD_PTR", L"INT_PTR"
+		L"size_t", L"ssize_t", L"uintptr_t", L"intptr_t", L"ptrdiff_t", L"SIZE_T", L"ULONG_PTR", L"LONG_PTR", L"UINT_PTR", L"DWORD_PTR", L"INT_PTR",
+		L"rsize_t", L"WPARAM", L"LPARAM", L"LRESULT", L"SOCKET", L"HCRYPTPROV", L"HCRYPTKEY", L"HCRYPTHASH", L"SERVICE_STATUS_HANDLE", L"KAFFINITY"
 	};
 
 	static const wchar_t* handle_types [ ] = {
-		L"HANDLE", L"HMODULE", L"HINSTANCE", L"HWND", L"HKEY", L"LPVOID", L"PVOID", L"LPCVOID", L"LPCSTR", L"LPSTR", L"LPCWSTR", L"LPWSTR", L"PCSTR", L"PSTR", L"PCWSTR", L"PWSTR", L"LPBYTE", L"PBYTE", L"FARPROC"
+		L"HANDLE", L"HMODULE", L"HINSTANCE", L"HWND", L"HKEY", L"LPVOID", L"PVOID", L"LPCVOID", L"LPCSTR", L"LPSTR", L"LPCWSTR", L"LPWSTR", L"PCSTR", L"PSTR", L"PCWSTR", L"PWSTR", L"LPBYTE", L"PBYTE", L"FARPROC",
+		L"LPDWORD", L"PDWORD", L"LPWORD", L"PWORD", L"LPLONG", L"PLONG", L"PULONG", L"PUCHAR", L"PUINT", L"LPBOOL", L"PBOOL", L"PSIZE_T", L"PULONG_PTR", L"PDWORD_PTR", L"PDWORD64", L"LPHANDLE", L"PHANDLE", L"PHKEY",
+		L"HDC", L"HMENU", L"HICON", L"HCURSOR", L"HBRUSH", L"HGDIOBJ", L"HBITMAP", L"HFONT", L"HPEN", L"HRGN", L"HMONITOR", L"HHOOK", L"HGLOBAL", L"HLOCAL", L"HRSRC", L"SC_HANDLE", L"HINTERNET", L"HDESK", L"HWINSTA", L"HKL", L"HACCEL",
+		L"LPCH", L"LPWCH", L"LPCCH", L"LPCWCH", L"PCNZWCH", L"PCSZ", L"LPOLESTR", L"LPCOLESTR", L"BSTR", L"PSID", L"PACL", L"PSECURITY_DESCRIPTOR",
+		L"BCRYPT_HANDLE", L"BCRYPT_ALG_HANDLE", L"BCRYPT_KEY_HANDLE", L"BCRYPT_HASH_HANDLE", L"PTP_WORK", L"PSLIST_ENTRY", L"DPI_AWARENESS_CONTEXT", L"LPUNKNOWN"
 	};
 
 	static const wchar_t* ignored_words [ ] = {
@@ -106,7 +120,8 @@ namespace decompiler {
 
 	}
 
-	static bool in_list ( const wchar_t* word, const wchar_t* const* list, int32_t count ) {
+	template < int32_t count >
+	static bool in_list ( const wchar_t* word, const wchar_t* const ( &list ) [ count ] ) {
 
 		for ( int32_t i = 0; i < count; i++ ) {
 
@@ -123,7 +138,7 @@ namespace decompiler {
 
 		static const wchar_t* words [ ] = { L"void", L"char", L"short", L"int", L"long", L"unsigned", L"signed", L"float", L"double" };
 
-		if ( in_list ( word, words, 9 ) || in_list ( word, pointer_types, 11 ) || in_list ( word, handle_types, 19 ) || in_list ( word, ignored_words, 10 ) )
+		if ( in_list ( word, words ) || in_list ( word, pointer_types ) || in_list ( word, handle_types ) || in_list ( word, ignored_words ) )
 			return true;
 
 		for ( const named_type& item : known_types ) {
@@ -180,7 +195,7 @@ namespace decompiler {
 			if ( !identifier_char ( word [ 0 ] ) )
 				return false;
 
-			if ( in_list ( word, calling_words, 10 ) )
+			if ( in_list ( word, calling_words ) )
 				continue;
 
 			if ( length && length < room - 2 )
@@ -189,7 +204,7 @@ namespace decompiler {
 			for ( const wchar_t* at = word; *at && length < room - 2; at++ )
 				text [ length++ ] = *at;
 
-			if ( in_list ( word, ignored_words, 10 ) )
+			if ( in_list ( word, ignored_words ) )
 				continue;
 
 			if ( same ( word, L"unsigned" ) )
@@ -210,9 +225,9 @@ namespace decompiler {
 				is_float = true;
 			else if ( same ( word, L"double" ) )
 				is_double = true;
-			else if ( in_list ( word, pointer_types, 11 ) )
+			else if ( in_list ( word, pointer_types ) )
 				sized_pointer = true;
-			else if ( in_list ( word, handle_types, 19 ) )
+			else if ( in_list ( word, handle_types ) )
 				handle = true;
 			else {
 
@@ -387,7 +402,7 @@ namespace decompiler {
 
 		split ( text, open, head );
 
-		while ( head.count && in_list ( head.text [ head.count - 1 ], calling_words, 10 ) )
+		while ( head.count && in_list ( head.text [ head.count - 1 ], calling_words ) )
 			head.count--;
 
 		int32_t type_end = head.count;

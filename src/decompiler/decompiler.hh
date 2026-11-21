@@ -105,6 +105,8 @@ namespace decompiler {
 
 	bool parse_prototype ( const wchar_t* text, bool long_mode, c_prototype& out, base::writer& problem );
 
+	const wchar_t* api_prototype ( const wchar_t* name );
+
 	struct namer {
 
 		virtual bool name ( uint64_t address, bool code, wchar_t* out, int32_t room ) = 0;

@@ -26,66 +26,6 @@ namespace decompiler {
 
 	}
 
-	int32_t import_arguments ( const wchar_t* name ) {
-
-		struct known {
-
-			const wchar_t* name;
-			int32_t count;
-
-		};
-
-		static const known table [ ] = {
-			{ L"CreateFileW", 7 }, { L"CreateFileA", 7 }, { L"ReadFile", 5 }, { L"WriteFile", 5 }, { L"CloseHandle", 1 }, { L"DeviceIoControl", 8 },
-			{ L"VirtualAlloc", 4 }, { L"VirtualAllocEx", 5 }, { L"VirtualFree", 3 }, { L"VirtualProtect", 4 }, { L"VirtualProtectEx", 5 }, { L"VirtualQuery", 3 },
-			{ L"GetProcAddress", 2 }, { L"LoadLibraryW", 1 }, { L"LoadLibraryA", 1 }, { L"LoadLibraryExW", 3 }, { L"LoadLibraryExA", 3 }, { L"FreeLibrary", 1 },
-			{ L"GetModuleHandleW", 1 }, { L"GetModuleHandleA", 1 }, { L"GetModuleHandleExW", 3 }, { L"GetModuleFileNameW", 3 }, { L"GetModuleFileNameA", 3 },
-			{ L"MessageBoxW", 4 }, { L"MessageBoxA", 4 }, { L"Sleep", 1 }, { L"SleepEx", 2 }, { L"ExitProcess", 1 }, { L"TerminateProcess", 2 },
-			{ L"GetLastError", 0 }, { L"SetLastError", 1 }, { L"CreateThread", 6 }, { L"CreateRemoteThread", 7 }, { L"WaitForSingleObject", 2 },
-			{ L"WaitForMultipleObjects", 4 }, { L"OutputDebugStringW", 1 }, { L"OutputDebugStringA", 1 }, { L"HeapAlloc", 3 }, { L"HeapFree", 3 },
-			{ L"HeapReAlloc", 4 }, { L"GetProcessHeap", 0 }, { L"RegOpenKeyExW", 5 }, { L"RegQueryValueExW", 6 }, { L"RegSetValueExW", 6 }, { L"RegCloseKey", 1 },
-			{ L"RegCreateKeyExW", 9 }, { L"CreateMutexW", 3 }, { L"OpenProcess", 3 }, { L"ReadProcessMemory", 5 }, { L"WriteProcessMemory", 5 },
-			{ L"GetCurrentProcess", 0 }, { L"GetCurrentThread", 0 }, { L"GetCurrentProcessId", 0 }, { L"GetCurrentThreadId", 0 },
-			{ L"QueryPerformanceCounter", 1 }, { L"QueryPerformanceFrequency", 1 }, { L"GetTickCount", 0 }, { L"GetTickCount64", 0 },
-			{ L"GetSystemTimeAsFileTime", 1 }, { L"GetStartupInfoW", 1 }, { L"GetCommandLineW", 0 }, { L"GetCommandLineA", 0 },
-			{ L"SetUnhandledExceptionFilter", 1 }, { L"UnhandledExceptionFilter", 1 }, { L"IsDebuggerPresent", 0 }, { L"RaiseException", 4 },
-			{ L"InitializeCriticalSection", 1 }, { L"EnterCriticalSection", 1 }, { L"LeaveCriticalSection", 1 }, { L"DeleteCriticalSection", 1 },
-			{ L"InitializeSRWLock", 1 }, { L"AcquireSRWLockExclusive", 1 }, { L"ReleaseSRWLockExclusive", 1 }, { L"AcquireSRWLockShared", 1 },
-			{ L"ReleaseSRWLockShared", 1 }, { L"TlsAlloc", 0 }, { L"TlsGetValue", 1 }, { L"TlsSetValue", 2 }, { L"TlsFree", 1 },
-			{ L"CreateEventW", 4 }, { L"SetEvent", 1 }, { L"ResetEvent", 1 }, { L"CreateFileMappingW", 6 }, { L"MapViewOfFile", 5 }, { L"UnmapViewOfFile", 1 },
-			{ L"GetFileSizeEx", 2 }, { L"SetFilePointerEx", 4 }, { L"FindFirstFileW", 2 }, { L"FindNextFileW", 2 }, { L"FindClose", 1 },
-			{ L"DeleteFileW", 1 }, { L"CreateDirectoryW", 2 }, { L"GetFileAttributesW", 1 }, { L"MultiByteToWideChar", 6 }, { L"WideCharToMultiByte", 8 },
-			{ L"lstrlenW", 1 }, { L"lstrlenA", 1 }, { L"GetEnvironmentVariableW", 3 }, { L"ExpandEnvironmentStringsW", 3 }, { L"FormatMessageW", 7 },
-			{ L"LocalAlloc", 2 }, { L"LocalFree", 1 }, { L"GlobalAlloc", 2 }, { L"GlobalFree", 1 }, { L"GlobalLock", 1 }, { L"GlobalUnlock", 1 },
-			{ L"SendMessageW", 4 }, { L"PostMessageW", 4 }, { L"DefWindowProcW", 4 }, { L"CreateWindowExW", 12 }, { L"ShowWindow", 2 },
-			{ L"GetMessageW", 4 }, { L"PeekMessageW", 5 }, { L"TranslateMessage", 1 }, { L"DispatchMessageW", 1 }, { L"RegisterClassExW", 1 },
-			{ L"DestroyWindow", 1 }, { L"SetWindowTextW", 2 }, { L"GetWindowTextW", 3 }, { L"GetDC", 1 }, { L"ReleaseDC", 2 }, { L"InvalidateRect", 3 },
-			{ L"CoInitializeEx", 2 }, { L"CoCreateInstance", 5 }, { L"CoUninitialize", 0 }, { L"CoTaskMemFree", 1 }, { L"SysAllocString", 1 }, { L"SysFreeString", 1 },
-			{ L"malloc", 1 }, { L"calloc", 2 }, { L"realloc", 2 }, { L"free", 1 }, { L"memcpy", 3 }, { L"memmove", 3 }, { L"memset", 3 }, { L"memcmp", 3 },
-			{ L"strlen", 1 }, { L"wcslen", 1 }, { L"strcmp", 2 }, { L"wcscmp", 2 }, { L"strncmp", 3 }, { L"wcsncmp", 3 }, { L"strcpy_s", 3 }, { L"wcscpy_s", 3 },
-			{ L"printf", 1 }, { L"sprintf_s", 3 }, { L"swprintf_s", 3 }, { L"fopen", 2 }, { L"fclose", 1 }, { L"fread", 4 }, { L"fwrite", 4 },
-			{ L"exit", 1 }, { L"_exit", 1 }, { L"abort", 0 }, { L"_CxxThrowException", 2 }, { L"_invalid_parameter_noinfo_noreturn", 0 },
-			{ L"__std_terminate", 0 }, { L"_errno", 0 }, { L"_initterm", 2 }, { L"_initterm_e", 2 }, { L"_set_app_type", 1 }, { L"atexit", 1 },
-			{ L"_beginthreadex", 6 }, { L"_endthreadex", 1 }, { L"NtQueryInformationProcess", 5 }, { L"NtQuerySystemInformation", 4 },
-			{ L"RtlCaptureContext", 1 }, { L"RtlLookupFunctionEntry", 3 }, { L"RtlVirtualUnwind", 8 }, { L"EventRegister", 4 }, { L"EventWriteTransfer", 5 },
-			{ L"WTSGetActiveConsoleSessionId", 0 }, { L"InitializeCriticalSectionEx", 3 }, { L"InitializeCriticalSectionAndSpinCount", 2 },
-			{ L"GetSystemInfo", 1 }, { L"IsProcessorFeaturePresent", 1 }, { L"GetCurrentDirectoryW", 2 }, { L"SetCurrentDirectoryW", 1 }
-		};
-
-		if ( !name )
-			return -1;
-
-		for ( const known& item : table ) {
-
-			if ( base::same_text ( item.name, name ) )
-				return item.count;
-
-		}
-
-		return -1;
-
-	}
-
 	int32_t builder::make ( op kind, uint8_t size, int32_t a, int32_t b, int64_t value, uint8_t bits ) {
 
 		expr& item = exprs.emplace ( );

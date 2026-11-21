@@ -88,6 +88,7 @@
     <ClCompile Include="src\ui\rows.cc" />
     <ClCompile Include="src\ui\session.cc" />
     <ClCompile Include="src\ui\settings.cc" />
+    <ClCompile Include="src\decompiler\apis.cc" />
     <ClCompile Include="src\script\builtins.cc" />
     <ClCompile Include="src\script\engine.cc" />
     <ClCompile Include="src\script\jit.cc" />
