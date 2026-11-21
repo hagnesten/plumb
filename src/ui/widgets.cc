@@ -8,8 +8,8 @@ namespace ui {
 		render::canvas& c = canvas;
 		float s = height;
 		float top = center.y - s * 0.5f;
-		render::color brass = ink ( tone::ACCENT );
-		render::color deep = render::mix ( brass, render::rgb ( 0x000000 ), 0.32f );
+		render::color brass = render::rgb ( 0xD9A548 );
+		render::color deep = render::rgb ( 0xA8782E );
 		render::color line = ink ( tone::INK_SOFT );
 		float body_top = top + s * 0.3f;
 		float shoulder = body_top + s * 0.3f;
