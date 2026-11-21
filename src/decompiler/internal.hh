@@ -256,6 +256,8 @@ namespace decompiler {
 
 	void effects ( const x86::instruction& ins, bool long_mode, uint32_t& use, uint32_t& def );
 
+	int32_t internal_arguments ( const analysis::database& db, uint64_t function, bool long_mode, int32_t depth );
+
 	int32_t yields_value ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, bool long_mode, int32_t depth );
 
 	const wchar_t* intrinsic_name ( int32_t id );

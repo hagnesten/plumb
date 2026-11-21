@@ -2130,11 +2130,25 @@ namespace decompiler {
 
 				}
 
-				for ( int32_t i = 4; i < 16 && stack_args [ i ] >= 0; i++ )
+				int32_t stacked = -1;
+
+				for ( int32_t i = 4; i < 16 && stack_args [ i ] >= 0; i++ ) {
+
 					highest = base::max ( highest, i );
+					stacked = i;
+
+				}
 
 				if ( count >= 0 )
 					highest = count - 1;
+				else if ( direct && callee >= 0 ) {
+
+					int32_t inner = internal_arguments ( *k.db, direct, true, 0 );
+
+					if ( inner >= 0 )
+						highest = base::max ( inner - 1, stacked );
+
+				}
 
 				if ( through_vtable )
 					highest = base::max ( highest, 0 );
@@ -3288,7 +3302,7 @@ namespace decompiler {
 		if ( callee >= 0 && ( b.db->functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK ) && b.db->functions [ static_cast < size_t > ( callee ) ].import >= 0 )
 			return import_arguments ( b.file->imports [ static_cast < size_t > ( b.db->functions [ static_cast < size_t > ( callee ) ].import ) ].name.get ( ) );
 
-		return -1;
+		return internal_arguments ( *b.db, direct, b.long_mode, 0 );
 
 	}
 

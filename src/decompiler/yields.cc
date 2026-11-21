@@ -140,6 +140,119 @@ namespace decompiler {
 
 	}
 
+	int32_t internal_arguments ( const analysis::database& db, uint64_t function, bool long_mode, int32_t depth ) {
+
+		int32_t callee = db.function_starting ( function );
+
+		if ( !long_mode || callee < 0 || ( db.functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK ) || depth > 2 )
+			return -1;
+
+		analysis::function_graph graph;
+
+		if ( !analysis::build_graph ( db, function, graph ) )
+			return -1;
+
+		static const int32_t gpr [ 4 ] = { 1, 2, 8, 9 };
+		const uint32_t arg_mask = ( 1u << 1 ) | ( 1u << 2 ) | ( 1u << 8 ) | ( 1u << 9 );
+		int32_t count = graph.blocks.count ( );
+		base::list < uint32_t > uses;
+		base::list < uint32_t > defs;
+		base::list < uint32_t > live;
+
+		uses.fill ( static_cast < size_t > ( count ), 0 );
+		defs.fill ( static_cast < size_t > ( count ), 0 );
+		live.fill ( static_cast < size_t > ( count ), 0 );
+
+		auto passed = [ & ] ( const x86::instruction& ins ) {
+
+			uint64_t target = call_target ( ins );
+			int32_t inner = target ? internal_arguments ( db, target, long_mode, depth + 1 ) : -1;
+			uint32_t mask = 0;
+
+			for ( int32_t i = 0; i < inner && i < 4; i++ )
+				mask |= 1u << gpr [ i ];
+
+			return mask;
+
+		};
+
+		for ( int32_t i = 0; i < count; i++ ) {
+
+			const analysis::block& item = graph.blocks [ static_cast < size_t > ( i ) ];
+			uint64_t at = item.start;
+			uint32_t use = 0;
+			uint32_t def = 0;
+
+			while ( at < item.end ) {
+
+				x86::instruction ins;
+
+				if ( !db.decode ( at, ins ) )
+					break;
+
+				uint32_t u = 0;
+				uint32_t d = 0;
+
+				effects ( ins, long_mode, u, d );
+
+				bool zeroing = ins.name == mnemonic::xor_ && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::REG && ins.operands [ 0 ].reg == ins.operands [ 1 ].reg;
+
+				if ( zeroing )
+					u = 0;
+
+				if ( ins.name == mnemonic::call || ( ins.control == x86::flow::JUMP && item.out_count == 0 && ins.next ( ) >= item.end ) )
+					u |= passed ( ins );
+
+				use |= u & ~def;
+				def |= d;
+				at = ins.next ( );
+
+			}
+
+			uses [ static_cast < size_t > ( i ) ] = use;
+			defs [ static_cast < size_t > ( i ) ] = def;
+
+		}
+
+		for ( bool moved = true; moved; ) {
+
+			moved = false;
+
+			for ( int32_t i = count - 1; i >= 0; i-- ) {
+
+				uint32_t out = 0;
+				const analysis::block& item = graph.blocks [ static_cast < size_t > ( i ) ];
+
+				for ( int32_t e = 0; e < item.out_count; e++ )
+					out |= live [ static_cast < size_t > ( graph.edges [ static_cast < size_t > ( item.first_out + e ) ].to ) ];
+
+				uint32_t in = uses [ static_cast < size_t > ( i ) ] | ( out & ~defs [ static_cast < size_t > ( i ) ] );
+
+				if ( in != live [ static_cast < size_t > ( i ) ] ) {
+
+					live [ static_cast < size_t > ( i ) ] = in;
+					moved = true;
+
+				}
+
+			}
+
+		}
+
+		uint32_t entry = count ? live [ 0 ] & arg_mask : 0;
+		int32_t highest = 0;
+
+		for ( int32_t i = 0; i < 4; i++ ) {
+
+			if ( entry & ( 1u << gpr [ i ] ) )
+				highest = i + 1;
+
+		}
+
+		return highest;
+
+	}
+
 	int32_t yields_value ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, bool long_mode, int32_t depth ) {
 
 		analysis::function_graph graph;
