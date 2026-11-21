@@ -124,7 +124,7 @@ namespace decompiler {
 		for ( block_code& item : code ) {
 
 			bool test = item.end == term::BRANCH && item.condition >= 0;
-			bool back = false;
+			bool back = item.end == term::RETURN && item.returned >= 0;
 
 			if ( !test && !back )
 				continue;
@@ -154,6 +154,9 @@ namespace decompiler {
 			const variable& owner = vars [ static_cast < size_t > ( v ) ];
 
 			if ( owner.kind != var_kind::REGISTER || owner.cookie || owner.saved || ( owner.bits & FLOATING ) )
+				continue;
+
+			if ( back && exprs [ static_cast < size_t > ( line.right ) ].kind != op::CALL )
 				continue;
 
 			int32_t& slot = test ? item.condition : item.returned;
