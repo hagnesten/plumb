@@ -241,6 +241,10 @@ namespace decompiler {
 
 	bool emit ( builder& b );
 
+	void effects ( const x86::instruction& ins, bool long_mode, uint32_t& use, uint32_t& def );
+
+	bool yields_value ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, bool long_mode, int32_t depth );
+
 	const wchar_t* intrinsic_name ( int32_t id );
 
 	int32_t import_arguments ( const wchar_t* name );

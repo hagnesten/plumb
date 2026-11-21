@@ -766,7 +766,7 @@ namespace decompiler {
 
 	}
 
-	static void effects ( const x86::instruction& ins, bool long_mode, uint32_t& use, uint32_t& def ) {
+	void effects ( const x86::instruction& ins, bool long_mode, uint32_t& use, uint32_t& def ) {
 
 		use = 0;
 		def = 0;
@@ -3640,6 +3640,31 @@ namespace decompiler {
 
 		propagate ( );
 
+		uint32_t result_mask = returns_float ? ( 1u << 16 ) : 1u;
+		base::list < uint8_t > reaching;
+
+		reaching.fill ( static_cast < size_t > ( count ), 0 );
+
+		for ( bool moved = true; moved; ) {
+
+			moved = false;
+
+			for ( const analysis::edge& link : graph.edges ) {
+
+				if ( link.from < 0 || link.from >= count || link.to < 0 || link.to >= count || reaching [ static_cast < size_t > ( link.to ) ] )
+					continue;
+
+				if ( reaching [ static_cast < size_t > ( link.from ) ] || ( defs [ static_cast < size_t > ( link.from ) ] & result_mask ) ) {
+
+					reaching [ static_cast < size_t > ( link.to ) ] = 1;
+					moved = true;
+
+				}
+
+			}
+
+		}
+
 		for ( int32_t i = 0; i < count; i++ ) {
 
 			block_code& item = code [ static_cast < size_t > ( i ) ];
@@ -3650,28 +3675,7 @@ namespace decompiler {
 			if ( item.end != term::RETURN || item.returned < 0 )
 				continue;
 
-			bool defined = ( defs [ static_cast < size_t > ( i ) ] & ( returns_float ? ( 1u << 16 ) : 1u ) ) != 0;
-
-			if ( !defined ) {
-
-				int32_t incoming = 0;
-				int32_t defining = 0;
-
-				for ( const analysis::edge& link : graph.edges ) {
-
-					if ( link.to != i )
-						continue;
-
-					incoming++;
-
-					if ( defs [ static_cast < size_t > ( link.from ) ] & 1u )
-						defining++;
-
-				}
-
-				defined = incoming > 0 && incoming == defining;
-
-			}
+			bool defined = ( defs [ static_cast < size_t > ( i ) ] & result_mask ) != 0 || reaching [ static_cast < size_t > ( i ) ];
 
 			if ( !defined ) {
 
@@ -3684,6 +3688,20 @@ namespace decompiler {
 
 			returns_value = true;
 			return_size = base::max ( return_size, exprs [ static_cast < size_t > ( item.returned ) ].size );
+
+		}
+
+		if ( !has_prototype && !returns_float && !yields_value ( *db, *file, names, function, long_mode, 0 ) ) {
+
+			returns_value = false;
+			bare_return = true;
+
+			for ( block_code& item : code ) {
+
+				if ( item.end == term::RETURN )
+					item.returned = -1;
+
+			}
 
 		}
 
