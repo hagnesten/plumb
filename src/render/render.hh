@@ -82,6 +82,7 @@ namespace render {
 		MONO_STRONG,
 		MONO_SMALL,
 		BRAND,
+		CODE,
 		COUNT,
 
 	};
