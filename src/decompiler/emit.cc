@@ -142,6 +142,7 @@ namespace decompiler {
 		base::list < uint8_t > referenced;
 		int32_t next_number = 0;
 		int32_t result_var = -1;
+		bool operand = false;
 		int32_t gotos = 0;
 		int32_t depth = 0;
 		bool no_ternary = false;
@@ -406,7 +407,7 @@ namespace decompiler {
 
 			}
 
-			type_name ( item.size, item.bits, ( item.bits & POINTER ) && item.size == ( b.long_mode ? 8 : 4 ) && !( item.bits & FLOATING ) );
+			type_name ( item.size, item.bits & ~POINTER, false );
 
 		}
 
@@ -470,19 +471,24 @@ namespace decompiler {
 
 		}
 
-		void number ( int64_t value, uint8_t size, bool hex_form, bool unsigned_suffix ) {
+		void number ( int64_t value, uint8_t size, bool hex_form, bool is_unsigned ) {
 
 			wchar_t text [ 40 ];
 			int32_t length = 0;
 			bool negative = value < 0 && !( size < 8 && value > 0 );
 			uint64_t magnitude = negative ? static_cast < uint64_t > ( -value ) : static_cast < uint64_t > ( value );
 
-			if ( negative && magnitude > 0x100000000ull && hex_form ) {
+			if ( negative && ( is_unsigned || ( magnitude > 0x100000000ull && hex_form ) ) ) {
 
 				negative = false;
 				magnitude = size >= 8 ? static_cast < uint64_t > ( value ) : static_cast < uint64_t > ( value ) & ( ( 1ull << ( size * 8 ) ) - 1 );
 
 			}
+
+			bool fits = negative ? magnitude <= 0x80000000ull : magnitude <= ( is_unsigned ? 0xFFFFFFFFull : 0x7FFFFFFFull );
+			bool unsigned_suffix = is_unsigned && !negative;
+
+			hex_form = hex_form || unsigned_suffix || magnitude > 0xFFFFFFFFull;
 
 			if ( negative )
 				text [ length++ ] = L'-';
@@ -515,7 +521,16 @@ namespace decompiler {
 
 			}
 
-			if ( unsigned_suffix && !negative )
+			if ( size == 8 && !( operand && fits ) ) {
+
+				if ( unsigned_suffix )
+					text [ length++ ] = L'u';
+
+				text [ length++ ] = L'i';
+				text [ length++ ] = L'6';
+				text [ length++ ] = L'4';
+
+			} else if ( unsigned_suffix )
 				text [ length++ ] = L'u';
 
 			text [ length ] = 0;
@@ -578,16 +593,7 @@ namespace decompiler {
 
 			uint64_t magnitude = static_cast < uint64_t > ( value < 0 ? -value : value );
 
-			if ( magnitude >= 0x80000000ull )
-				return false;
-
-			if ( magnitude >= 0x100 && ( magnitude & ( magnitude - 1 ) ) == 0 )
-				return false;
-
-			if ( magnitude >= 0xFF && ( ( magnitude + 1 ) & magnitude ) == 0 )
-				return false;
-
-			return true;
+			return magnitude < 0x80000000ull;
 
 		}
 
@@ -762,8 +768,40 @@ namespace decompiler {
 			}
 
 			const expr item = b.exprs [ static_cast < size_t > ( index ) ];
+
+			if ( ( item.kind == op::EQ || item.kind == op::NE ) && item.b >= 0 && !( item.bits & FLOATING ) ) {
+
+				const expr& zero = b.exprs [ static_cast < size_t > ( item.b ) ];
+				const expr& tested = b.exprs [ static_cast < size_t > ( item.a ) ];
+
+				if ( zero.kind == op::CONST && zero.value == 0 && !( zero.bits & POINTER ) && !( tested.bits & FLOATING ) ) {
+
+					if ( item.kind == op::NE ) {
+
+						value ( item.a, parent );
+
+						return;
+
+					}
+
+					if ( parent > 14 )
+						out.put ( L"(" );
+
+					out.put ( L"!", syntax::OPERATOR );
+					value ( item.a, 14 );
+
+					if ( parent > 14 )
+						out.put ( L")" );
+
+					return;
+
+				}
+
+			}
+
 			int32_t mine = precedence ( item.kind );
 			bool wrap = mine < parent;
+			bool outer = operand;
 			wchar_t name [ 300 ];
 
 			if ( wrap )
@@ -851,6 +889,7 @@ namespace decompiler {
 					}
 
 					out.put ( L"(" );
+					operand = false;
 
 					for ( int32_t i = 0; i < item.arg_count; i++ ) {
 
@@ -871,6 +910,7 @@ namespace decompiler {
 
 					out.put ( intrinsic_name ( static_cast < int32_t > ( item.value ) ), syntax::FUNCTION );
 					out.put ( L"(" );
+					operand = false;
 
 					for ( int32_t i = 0; i < item.arg_count; i++ ) {
 
@@ -912,8 +952,10 @@ namespace decompiler {
 
 					if ( shown ) {
 
+						bool narrow = !float_change && item.size < inner.size && !( item.bits & ( SIGNED | UNSIGNED ) );
+
 						out.put ( L"(" );
-						type_name ( item.size, item.bits, false );
+						type_name ( item.size, item.bits, false, narrow );
 						out.put ( L")" );
 
 					}
@@ -1036,6 +1078,8 @@ namespace decompiler {
 
 					const expr& right = b.exprs [ static_cast < size_t > ( item.b ) ];
 
+					operand = true;
+
 					if ( item.kind == op::ADD && right.kind == op::CONST && right.value < 0 && !( right.bits & POINTER ) ) {
 
 						value ( item.a, mine );
@@ -1071,6 +1115,8 @@ namespace decompiler {
 
 			if ( wrap )
 				out.put ( L")" );
+
+			operand = outer;
 
 		}
 
@@ -1706,8 +1752,14 @@ namespace decompiler {
 
 			if ( shown ) {
 
+				const expr& back = b.exprs [ static_cast < size_t > ( item.returned ) ];
+
 				out.put ( L" " );
-				value ( item.returned, 0 );
+
+				if ( back.kind == op::CONST && !( back.bits & POINTER ) && !b.has_prototype && !b.returns_float && b.long_mode )
+					number ( back.value, 8, !simple_constant ( back.value ), false );
+				else
+					value ( item.returned, 0 );
 
 			}
 
@@ -2789,7 +2841,7 @@ namespace decompiler {
 			if ( b.returns_float )
 				head.type_name ( b.return_size ? b.return_size : 4, FLOATING, false );
 			else
-				head.type_name ( b.return_size ? b.return_size : ( b.long_mode ? 8 : 4 ), 0, false );
+				head.type_name ( b.long_mode ? 8 : 4, 0, false );
 
 		} else
 			head.out.put ( L"void", syntax::KEYWORD );
@@ -3036,6 +3088,17 @@ namespace decompiler {
 
 					if ( b->returns_value )
 						b->return_size = b->prototype.result_type.size;
+
+				}
+
+			}
+
+			if ( !b->has_prototype && b->long_mode ) {
+
+				for ( const block_code& item : b->code ) {
+
+					if ( item.reachable && item.end == term::TAIL && item.returned >= 0 )
+						b->returns_value = true;
 
 				}
 
