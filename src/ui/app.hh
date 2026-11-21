@@ -848,6 +848,7 @@ namespace ui {
 		float dt = 0.0f;
 		bool fixed_step = false;
 		bool persist = true;
+		bool load_pdb = true;
 		bool settings_frozen = false;
 		bool maximized = false;
 		bool focused = true;

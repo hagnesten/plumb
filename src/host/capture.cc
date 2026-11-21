@@ -949,12 +949,178 @@ static bool psc_mode ( ) {
 
 }
 
+static bool runtime_keys_mode ( ) {
+
+	const wchar_t* target = argument ( L"--runtime-keys" );
+
+	if ( !target )
+		return false;
+
+	struct harvested {
+
+		uint64_t key = 0;
+		base::text name;
+		bool clash = false;
+
+	};
+
+	base::list < harvested > found;
+	x86::prepare ( );
+
+	for ( int32_t a = 1; a < argument_count; a++ ) {
+
+		const wchar_t* path = arguments [ a ];
+		int32_t length = 0;
+
+		while ( path [ length ] )
+			length++;
+
+		if ( length < 5 || path [ length - 4 ] != L'.' || ( base::fold_case ( path [ length - 3 ] ) != L'e' && base::fold_case ( path [ length - 3 ] ) != L'd' ) )
+			continue;
+
+		ui::app* named = new ui::app ( );
+
+		named->persist = false;
+		named->settings_frozen = true;
+		named->analysis_sync = true;
+
+		if ( !named->open_file ( path ) || !named->db ) {
+
+			delete named;
+
+			continue;
+
+		}
+
+		base::list < ui::user_name > by_address;
+
+		for ( int32_t i = 0; i < named->db->functions.count ( ); i++ ) {
+
+			wchar_t name [ 400 ];
+
+			if ( !named->meaningful_name ( i, name, 400 ) )
+				continue;
+
+			ui::user_name& item = by_address.emplace ( );
+
+			item.address = named->db->functions [ static_cast < size_t > ( i ) ].start;
+			item.text.set ( name );
+
+		}
+
+		named->close_file ( );
+		delete named;
+
+		ui::app* app = new ui::app ( );
+
+		app->persist = false;
+		app->settings_frozen = true;
+		app->analysis_sync = true;
+		app->load_pdb = false;
+
+		if ( !app->open_file ( path ) || !app->db ) {
+
+			delete app;
+
+			continue;
+
+		}
+
+		for ( int32_t i = 0; i < app->db->functions.count ( ); i++ ) {
+
+			wchar_t name [ 400 ];
+			uint64_t key = 0;
+			uint64_t start = app->db->functions [ static_cast < size_t > ( i ) ].start;
+			const ui::user_name* match = nullptr;
+			int32_t low = 0;
+			int32_t high = by_address.count ( ) - 1;
+
+			while ( low <= high && !match ) {
+
+				int32_t middle = ( low + high ) / 2;
+				uint64_t value = by_address [ static_cast < size_t > ( middle ) ].address;
+
+				if ( value == start )
+					match = &by_address [ static_cast < size_t > ( middle ) ];
+				else if ( value < start )
+					low = middle + 1;
+				else
+					high = middle - 1;
+
+			}
+
+			if ( !match || app->db->functions [ static_cast < size_t > ( i ) ].name >= 0 || !analysis::function_key ( *app->db, i, key ) )
+				continue;
+
+			int32_t k = 0;
+
+			for ( const wchar_t* at = match->text.get ( ); *at && k < 399; at++ )
+				name [ k++ ] = *at;
+
+			name [ k ] = 0;
+
+			if ( base::same_text ( name, L"main" ) || base::same_text ( name, L"wmain" ) || ( name [ 0 ] == L'c' && name [ 1 ] == L'o' && name [ 2 ] == L'r' && name [ 3 ] == L'p' && name [ 4 ] == L'u' && name [ 5 ] == L's' ) )
+				continue;
+
+			bool known = false;
+
+			for ( harvested& item : found ) {
+
+				if ( item.key != key )
+					continue;
+
+				known = true;
+
+				if ( !base::same_text ( item.name.get ( ), name ) )
+					item.clash = true;
+
+			}
+
+			if ( !known ) {
+
+				harvested& item = found.emplace ( );
+
+				item.key = key;
+				item.name.set ( name );
+
+			}
+
+		}
+
+		app->close_file ( );
+		delete app;
+
+	}
+
+	base::list < char > out;
+
+	for ( const harvested& item : found ) {
+
+		if ( item.clash )
+			continue;
+
+		base::writer line;
+
+		line.hex ( item.key, 16 ).add ( L" " ).add ( item.name.get ( ) );
+		append ( out, line );
+
+	}
+
+	write_text ( target, out );
+
+	return true;
+
+}
+
 bool debug_main ( ) {
 
 	arguments = CommandLineToArgvW ( GetCommandLineW ( ), &argument_count );
 
 	if ( !arguments || argument_count < 2 )
 		return false;
+
+	if ( runtime_keys_mode ( ) )
+		return true;
 
 	if ( psc_mode ( ) )
 		return true;
