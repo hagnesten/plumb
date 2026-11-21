@@ -754,8 +754,13 @@ static bool decompile_mode ( ) {
 
 		}
 
-		if ( limit > 200 )
+		if ( limit > 200 && !which )
 			continue;
+
+		base::writer header;
+
+		header.add ( L"//----- (" ).hex ( item.start, 16 ).add ( L")----------------------------------------------------" );
+		append ( out, header );
 
 		for ( const decompiler::line& line : code.lines ) {
 
