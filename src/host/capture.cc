@@ -915,8 +915,12 @@ static bool psc_mode ( ) {
 	base::list < char > out;
 
 	app->persist = false;
+	app->settings_frozen = true;
 	app->analysis_sync = true;
 	app->script_jit = !argument ( L"--no-jit" );
+
+	if ( argument ( L"--library" ) )
+		app->library_path.set ( argument ( L"--library" ) );
 	x86::prepare ( );
 
 	if ( binary && !app->open_file ( binary ) )
