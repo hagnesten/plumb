@@ -129,4 +129,10 @@ for (var i = 0; i < len(all); i++) {
 
 ## Speed
 
-Variables are resolved to fixed slots when the script loads, so there are no name lookups while it runs. A ten-million-iteration loop takes about half a second and `fib(27)` about 50 ms. Scripts stop with an error after 200 million steps, so a runaway loop can't hang Plumb.
+Scripts are compiled to x86-64 machine code by Plumb's own JIT when they run.
+
+- **Before compiling:** variables are resolved to fixed slots when the script loads, so compiled code reads and writes them directly.
+- **Fast paths:** arithmetic, comparisons, `++`, compound assignment and control flow run inline on numbers. Text, lists and errors drop into the same routines the interpreter uses, so results are identical either way.
+- **Timings:** a ten-million-iteration loop takes about 30 ms, and `fib(27)` about 14 ms.
+- **Step limit:** scripts stop with an error after 200 million steps, counted per loop iteration, so a runaway loop can't hang Plumb.
+- **Fallback:** on ARM64 builds, or if compiling fails, scripts run in the interpreter.

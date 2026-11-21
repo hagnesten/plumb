@@ -119,7 +119,7 @@ for (var i = 0; i < len(users); i++)
     set_name(users[i], format("allocates_%d", i));
 ```
 
-Alt+F7 runs a script file and Ctrl+F7 runs it again. You can also drop a `.psc` file on the window, type `run file.psc` or `psc <code>` in the command line, or call the MCP `run_script` tool. Errors point at the exact line and column, and a whole script is one undo step. The lexer, parser and interpreter are Plumb's own. Variables are resolved to slots when the script loads, so a ten-million-iteration loop runs in about half a second. [docs/scripting.md](docs/scripting.md) covers the language and the full API.
+Alt+F7 runs a script file and Ctrl+F7 runs it again. You can also drop a `.psc` file on the window, type `run file.psc` or `psc <code>` in the command line, or call the MCP `run_script` tool. Errors point at the exact line and column, and a whole script is one undo step. The lexer, parser, interpreter and x86-64 JIT are Plumb's own. Scripts compile to machine code when they run, so a ten-million-iteration loop takes about 30 ms. [docs/scripting.md](docs/scripting.md) covers the language and the full API.
 
 ## AI assistants
 
@@ -180,7 +180,7 @@ The executable lands in `build\release\Plumb.exe`. Pass a file path to open it o
 - `src/x86` Decoder, Intel-syntax formatter and assembler
 - `src/analysis` Function discovery, cross-references, switch tables, RTTI, graphs and signatures
 - `src/decompiler` Lifting, data flow cleanup, control flow structuring, C output and type parsing
-- `src/script` The Plumb Script lexer, parser, resolver, interpreter and core library
+- `src/script` The Plumb Script lexer, parser, resolver, interpreter, x86-64 JIT and core library
 - `src/debugger` The Win32 debug loop
 - `src/render` Direct3D 11 renderer, DirectWrite text and shaders
 - `src/ui` Views, panels, docking, menus and commands
