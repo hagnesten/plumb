@@ -2640,6 +2640,43 @@ namespace decompiler {
 
 			}
 
+			int32_t latch = -1;
+
+			for ( int32_t p : pred [ static_cast < size_t > ( start ) ] ) {
+
+				if ( members [ static_cast < size_t > ( p ) ] )
+					latch = latch < 0 ? p : -2;
+
+			}
+
+			if ( latch >= 0 && latch != start && b.code [ static_cast < size_t > ( latch ) ].end == term::BRANCH ) {
+
+				const block_code& tail = b.code [ static_cast < size_t > ( latch ) ];
+				bool back_taken = tail.taken == start;
+				int32_t leaving = back_taken ? tail.other : tail.taken;
+
+				if ( leaving == exit ) {
+
+					bool plain = empty_block ( latch );
+
+					open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
+
+					emitted [ static_cast < size_t > ( latch ) ] = 1;
+					region ( start, latch, inner );
+
+					if ( !plain )
+						body ( latch );
+
+					emitted [ static_cast < size_t > ( latch ) ] = 1;
+					close_brace ( );
+					while_tail ( tail.last, back_taken ? tail.condition : b.negate ( tail.condition ) );
+
+					return exit;
+
+				}
+
+			}
+
 			if ( item.end == term::BRANCH && empty_block ( start ) && ( ( item.taken == exit && members [ static_cast < size_t > ( item.other ) ] ) || ( item.other == exit && members [ static_cast < size_t > ( item.taken ) ] ) ) ) {
 
 				bool stay_taken = item.other == exit;
@@ -2657,37 +2694,6 @@ namespace decompiler {
 				close_brace ( );
 
 				return exit;
-
-			}
-
-			int32_t latch = -1;
-
-			for ( int32_t p : pred [ static_cast < size_t > ( start ) ] ) {
-
-				if ( members [ static_cast < size_t > ( p ) ] )
-					latch = latch < 0 ? p : -2;
-
-			}
-
-			if ( latch >= 0 && latch != start && b.code [ static_cast < size_t > ( latch ) ].end == term::BRANCH && empty_block ( latch ) ) {
-
-				const block_code& tail = b.code [ static_cast < size_t > ( latch ) ];
-				bool back_taken = tail.taken == start;
-				int32_t leaving = back_taken ? tail.other : tail.taken;
-
-				if ( leaving == exit ) {
-
-					open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
-
-					emitted [ static_cast < size_t > ( latch ) ] = 1;
-					region ( start, latch, inner );
-					emitted [ static_cast < size_t > ( latch ) ] = 1;
-					close_brace ( );
-					while_tail ( tail.last, back_taken ? tail.condition : b.negate ( tail.condition ) );
-
-					return exit;
-
-				}
 
 			}
 
