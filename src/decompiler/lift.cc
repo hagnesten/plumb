@@ -1216,7 +1216,59 @@ namespace decompiler {
 
 		}
 
-		void flush ( uint32_t keep ) {
+		bool aliases ( int32_t e, bool stack, int64_t target, uint8_t size, int32_t depth ) const {
+
+			if ( e < 0 )
+				return false;
+
+			if ( depth > 64 )
+				return true;
+
+			const expr& item = b->exprs [ static_cast < size_t > ( e ) ];
+
+			if ( item.kind == op::LOAD || item.kind == op::CALL || item.kind == op::INTRINSIC )
+				return true;
+
+			if ( item.kind == op::GLOBAL ) {
+
+				if ( stack )
+					return false;
+
+				int64_t from = item.value;
+
+				return from < target + size && target < from + item.size;
+
+			}
+
+			if ( item.kind == op::VAR && item.value >= 0 && item.value < b->vars.count ( ) ) {
+
+				const variable& owner = b->vars [ static_cast < size_t > ( item.value ) ];
+
+				if ( owner.kind == var_kind::REGISTER )
+					return false;
+
+				if ( !stack )
+					return false;
+
+				return owner.offset < target + size && target < owner.offset + owner.size;
+
+			}
+
+			if ( aliases ( item.a, stack, target, size, depth + 1 ) || aliases ( item.b, stack, target, size, depth + 1 ) || aliases ( item.c, stack, target, size, depth + 1 ) )
+				return true;
+
+			for ( int32_t i = 0; i < item.arg_count; i++ ) {
+
+				if ( aliases ( b->args [ static_cast < size_t > ( item.first_arg + i ) ], stack, target, size, depth + 1 ) )
+					return true;
+
+			}
+
+			return false;
+
+		}
+
+		void flush ( uint32_t keep, int32_t where = 0, int64_t target = 0, uint8_t size = 0 ) {
 
 			for ( int32_t slot = 0; slot < 32; slot++ ) {
 
@@ -1224,6 +1276,9 @@ namespace decompiler {
 					continue;
 
 				if ( !b->contains_load ( regs [ slot ] ) )
+					continue;
+
+				if ( where && !aliases ( regs [ slot ], where == 2, target, size, 0 ) )
 					continue;
 
 				materialize ( slot, 0 );
@@ -1352,7 +1407,14 @@ namespace decompiler {
 
 		void write_memory ( const x86::instruction& ins, const x86::operand& m, uint8_t size, int32_t value ) {
 
-			flush ( live );
+			int64_t spot = 0;
+
+			if ( m.rip_relative ( ) )
+				flush ( live, 1, static_cast < int64_t > ( ins.next ( ) + static_cast < uint64_t > ( m.value ) ), size );
+			else if ( stack_slot ( m, spot ) )
+				flush ( live, 2, spot, size );
+			else
+				flush ( live );
 
 			for ( int32_t s = 0; s < 32 && value >= 0; s++ ) {
 
@@ -2696,7 +2758,7 @@ namespace decompiler {
 
 					}
 
-					flush ( 0xFFFFFFFFu );
+					flush ( k.long_mode ? ~( ( 1u << 0 ) | ( 1u << 1 ) | ( 1u << 2 ) | ( 1u << 8 ) | ( 1u << 9 ) | ( 1u << 10 ) | ( 1u << 11 ) | ( 0x3Fu << 16 ) ) : 0xFFFFFFFFu );
 
 					int32_t call = call_expr ( ins, live_after );
 
