@@ -767,7 +767,7 @@ static bool decompile_mode ( ) {
 			base::writer text;
 
 			for ( int32_t k = 0; k < line.indent; k++ )
-				text.add ( L"    " );
+				text.add ( L"  " );
 
 			for ( int32_t k = 0; k < line.length && k < 1800; k++ )
 				text.add ( code.text [ static_cast < size_t > ( line.text + k ) ] );

@@ -1223,9 +1223,9 @@ namespace decompiler {
 		void branch_open ( int32_t test, uint64_t address ) {
 
 			out.put ( L"if", syntax::CONTROL );
-			out.put ( L" (" );
+			paren_open ( );
 			value ( test, 0 );
-			out.put ( L") {" );
+			paren_close ( );
 			out.finish ( );
 			out.indent++;
 			out.begin ( address );
@@ -1237,9 +1237,7 @@ namespace decompiler {
 			out.finish ( );
 			out.indent--;
 			out.begin ( 0 );
-			out.put ( L"} " );
 			out.put ( L"else", syntax::CONTROL );
-			out.put ( L" {" );
 			out.finish ( );
 			out.indent++;
 			out.begin ( address );
@@ -1250,8 +1248,6 @@ namespace decompiler {
 
 			out.finish ( );
 			out.indent--;
-			out.begin ( 0 );
-			out.put ( L"}" );
 
 		}
 
@@ -1496,13 +1492,11 @@ namespace decompiler {
 
 			labeled [ static_cast < size_t > ( block ) ] = 1;
 
-			wchar_t digits [ 20 ];
 			int32_t saved = out.indent;
 
-			hex ( b.graph.blocks [ static_cast < size_t > ( block ) ].start - b.function, digits );
-			out.indent = base::max ( saved - 1, 0 );
+			out.indent = 0;
 			out.begin ( b.graph.blocks [ static_cast < size_t > ( block ) ].start );
-			out.put ( base::writer ( ).add ( L"L_" ).add ( digits ).text ( ), syntax::LABEL );
+			out.put ( base::writer ( ).add ( L"LABEL_" ).number ( block + 1 ).text ( ), syntax::LABEL );
 			out.put ( L":" );
 			out.finish ( );
 			out.indent = saved;
@@ -1517,13 +1511,10 @@ namespace decompiler {
 			if ( dry )
 				return;
 
-			wchar_t digits [ 20 ];
-
-			hex ( b.graph.blocks [ static_cast < size_t > ( block ) ].start - b.function, digits );
 			out.begin ( address );
 			out.put ( L"goto", syntax::CONTROL );
 			out.put ( L" " );
-			out.put ( base::writer ( ).add ( L"L_" ).add ( digits ).text ( ), syntax::LABEL );
+			out.put ( base::writer ( ).add ( L"LABEL_" ).number ( block + 1 ).text ( ), syntax::LABEL );
 			out.put ( L";" );
 			out.finish ( );
 			out.terminal = true;
@@ -1582,38 +1573,89 @@ namespace decompiler {
 
 				const expr& test = b.exprs [ static_cast < size_t > ( condition ) ];
 
-				out.put ( L" (" );
+				paren_open ( );
 
 				if ( test.kind == op::CONST && !negated )
-					out.put ( test.value ? L"true" : L"false", syntax::KEYWORD );
+					out.put ( test.value ? L"1" : L"0", syntax::NUMBER );
 				else
 					value ( shown, 0 );
 
-				out.put ( L")" );
+				paren_close ( );
 
 			}
 
-			out.put ( L" {" );
 			out.finish ( );
+			brace ( L"{" );
 			out.indent++;
 			hoisted.clear ( );
 			hoisted_temp.clear ( );
 
 		}
 
-		void close_brace ( const wchar_t* tail = nullptr ) {
+		void close_brace ( ) {
 
 			out.indent--;
 
 			if ( dry )
 				return;
 
+			brace ( L"}" );
+
+		}
+
+		void brace ( const wchar_t* text ) {
+
+			if ( dry )
+				return;
+
 			out.begin ( 0 );
-			out.put ( L"}" );
+			out.put ( text );
+			out.finish ( );
 
-			if ( tail )
-				out.put ( tail );
+		}
 
+		void paren_open ( ) {
+
+			bool keep = out.spaced;
+
+			out.spaced = false;
+			out.put ( L" ( " );
+			out.spaced = keep;
+
+		}
+
+		void paren_close ( ) {
+
+			bool keep = out.spaced;
+
+			out.spaced = false;
+			out.put ( L" )" );
+			out.spaced = keep;
+
+		}
+
+		void else_line ( ) {
+
+			if ( dry )
+				return;
+
+			out.begin ( 0 );
+			out.put ( L"else", syntax::CONTROL );
+			out.finish ( );
+
+		}
+
+		void while_tail ( uint64_t address, int32_t condition ) {
+
+			if ( dry )
+				return;
+
+			out.begin ( address );
+			out.put ( L"while", syntax::CONTROL );
+			paren_open ( );
+			value ( condition, 0 );
+			paren_close ( );
+			out.put ( L";" );
 			out.finish ( );
 
 		}
@@ -1870,14 +1912,7 @@ namespace decompiler {
 
 				if ( chain ) {
 
-					if ( !dry ) {
-
-						out.begin ( 0 );
-						out.put ( L"}" );
-						out.finish ( );
-
-					}
-
+					brace ( L"}" );
 					body ( else_part );
 
 					int32_t next = branch ( else_part, stop, context, true );
@@ -1886,16 +1921,9 @@ namespace decompiler {
 
 				} else {
 
-					if ( !dry ) {
-
-						out.begin ( 0 );
-						out.put ( L"} " );
-						out.put ( L"else", syntax::CONTROL );
-						out.put ( L" {" );
-						out.finish ( );
-
-					}
-
+					brace ( L"}" );
+					else_line ( );
+					brace ( L"{" );
 					out.indent++;
 
 					if ( !special ( else_part, -2, context, item.last ) )
@@ -1905,13 +1933,8 @@ namespace decompiler {
 
 				}
 
-			} else if ( !dry ) {
-
-				out.begin ( 0 );
-				out.put ( L"}" );
-				out.finish ( );
-
-			}
+			} else
+				brace ( L"}" );
 
 			return follow;
 
@@ -1960,19 +1983,8 @@ namespace decompiler {
 
 				open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
 				body ( start );
-				out.indent--;
-
-				if ( !dry ) {
-
-					out.begin ( item.last );
-					out.put ( L"} " );
-					out.put ( L"while", syntax::CONTROL );
-					out.put ( L" (" );
-					value ( back_taken ? item.condition : b.negate ( item.condition ), 0 );
-					out.put ( L");" );
-					out.finish ( );
-
-				}
+				close_brace ( );
+				while_tail ( item.last, back_taken ? item.condition : b.negate ( item.condition ) );
 
 				return leaving;
 
@@ -2014,19 +2026,8 @@ namespace decompiler {
 					emitted [ static_cast < size_t > ( latch ) ] = 1;
 					region ( start, latch, inner );
 					emitted [ static_cast < size_t > ( latch ) ] = 1;
-					out.indent--;
-
-					if ( !dry ) {
-
-						out.begin ( tail.last );
-						out.put ( L"} " );
-						out.put ( L"while", syntax::CONTROL );
-						out.put ( L" (" );
-						value ( back_taken ? tail.condition : b.negate ( tail.condition ), 0 );
-						out.put ( L");" );
-						out.finish ( );
-
-					}
+					close_brace ( );
+					while_tail ( tail.last, back_taken ? tail.condition : b.negate ( tail.condition ) );
 
 					return exit;
 
@@ -2097,13 +2098,14 @@ namespace decompiler {
 
 				out.begin ( item.last );
 				out.put ( L"switch", syntax::CONTROL );
-				out.put ( L" (" );
+				paren_open ( );
 				value ( item.selector, 0 );
-				out.put ( L") {" );
+				paren_close ( );
 				out.finish ( );
 
 			}
 
+			brace ( L"{" );
 			out.indent++;
 
 			base::list < int32_t > targets;
@@ -2133,11 +2135,6 @@ namespace decompiler {
 
 				if ( !dry ) {
 
-					out.indent--;
-					out.begin ( b.graph.blocks [ static_cast < size_t > ( target ) ].start );
-
-					int32_t shown = 0;
-
 					for ( int32_t e = 0; e < node.out_count; e++ ) {
 
 						const analysis::edge& link = b.graph.edges [ static_cast < size_t > ( node.first_out + e ) ];
@@ -2145,28 +2142,18 @@ namespace decompiler {
 						if ( link.to != target )
 							continue;
 
-						if ( shown++ )
-							out.put ( L" " );
-
-						if ( shown > 6 ) {
-
-							out.put ( L"..." );
-
-							break;
-
-						}
-
+						out.begin ( b.graph.blocks [ static_cast < size_t > ( target ) ].start );
 						out.put ( L"case", syntax::CONTROL );
 						out.put ( L" " );
 						number ( link.value, 4, false, false );
 						out.put ( L":" );
+						out.finish ( );
 
 					}
 
-					out.finish ( );
-					out.indent++;
-
 				}
+
+				out.indent++;
 
 				if ( target != follow && !emitted [ static_cast < size_t > ( target ) ] )
 					region ( target, follow, inner );
@@ -2176,17 +2163,11 @@ namespace decompiler {
 				if ( !out.terminal )
 					jump_line ( L"break", 0 );
 
-			}
-
-			out.indent--;
-
-			if ( !dry ) {
-
-				out.begin ( 0 );
-				out.put ( L"}" );
-				out.finish ( );
+				out.indent--;
 
 			}
+
+			close_brace ( );
 
 			return follow;
 
@@ -2545,6 +2526,91 @@ namespace decompiler {
 
 	}
 
+	static bool line_starts ( const result& r, const line& item, const wchar_t* text ) {
+
+		for ( int32_t n = 0; text [ n ]; n++ ) {
+
+			if ( n >= item.length || r.text [ static_cast < size_t > ( item.text + n ) ] != text [ n ] )
+				return false;
+
+		}
+
+		return true;
+
+	}
+
+	static bool line_is ( const result& r, const line& item, const wchar_t* text ) {
+
+		int32_t n = 0;
+
+		while ( text [ n ] )
+			n++;
+
+		return n == item.length && line_starts ( r, item, text );
+
+	}
+
+	static bool control_head ( const result& r, const line& item ) {
+
+		return line_starts ( r, item, L"if ( " ) || line_starts ( r, item, L"else if ( " ) || line_starts ( r, item, L"while ( " ) || line_starts ( r, item, L"for ( " ) || line_is ( r, item, L"else" );
+
+	}
+
+	static bool simple_line ( const result& r, const line& item ) {
+
+		static const wchar_t* const compound [ ] = { L"if ( ", L"else", L"while ( ", L"switch ( ", L"for ( " };
+
+		if ( !item.length || r.text [ static_cast < size_t > ( item.text + item.length - 1 ) ] != L';' )
+			return false;
+
+		for ( const wchar_t* word : compound ) {
+
+			if ( line_starts ( r, item, word ) )
+				return false;
+
+		}
+
+		return true;
+
+	}
+
+	static void drop_braces ( result& r ) {
+
+		int32_t total = r.lines.count ( );
+		base::list < uint8_t > skip;
+		base::list < line > kept;
+
+		skip.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t i = 0; i + 3 < total; i++ ) {
+
+			const line& head = r.lines [ static_cast < size_t > ( i ) ];
+			const line& open = r.lines [ static_cast < size_t > ( i + 1 ) ];
+			const line& only = r.lines [ static_cast < size_t > ( i + 2 ) ];
+			const line& close = r.lines [ static_cast < size_t > ( i + 3 ) ];
+
+			if ( !control_head ( r, head ) || !line_is ( r, open, L"{" ) || open.indent != head.indent )
+				continue;
+
+			if ( only.indent != head.indent + 1 || !simple_line ( r, only ) || !line_is ( r, close, L"}" ) || close.indent != head.indent )
+				continue;
+
+			skip [ static_cast < size_t > ( i + 1 ) ] = 1;
+			skip [ static_cast < size_t > ( i + 3 ) ] = 1;
+
+		}
+
+		for ( int32_t i = 0; i < total; i++ ) {
+
+			if ( !skip [ static_cast < size_t > ( i ) ] )
+				kept.push ( r.lines [ static_cast < size_t > ( i ) ] );
+
+		}
+
+		r.lines = kept;
+
+	}
+
 	bool emit ( builder& b ) {
 
 		emitter body_emitter ( b );
@@ -2827,6 +2893,7 @@ namespace decompiler {
 
 		}
 
+		drop_braces ( body );
 		append_result ( out, body );
 
 		head.out.indent = 0;
