@@ -911,6 +911,7 @@ namespace decompiler {
 		builder* b = nullptr;
 		int32_t regs [ 32 ];
 		int32_t flag_kind = 0;
+		int32_t flag_result = -1;
 		int32_t flag_a = -1;
 		int32_t flag_b = -1;
 		uint8_t flag_size = 4;
@@ -1653,6 +1654,14 @@ namespace decompiler {
 
 				case 3:
 
+					if ( ( code == 2 || code == 3 ) && k.exprs [ static_cast < size_t > ( a ) ].kind == op::NEG && k.exprs [ static_cast < size_t > ( a ) ].a >= 0 ) {
+
+						int32_t inner = k.exprs [ static_cast < size_t > ( a ) ].a;
+
+						return k.binary ( code == 2 ? op::NE : op::EQ, inner, k.constant ( 0, k.exprs [ static_cast < size_t > ( inner ) ].size ), k.exprs [ static_cast < size_t > ( inner ) ].size );
+
+					}
+
 					switch ( code ) {
 
 						case 4:
@@ -1757,8 +1766,86 @@ namespace decompiler {
 
 		}
 
+		int32_t select_fold ( op kind, int32_t left, int32_t right, uint8_t size ) {
+
+			builder& k = *b;
+
+			if ( left < 0 || right < 0 )
+				return -1;
+
+			int32_t pick = -1;
+			int32_t other = -1;
+
+			if ( k.exprs [ static_cast < size_t > ( left ) ].kind == op::TERNARY && k.exprs [ static_cast < size_t > ( right ) ].kind == op::CONST ) {
+
+				pick = left;
+				other = right;
+
+			} else if ( k.exprs [ static_cast < size_t > ( right ) ].kind == op::TERNARY && k.exprs [ static_cast < size_t > ( left ) ].kind == op::CONST && kind != op::SUB ) {
+
+				pick = right;
+				other = left;
+
+			}
+
+			if ( pick < 0 )
+				return -1;
+
+			const expr chosen = k.exprs [ static_cast < size_t > ( pick ) ];
+
+			if ( chosen.a < 0 || chosen.b < 0 || chosen.c < 0 || k.exprs [ static_cast < size_t > ( chosen.b ) ].kind != op::CONST || k.exprs [ static_cast < size_t > ( chosen.c ) ].kind != op::CONST )
+				return -1;
+
+			int64_t yes = k.exprs [ static_cast < size_t > ( chosen.b ) ].value;
+			int64_t no = k.exprs [ static_cast < size_t > ( chosen.c ) ].value;
+			int64_t with = k.exprs [ static_cast < size_t > ( other ) ].value;
+
+			auto apply = [ & ] ( int64_t x ) -> int64_t {
+
+				switch ( kind ) {
+
+					case op::AND: return x & with;
+					case op::OR: return x | with;
+					case op::XOR: return x ^ with;
+					case op::ADD: return x + with;
+					case op::SUB: return x - with;
+					default: return x;
+
+				}
+
+			};
+
+			if ( kind != op::AND && kind != op::OR && kind != op::XOR && kind != op::ADD && kind != op::SUB )
+				return -1;
+
+			uint64_t mask = size >= 8 ? ~0ull : ( ( 1ull << ( size * 8 ) ) - 1 );
+			int64_t then_value = static_cast < int64_t > ( static_cast < uint64_t > ( apply ( yes ) ) & mask );
+			int64_t else_value = static_cast < int64_t > ( static_cast < uint64_t > ( apply ( no ) ) & mask );
+			int32_t test = chosen.a;
+
+			if ( then_value == 0 && else_value != 0 ) {
+
+				test = k.negate ( test );
+
+				int64_t held = then_value;
+
+				then_value = else_value;
+				else_value = held;
+
+			}
+
+			int32_t made = k.make ( op::TERNARY, size, test, k.constant ( then_value, size ) );
+
+			k.exprs [ static_cast < size_t > ( made ) ].c = k.constant ( else_value, size );
+			k.deepen ( made );
+
+			return made;
+
+		}
+
 		void set_flags ( int32_t kind, int32_t a, int32_t c, uint8_t size ) {
 
+			flag_result = -1;
 			flag_kind = kind;
 			flag_a = a;
 			flag_b = c;
@@ -2064,7 +2151,10 @@ namespace decompiler {
 
 				int32_t left = read ( ins, 0 );
 				int32_t right = read ( ins, 1 );
-				int32_t value = k.binary ( kind, left, right, size, bits );
+				int32_t value = select_fold ( kind, left, right, size );
+
+				if ( value < 0 )
+					value = k.binary ( kind, left, right, size, bits );
 
 				write ( ins, 0, value );
 				set_flags ( 3, value, -1, size );
@@ -2250,9 +2340,11 @@ namespace decompiler {
 
 						int32_t left = read ( ins, 0 );
 						int32_t right = read ( ins, 1 );
+						int32_t value = k.binary ( op::SUB, left, right, size );
 
-						write ( ins, 0, k.binary ( op::SUB, left, right, size ) );
+						write ( ins, 0, value );
 						set_flags ( 1, left, right, size );
+						flag_result = ins.operands [ 0 ].type == x86::kind::REG ? value : -1;
 
 						return;
 
@@ -2264,6 +2356,21 @@ namespace decompiler {
 
 				case mnemonic::adc:
 				case mnemonic::sbb:
+
+					if ( ins.name == mnemonic::sbb && same_registers ( ins ) ) {
+
+						int32_t test = condition ( 2 );
+						int32_t chosen = k.make ( op::TERNARY, size, test, k.constant ( -1, size ) );
+
+						k.exprs [ static_cast < size_t > ( chosen ) ].c = k.constant ( 0, size );
+						k.deepen ( chosen );
+						write ( ins, 0, chosen );
+						set_flags ( 3, chosen, -1, size );
+
+						return;
+
+					}
+
 					arith ( ins.name == mnemonic::adc ? op::ADD : op::SUB, 0 );
 					return;
 
@@ -2333,9 +2440,15 @@ namespace decompiler {
 
 				}
 
-				case mnemonic::not_:
-					write ( ins, 0, k.make ( op::NOT, size, read ( ins, 0 ) ) );
+				case mnemonic::not_: {
+
+					int32_t source = read ( ins, 0 );
+					int32_t folded = select_fold ( op::XOR, source, k.constant ( -1, size ), size );
+
+					write ( ins, 0, folded >= 0 ? folded : k.make ( op::NOT, size, source ) );
 					return;
+
+				}
 
 				case mnemonic::imul:
 
@@ -3277,6 +3390,42 @@ namespace decompiler {
 			out_block.last = item.last;
 
 			if ( last && last->control == x86::flow::BRANCH ) {
+
+				if ( state.flag_kind == 1 && state.flag_a >= 0 && state.flag_b >= 0 && last->condition >= 4 && last->condition <= 5 ) {
+
+					for ( int32_t slot = 0; slot < 16; slot++ ) {
+
+						int32_t held = state.regs [ slot ];
+
+						if ( held < 0 || held != state.flag_result )
+							continue;
+
+						uint8_t size = state.flag_size;
+
+						state.materialize ( slot, last->address );
+						state.set_flags ( 3, var_expr ( register_var ( slot ), size ), -1, size );
+
+						break;
+
+					}
+
+				}
+
+				if ( state.flag_kind == 3 && state.flag_a >= 0 && last->condition >= 4 && last->condition <= 5 ) {
+
+					for ( int32_t slot = 0; slot < 16; slot++ ) {
+
+						if ( state.regs [ slot ] == state.flag_a && exprs [ static_cast < size_t > ( state.flag_a ) ].kind != op::VAR && exprs [ static_cast < size_t > ( state.flag_a ) ].kind != op::CONST ) {
+
+							state.materialize ( slot, last->address );
+
+							break;
+
+						}
+
+					}
+
+				}
 
 				out_block.end = term::BRANCH;
 				out_block.condition = last->condition != 0xFF ? state.condition ( last->condition ) : make ( op::INTRINSIC, 1, -1, -1, I_FLAGS );
