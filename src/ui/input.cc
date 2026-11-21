@@ -296,6 +296,8 @@ namespace ui {
 
 				if ( menu_open >= 0 )
 					menu_open = -1;
+				else if ( colors_open && !focused_field )
+					close_colors ( false );
 				else if ( settings_open && !focused_field )
 					settings_open = false;
 				else if ( palette_open ) {
@@ -342,13 +344,13 @@ namespace ui {
 
 			if ( key_control && code == VK_OEM_COMMA ) {
 
-				run ( command::SETTINGS );
+				run ( key_shift ? command::COLORS : command::SETTINGS );
 
 				continue;
 
 			}
 
-			if ( prompt_open || signature_open || settings_open )
+			if ( prompt_open || signature_open || settings_open || colors_open )
 				continue;
 
 			if ( key_control && key_alt ) {

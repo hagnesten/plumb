@@ -88,6 +88,7 @@
     <ClCompile Include="src\ui\rows.cc" />
     <ClCompile Include="src\ui\session.cc" />
     <ClCompile Include="src\ui\settings.cc" />
+    <ClCompile Include="src\ui\shell\colors.cc" />
     <ClCompile Include="src\ui\shell\dialogs.cc" />
     <ClCompile Include="src\ui\shell\docking.cc" />
     <ClCompile Include="src\ui\shell\palette.cc" />

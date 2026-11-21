@@ -216,6 +216,7 @@ namespace ui {
 		COLLAPSE_LOCALS,
 		NAME_VIRTUALS,
 		SETTINGS,
+		COLORS,
 		COUNT,
 
 	};
@@ -935,9 +936,19 @@ namespace ui {
 		bool font_fields_ready = false;
 		uint32_t custom_colors [ 2 ] [ static_cast < int32_t > ( tone::COUNT ) ] = { };
 		bool custom_set [ 2 ] [ static_cast < int32_t > ( tone::COUNT ) ] = { };
-		field tone_fields [ 32 ];
-		uint32_t tone_seen [ 32 ] = { };
-		int32_t tone_fields_theme = -1;
+		bool colors_open = false;
+		float colors_show = 0.0f;
+		int32_t colors_tab = 0;
+		int32_t colors_pick = static_cast < int32_t > ( tone::KEYWORD );
+		int32_t colors_picker_for = -1;
+		uint32_t colors_picker_hex = 0;
+		float colors_hue = 0.0f;
+		float colors_saturation = 0.0f;
+		float colors_value = 0.0f;
+		field colors_hex;
+		uint32_t colors_hex_seen = 0;
+		uint32_t colors_saved [ 2 ] [ static_cast < int32_t > ( tone::COUNT ) ] = { };
+		bool colors_saved_set [ 2 ] [ static_cast < int32_t > ( tone::COUNT ) ] = { };
 		float keys_show = 0.0f;
 
 		bool prompt_open = false;
@@ -1247,6 +1258,14 @@ namespace ui {
 		void draw_dialogs ( );
 
 		void draw_settings ( );
+
+		void draw_colors ( );
+
+		void open_colors ( );
+
+		void close_colors ( bool keep );
+
+		void set_custom_color ( int32_t slot, uint32_t value );
 
 		void apply_fonts ( );
 

@@ -97,7 +97,8 @@ namespace ui {
 		{ L"Hide casts in C", L"\\" },
 		{ L"Collapse local declarations", L"Ctrl+Num -" },
 		{ L"Name virtual functions by vtable slot", L"" },
-		{ L"Settings", L"Ctrl+," }
+		{ L"Settings", L"Ctrl+," },
+		{ L"Colors", L"Ctrl+Shift+," }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -126,6 +127,7 @@ namespace ui {
 			case command::SHORTCUTS:
 			case command::ABOUT:
 			case command::SETTINGS:
+			case command::COLORS:
 			case command::NAME_VIRTUALS:
 				return true;
 
@@ -744,6 +746,15 @@ namespace ui {
 
 			case command::SETTINGS:
 				settings_open = !settings_open;
+				break;
+
+			case command::COLORS:
+
+				if ( colors_open )
+					close_colors ( false );
+				else
+					open_colors ( );
+
 				break;
 
 			case command::SEARCH_ALL:

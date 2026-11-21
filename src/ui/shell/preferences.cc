@@ -3,26 +3,6 @@
 
 namespace ui {
 
-	static const tone choices [ ] = {
-		tone::BASE, tone::PANEL, tone::INK, tone::ACCENT, tone::SELECT, tone::ADDRESS, tone::MNEMONIC, tone::REGISTER,
-		tone::NUMBER, tone::STRING, tone::NAME, tone::LABEL, tone::COMMENT, tone::KEYWORD, tone::CONTROL, tone::TYPE,
-		tone::FUNCTION, tone::LOCAL, tone::PARAMETER, tone::GLOBAL, tone::OPERATOR, tone::IMPORT
-	};
-
-	static const char* choice_keys [ ] = {
-		"background", "panels", "text", "accent", "selection", "addresses", "mnemonics", "registers",
-		"numbers", "strings", "names", "labels", "comments", "keywords", "control", "types",
-		"functions", "locals", "parameters", "globals", "operators", "imports"
-	};
-
-	static const wchar_t* choice_labels [ ] = {
-		L"Background", L"Panels", L"Text", L"Accent", L"Selection", L"Addresses", L"Mnemonics", L"Registers",
-		L"Numbers", L"Strings", L"Names", L"Labels", L"Comments", L"Keywords", L"Control flow", L"Types",
-		L"Functions", L"Locals", L"Parameters", L"Globals", L"Operators", L"Imports"
-	};
-
-	static constexpr int32_t choice_count = 22;
-
 	static const sample_token listing_sample [ ] = {
 		{ L"140001370", tone::ADDRESS }, { L"  ", tone::INK }, { L"fn_140001370", tone::NAME }, { L":", tone::INK }, { L"\n", tone::INK },
 		{ L"140001370", tone::ADDRESS }, { L"    ", tone::INK }, { L"sub", tone::MNEMONIC }, { L"     ", tone::INK }, { L"rsp", tone::REGISTER }, { L", ", tone::INK }, { L"0x28", tone::NUMBER }, { L"\n", tone::INK },
@@ -44,30 +24,6 @@ namespace ui {
 		{ L"  ", tone::INK }, { L"return", tone::CONTROL }, { L" ", tone::INK }, { L"result", tone::LOCAL }, { L";", tone::INK }, { L"\n", tone::INK },
 		{ L"}", tone::INK }
 	};
-
-	int32_t tone_choice_count ( ) {
-
-		return choice_count;
-
-	}
-
-	tone tone_choice ( int32_t index ) {
-
-		return choices [ index ];
-
-	}
-
-	const char* tone_choice_key ( int32_t index ) {
-
-		return choice_keys [ index ];
-
-	}
-
-	const wchar_t* tone_choice_label ( int32_t index ) {
-
-		return choice_labels [ index ];
-
-	}
 
 	static void set_field ( field& target, const wchar_t* text ) {
 
@@ -138,7 +94,6 @@ namespace ui {
 		if ( show <= 0.004f ) {
 
 			font_fields_ready = false;
-			tone_fields_theme = -1;
 
 			return;
 
@@ -299,72 +254,14 @@ namespace ui {
 		draw_sample ( math::rect ( preview.x + 12.0f, preview.y + 6.0f * mono_adv + 26.0f, preview.w - 24.0f, 9.0f * code_adv ), code_sample, static_cast < int32_t > ( sizeof ( code_sample ) / sizeof ( code_sample [ 0 ] ) ), render::font::CODE, code_adv );
 		c.pop_clip ( );
 
-		int32_t theme = light ? 1 : 0;
-
-		if ( tone_fields_theme != theme ) {
-
-			for ( int32_t i = 0; i < choice_count; i++ ) {
-
-				base::writer hex_text;
-
-				hex_text.hex ( tone_hex ( choices [ i ], light ), 6 );
-				set_field ( tone_fields [ i ], hex_text.text ( ) );
-				tone_seen [ i ] = tone_fields [ i ].revision;
-
-			}
-
-			tone_fields_theme = theme;
-
-		}
-
-		float colors_y = base::max ( y + 40.0f, preview.bottom ( ) + 20.0f );
-		float cell_w = ( box.w - 56.0f ) / 3.0f;
-		int32_t per_column = ( choice_count + 2 ) / 3;
-
-		section_heading ( math::rect ( left, colors_y, box.w - 56.0f, 20.0f ), light ? L"COLORS  \x00B7  LIGHT THEME" : L"COLORS  \x00B7  DARK THEME", L"hex, empty for the default" );
-		colors_y += 26.0f;
-
-		for ( int32_t i = 0; i < choice_count; i++ ) {
-
-			int32_t col = i / per_column;
-			int32_t row = i % per_column;
-			float cx = left + static_cast < float > ( col ) * cell_w;
-			float cy = colors_y + static_cast < float > ( row ) * 28.0f;
-			int32_t slot = static_cast < int32_t > ( choices [ i ] );
-
-			c.outline ( math::rect ( cx, cy + 6.0f, 16.0f, 16.0f ), 3.0f, render::rgb ( tone_hex ( choices [ i ], light ) ), 1.0f, ink ( tone::LINE_STRONG ) );
-			c.text ( choice_labels [ i ], render::font::UI, math::vec2 ( cx + 26.0f, cy + 14.0f ), ink ( custom_set [ theme ] [ slot ] ? tone::INK : tone::INK_SOFT ) );
-			text_field ( make_id ( "settings_tone", i ), tone_fields [ i ], math::rect ( cx + 130.0f, cy + 2.0f, 86.0f, 24.0f ), L"default", 0, render::font::MONO );
-
-			if ( tone_fields [ i ].revision != tone_seen [ i ] ) {
-
-				tone_seen [ i ] = tone_fields [ i ].revision;
-
-				uint64_t value = 0;
-
-				if ( !tone_fields [ i ].text [ 0 ] )
-					custom_set [ theme ] [ slot ] = false;
-				else if ( tone_fields [ i ].length == 6 && base::parse_hex ( tone_fields [ i ].text, value ) ) {
-
-					custom_colors [ theme ] [ slot ] = static_cast < uint32_t > ( value );
-					custom_set [ theme ] [ slot ] = true;
-
-				}
-
-				pending = base::max ( pending, 2 );
-
-			}
-
-		}
-
 		float buttons_y = box.bottom ( ) - 44.0f;
 
-		if ( button ( make_id ( "settings_reset_colors" ), math::rect ( box.right ( ) - 28.0f - 130.0f, buttons_y, 130.0f, 28.0f ), L"Reset colors", 0, false ) ) {
+		if ( button ( make_id ( "settings_colors" ), math::rect ( box.right ( ) - 28.0f - 130.0f, buttons_y, 130.0f, 28.0f ), L"Edit colors\x2026", 0, true ) ) {
 
-			for ( int32_t i = 0; i < static_cast < int32_t > ( tone::COUNT ); i++ )
-				custom_set [ theme ] [ i ] = false;
+			open_colors ( );
+			c.pop ( );
 
-			tone_fields_theme = -1;
+			return;
 
 		}
 
