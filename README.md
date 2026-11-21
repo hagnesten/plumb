@@ -108,6 +108,19 @@ A disassembler, decompiler and debugger for Windows executables. Plumb is writte
 
 ![The Colors window with the C sample and the color picker](docs/media/colors.png)
 
+## Scripting
+
+Plumb Script (`.psc`) is a C-like scripting language built into Plumb, in the spirit of IDC. Scripts read and change everything Plumb knows: functions, names, comments, prototypes, instructions and their operands, cross-references, strings, sections, imports, raw bytes, patches and the decompiled C.
+
+```c
+var users = callers(locate("VirtualAlloc"));
+
+for (var i = 0; i < len(users); i++)
+    set_name(users[i], format("allocates_%d", i));
+```
+
+Alt+F7 runs a script file and Ctrl+F7 runs it again. You can also drop a `.psc` file on the window, type `run file.psc` or `psc <code>` in the command line, or call the MCP `run_script` tool. Errors point at the exact line and column, and a whole script is one undo step. The lexer, parser and interpreter are Plumb's own. Variables are resolved to slots when the script loads, so a ten-million-iteration loop runs in about half a second. [docs/scripting.md](docs/scripting.md) covers the language and the full API.
+
 ## AI assistants
 
 `Plumb.exe --mcp [file]` runs Plumb without a window as an MCP server over standard input and output, so an AI assistant can explore a binary with the same analysis, names and decompiler as the app. With Claude Code:
@@ -118,7 +131,7 @@ claude mcp add plumb -- C:\tools\Plumb.exe --mcp
 
 Other clients take the same command in their MCP settings, for example `{ "command": "C:\\tools\\Plumb.exe", "args": [ "--mcp" ] }`.
 
-The tools are `open_binary`, `binary_info`, `list_functions`, `disassemble`, `decompile`, `xrefs_to`, `calls_from`, `list_strings`, `list_imports`, `list_exports`, `search_code`, `query_functions`, `read_bytes`, `emulate`, `compare_with`, `rename`, `set_comment`, `set_note`, `set_prototype` and `save_project`. Edits made by the assistant go into the same `.plumb` project the app opens.
+The tools are `open_binary`, `binary_info`, `list_functions`, `disassemble`, `decompile`, `xrefs_to`, `calls_from`, `list_strings`, `list_imports`, `list_exports`, `search_code`, `query_functions`, `read_bytes`, `emulate`, `compare_with`, `rename`, `set_comment`, `set_note`, `set_prototype`, `run_script` and `save_project`. Edits made by the assistant go into the same `.plumb` project the app opens.
 
 ## Keys
 
@@ -131,6 +144,7 @@ The tools are `open_binary`, `binary_info`, `list_functions`, `disassemble`, `de
 | H R B F | Number format | Ctrl+D | Bookmark |
 | \\ | Hide casts in C | Ctrl+Num − / + | Collapse or expand locals |
 | Ctrl+, | Settings | Ctrl+Shift+, | Colors |
+| Alt+F7 | Run script file | Ctrl+F7 | Run the last script again |
 | F9 | Start or continue | F7 / F8 | Step into / over |
 | F2 | Breakpoint | Ctrl+F2 | Stop debugging |
 | Ctrl+Alt+S | Make signature | Ctrl+Alt+F | Find signature |
@@ -166,6 +180,7 @@ The executable lands in `build\release\Plumb.exe`. Pass a file path to open it o
 - `src/x86` Decoder, Intel-syntax formatter and assembler
 - `src/analysis` Function discovery, cross-references, switch tables, RTTI, graphs and signatures
 - `src/decompiler` Lifting, data flow cleanup, control flow structuring, C output and type parsing
+- `src/script` The Plumb Script lexer, parser, resolver, interpreter and core library
 - `src/debugger` The Win32 debug loop
 - `src/render` Direct3D 11 renderer, DirectWrite text and shaders
 - `src/ui` Views, panels, docking, menus and commands
