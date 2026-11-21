@@ -490,25 +490,59 @@ namespace decompiler {
 
 		};
 
-		for ( const expr& node : exprs ) {
+		base::list < uint8_t > visited;
+
+		visited.fill ( static_cast < size_t > ( exprs.count ( ) ), 0 );
+
+		auto walk = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+			if ( e < 0 || e >= exprs.count ( ) || depth > 96 || visited [ static_cast < size_t > ( e ) ] )
+				return;
+
+			visited [ static_cast < size_t > ( e ) ] = 1;
+
+			const expr& node = exprs [ static_cast < size_t > ( e ) ];
 
 			if ( node.kind == op::VAR )
-				continue;
+				return;
 
-			if ( node.kind == op::CAST ) {
-
+			if ( node.kind == op::CAST )
 				note_use ( node.a, node.size );
+			else {
 
-				continue;
+				note_use ( node.a, 0 );
+				note_use ( node.b, 0 );
+				note_use ( node.c, 0 );
+
+				for ( int32_t i = 0; i < node.arg_count; i++ )
+					note_use ( args [ static_cast < size_t > ( node.first_arg + i ) ], 0 );
 
 			}
 
-			note_use ( node.a, 0 );
-			note_use ( node.b, 0 );
-			note_use ( node.c, 0 );
+			self ( self, node.a, depth + 1 );
+			self ( self, node.b, depth + 1 );
+			self ( self, node.c, depth + 1 );
 
 			for ( int32_t i = 0; i < node.arg_count; i++ )
-				note_use ( args [ static_cast < size_t > ( node.first_arg + i ) ], 0 );
+				self ( self, args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+		};
+
+		for ( const statement& line : statements ) {
+
+			if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+				continue;
+
+			walk ( walk, line.left, 0 );
+			walk ( walk, line.right, 0 );
+
+		}
+
+		for ( const block_code& block : code ) {
+
+			walk ( walk, block.condition, 0 );
+			walk ( walk, block.selector, 0 );
+			walk ( walk, block.returned, 0 );
 
 		}
 
