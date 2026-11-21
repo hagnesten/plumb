@@ -180,6 +180,29 @@ namespace ui {
 		focused = value;
 		pending = base::max ( pending, 2 );
 
+		if ( value )
+			return;
+
+		key_control = false;
+		key_shift = false;
+		key_alt = false;
+		mouse_down = false;
+		press_event = false;
+		release_event = false;
+		active_id = 0;
+		dragging_split = 0;
+		now->selecting = false;
+		now->code_selecting = false;
+		now->hex_selecting = false;
+
+		for ( document& item : documents ) {
+
+			item.state.selecting = false;
+			item.state.code_selecting = false;
+			item.state.hex_selecting = false;
+
+		}
+
 	}
 
 	bool app::busy ( ) const {
@@ -281,6 +304,9 @@ namespace ui {
 
 			press_event = true;
 			mouse_down = true;
+			key_control = ( GetKeyState ( VK_CONTROL ) & 0x8000 ) != 0;
+			key_shift = ( GetKeyState ( VK_SHIFT ) & 0x8000 ) != 0;
+			key_alt = ( GetKeyState ( VK_MENU ) & 0x8000 ) != 0;
 
 			if ( now_time - last_press < 0.45 && dx * dx + dy * dy < 25.0f && !double_event_last )
 				double_event = true;
@@ -844,6 +870,8 @@ namespace ui {
 		if ( file.loaded ( ) ) {
 
 			canvas.push_alpha ( 1.0f - welcome_show );
+			code_hover_line = -1;
+			code_hover_col = -1;
 			draw_panes ( );
 			dock_handles ( );
 			draw_output ( );
