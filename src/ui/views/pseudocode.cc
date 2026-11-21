@@ -86,7 +86,7 @@ namespace ui {
 		int32_t widest = 0;
 
 		for ( const decompiler::line& item : code->lines )
-			widest = base::max ( widest, item.indent * 4 + item.length );
+			widest = base::max ( widest, item.indent * metric::code_indent + item.length );
 
 		if ( now->code_seen != code->function || now->code_seen_revision != names_revision ) {
 
@@ -103,22 +103,10 @@ namespace ui {
 		if ( !now->code_ranged )
 			now->code_anchor = now->code_line;
 
-		int32_t digits = 8;
-		uint64_t highest = file.base;
-
-		for ( const loader::section& part : file.sections )
-			highest = base::max ( highest, part.address + base::max ( part.size, part.raw ) );
-
-		while ( digits < 16 && ( highest >> ( digits * 4 ) ) )
-			digits++;
-
 		bool gutter = area.w > adv * 40.0f;
-		bool addresses = area.w > adv * 100.0f;
-		float small_adv = c.measure ( L"0000000000", render::font::MONO_SMALL ) * 0.1f;
 		int32_t number_digits = total >= 10000 ? 5 : ( total >= 1000 ? 4 : 3 );
 		float number_right = area.x + 10.0f + adv * static_cast < float > ( number_digits );
-		float address_x = number_right + adv * 1.5f;
-		float x_base = gutter ? ( addresses ? address_x + small_adv * static_cast < float > ( digits ) + adv * 2.5f : number_right + adv * 2.5f ) : area.x + 18.0f;
+		float x_base = gutter ? number_right + adv * 2.5f : area.x + 18.0f;
 		float columns = ( area.right ( ) - x_base - 16.0f ) / adv;
 		bool sideways = static_cast < float > ( widest + 2 ) > columns;
 		math::rect text_area ( area.x, area.y, area.w, area.h - ( sideways ? side_bar : 0.0f ) );
@@ -156,7 +144,7 @@ namespace ui {
 
 			length = 0;
 
-			for ( int32_t k = 0; k < item.indent * 4 && length < 1000; k++ )
+			for ( int32_t k = 0; k < item.indent * metric::code_indent && length < 1000; k++ )
 				out [ length++ ] = L' ';
 
 			for ( int32_t k = 0; k < item.length && length < 1000; k++ )
@@ -201,7 +189,7 @@ namespace ui {
 
 					const decompiler::line& item = code->lines [ static_cast < size_t > ( row ) ];
 					int32_t exact = static_cast < int32_t > ( math::floor ( ( mouse.x - x_text ) / adv ) );
-					int32_t inside = exact - item.indent * 4;
+					int32_t inside = exact - item.indent * metric::code_indent;
 					const decompiler::span* link = nullptr;
 					int32_t from = 0;
 					int32_t to = 0;
@@ -359,7 +347,7 @@ namespace ui {
 
 			const decompiler::line& item = code->lines [ static_cast < size_t > ( now->code_line ) ];
 
-			set_highlight ( code->text.data ( ) + item.text, item.length, now->code_col - item.indent * 4 );
+			set_highlight ( code->text.data ( ) + item.text, item.length, now->code_col - item.indent * metric::code_indent );
 
 		}
 
@@ -385,7 +373,7 @@ namespace ui {
 
 			for ( int32_t guide = 1; guide <= item.indent; guide++ ) {
 
-				float gx = x_text + static_cast < float > ( guide * 4 - 4 ) * adv + adv * 0.5f;
+				float gx = x_text + static_cast < float > ( ( guide - 1 ) * metric::code_indent ) * adv + adv * 0.5f;
 
 				c.fill ( math::rect ( gx, y, 1.0f, row_h ), 0.0f, ink ( tone::LINE ).fade ( 0.7f ) );
 
@@ -393,7 +381,7 @@ namespace ui {
 
 			if ( ranged && row >= low && row <= high ) {
 
-				int32_t length = item.indent * 4 + item.length;
+				int32_t length = item.indent * metric::code_indent + item.length;
 				int32_t from = row == low ? low_col : 0;
 				int32_t to = row == high ? high_col : length + 1;
 
@@ -416,23 +404,14 @@ namespace ui {
 			const decompiler::line& item = code->lines [ static_cast < size_t > ( row ) ];
 			float y = area.y + static_cast < float > ( k ) * row_h - shift;
 			float cy = y + row_h * 0.5f;
-			float x = x_text + static_cast < float > ( item.indent * 4 ) * adv;
+			float x = x_text + static_cast < float > ( item.indent * metric::code_indent ) * adv;
 
 			if ( gutter ) {
 
 				base::writer number;
 
 				number.number ( row + 1 );
-				c.text ( number.text ( ), render::font::MONO, math::vec2 ( number_right, cy ), ink ( row == now->code_line ? tone::INK_SOFT : tone::INK_FAINT ).fade ( row == now->code_line ? 1.0f : 0.75f ), render::align::RIGHT );
-
-				if ( addresses && item.address ) {
-
-					base::writer where;
-
-					where.hex ( item.address, digits );
-					c.text ( where.text ( ), render::font::MONO_SMALL, math::vec2 ( address_x, cy ), ink ( row == synced ? tone::ADDRESS : tone::INK_FAINT ).fade ( row == now->code_line || row == synced ? 1.0f : 0.6f ) );
-
-				}
+				c.text ( number.text ( ), render::font::MONO, math::vec2 ( number_right, cy ), ink ( row == now->code_line || row == synced ? tone::INK_SOFT : tone::INK_FAINT ).fade ( row == now->code_line || row == synced ? 1.0f : 0.75f ), render::align::RIGHT );
 
 			}
 
@@ -476,7 +455,7 @@ namespace ui {
 					if ( part->kind == decompiler::syntax::NUMBER && over ( math::rect ( px, y, static_cast < float > ( length ) * adv, row_h ) ) && over ( text_area ) ) {
 
 						code_hover_line = row;
-						code_hover_col = item.indent * 4 + ( at - item.text );
+						code_hover_col = item.indent * metric::code_indent + ( at - item.text );
 
 					}
 
