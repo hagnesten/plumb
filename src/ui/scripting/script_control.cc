@@ -391,6 +391,108 @@ namespace ui {
 
 		}
 
+		if ( call.is ( L"debug_note" ) ) {
+
+			if ( call.takes ( 0, 0 ) ) {
+
+				poll_debugger ( );
+
+				if ( debug_state.note [ 0 ] )
+					call.give_text ( debug_state.note );
+
+			}
+
+			return true;
+
+		}
+
+		if ( call.is ( L"debug_modules" ) ) {
+
+			if ( !call.takes ( 0, 0 ) )
+				return true;
+
+			base::list < debugger::module_info > list;
+			script::value made = call.list ( );
+
+			debugger::modules ( list );
+
+			for ( const debugger::module_info& item : list ) {
+
+				script::value row = call.list ( );
+
+				call.push_text ( row, item.path );
+				call.push_number ( row, static_cast < int64_t > ( item.base ) );
+				call.push_number ( row, static_cast < int64_t > ( item.size ) );
+				call.push_list ( made, row );
+
+			}
+
+			call.give_list ( made );
+
+			return true;
+
+		}
+
+		if ( call.is ( L"processes" ) ) {
+
+			if ( !call.takes ( 0, 0 ) )
+				return true;
+
+			base::list < debugger::process_entry > list;
+			script::value made = call.list ( );
+
+			debugger::processes ( list );
+
+			for ( const debugger::process_entry& item : list ) {
+
+				script::value row = call.list ( );
+
+				call.push_number ( row, item.id );
+				call.push_text ( row, item.name );
+				call.push_list ( made, row );
+
+			}
+
+			call.give_list ( made );
+
+			return true;
+
+		}
+
+		if ( call.is ( L"debug_detach" ) || call.is ( L"debug_step_out" ) ) {
+
+			if ( !call.takes ( 0, 0 ) )
+				return true;
+
+			bool detach = call.is ( L"debug_detach" );
+
+			if ( !debugger::active ( ) || ( detach ? !debug_state.attached : debug_state.state != debugger::status::PAUSED ) ) {
+
+				call.give_number ( 0 );
+
+				return true;
+
+			}
+
+			uint32_t before = debug_state.serial;
+
+			debugger::send ( detach ? debugger::order::DETACH : debugger::order::STEP_OUT );
+
+			for ( double until = base::seconds ( ) + 1.0; base::seconds ( ) < until; Sleep ( 1 ) ) {
+
+				poll_debugger ( );
+
+				if ( debug_state.serial != before )
+					break;
+
+			}
+
+			call.give_number ( 1 );
+
+			return true;
+
+		}
+
 		if ( call.is ( L"debug_pause" ) || call.is ( L"debug_stop" ) ) {
 
 			if ( !call.takes ( 0, 0 ) )
@@ -404,7 +506,19 @@ namespace ui {
 
 			}
 
-			run ( call.is ( L"debug_pause" ) ? command::DEBUG_PAUSE : command::DEBUG_STOP );
+			bool stopping = call.is ( L"debug_stop" );
+
+			run ( stopping ? command::DEBUG_STOP : command::DEBUG_PAUSE );
+
+			for ( double until = base::seconds ( ) + 5.0; base::seconds ( ) < until; Sleep ( 2 ) ) {
+
+				poll_debugger ( );
+
+				if ( stopping ? !debugger::active ( ) : debug_state.state != debugger::status::RUNNING )
+					break;
+
+			}
+
 			call.give_number ( 1 );
 
 			return true;
@@ -705,8 +819,8 @@ namespace ui {
 
 			}
 
-			if ( !running && ( ( file.type != loader::format::PE32 && file.type != loader::format::PE64 ) || file.dll ) )
-				return call.fail ( L"Only executables can be started. To debug a DLL, open and run the process that loads it." );
+			if ( !running && file.type != loader::format::PE32 && file.type != loader::format::PE64 )
+				return call.fail ( L"Only Windows executables and DLLs can be debugged." );
 
 			uint32_t before = debug_state.serial;
 
@@ -730,6 +844,136 @@ namespace ui {
 			}
 
 			call.give_number ( 1 );
+
+			return true;
+
+		}
+
+		if ( call.is ( L"debug_attach" ) ) {
+
+			const wchar_t* given = L"";
+
+			if ( !call.takes ( 0, 1 ) || ( call.has ( 0 ) && !( given = call.text ( 0 ) ) ) )
+				return true;
+
+			if ( call.has ( 0 ) && call.args [ 0 ].type == script::kind::NUMBER )
+				return call.fail ( L"Pass the process ID as text, like debug_attach(\"1234\")." );
+
+			if ( debugger::active ( ) ) {
+
+				call.give_number ( 0 );
+
+				return true;
+
+			}
+
+			call.give_number ( attach_debugger ( given ) );
+
+			return true;
+
+		}
+
+		if ( call.is ( L"debug_run_to" ) ) {
+
+			uint64_t where = 0;
+
+			if ( !call.takes ( 1, 1 ) || !call.address ( 0, where ) )
+				return true;
+
+			if ( debug_state.state != debugger::status::PAUSED ) {
+
+				call.give_number ( 0 );
+
+				return true;
+
+			}
+
+			uint32_t before = debug_state.serial;
+
+			debugger::run_to ( where - file.base );
+
+			for ( double until = base::seconds ( ) + 1.0; base::seconds ( ) < until; Sleep ( 1 ) ) {
+
+				poll_debugger ( );
+
+				if ( debug_state.serial != before )
+					break;
+
+			}
+
+			call.give_number ( 1 );
+
+			return true;
+
+		}
+
+		if ( call.is ( L"set_hardware_breakpoint" ) || call.is ( L"del_hardware_breakpoint" ) ) {
+
+			uint64_t where = 0;
+			const wchar_t* spec = L"";
+			bool adding = call.is ( L"set_hardware_breakpoint" );
+
+			if ( !call.takes ( adding ? 1 : 1, adding ? 2 : 1 ) || !call.address ( 0, where ) )
+				return true;
+
+			if ( adding ) {
+
+				spec = L"x";
+
+				if ( call.has ( 1 ) && !( spec = call.text ( 1 ) ) )
+					return true;
+
+			}
+
+			call.give_number ( set_hardware_point ( where, spec ) );
+
+			return true;
+
+		}
+
+		if ( call.is ( L"hardware_breakpoints" ) ) {
+
+			if ( !call.takes ( 0, 0 ) )
+				return true;
+
+			static const wchar_t* const kinds [ 3 ] = { L"x", L"w", L"rw" };
+			script::value made = call.list ( );
+
+			for ( const debugger::hardware_point& item : hardware_points ) {
+
+				if ( !item.used )
+					continue;
+
+				script::value row = call.list ( );
+
+				call.push_number ( row, static_cast < int64_t > ( file.base + item.rva ) );
+				call.push_text ( row, kinds [ static_cast < int32_t > ( item.kind ) ] );
+				call.push_number ( row, item.length );
+				call.push_list ( made, row );
+
+			}
+
+			call.give_list ( made );
+
+			return true;
+
+		}
+
+		if ( call.is ( L"debug_command" ) || call.is ( L"set_debug_command" ) ) {
+
+			const wchar_t* given = nullptr;
+			bool setting = call.is ( L"set_debug_command" );
+
+			if ( !call.takes ( setting ? 1 : 0, setting ? 1 : 0 ) || ( setting && !( given = call.text ( 0 ) ) ) )
+				return true;
+
+			if ( setting ) {
+
+				debug_command.set ( given );
+				call.give_number ( 1 );
+
+			} else if ( !debug_command.empty ( ) )
+				call.give_text ( debug_command.get ( ) );
 
 			return true;
 
