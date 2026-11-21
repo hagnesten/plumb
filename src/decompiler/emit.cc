@@ -181,6 +181,31 @@ namespace decompiler {
 			if ( callee < 0 )
 				return;
 
+			if ( b.exprs [ static_cast < size_t > ( callee ) ].kind == op::VAR ) {
+
+				int64_t var = b.exprs [ static_cast < size_t > ( callee ) ].value;
+				uint64_t here = out.open ? out.current.address : 0;
+				int32_t found = -1;
+
+				for ( const statement& item : b.statements ) {
+
+					if ( item.kind != stmt::ASSIGN || item.left < 0 || item.right < 0 || ( here && item.address > here ) )
+						continue;
+
+					const expr& left = b.exprs [ static_cast < size_t > ( item.left ) ];
+
+					if ( left.kind == op::VAR && left.value == var && b.exprs [ static_cast < size_t > ( item.right ) ].kind == op::LOAD )
+						found = item.right;
+
+				}
+
+				if ( found < 0 )
+					return;
+
+				callee = found;
+
+			}
+
 			const expr& load = b.exprs [ static_cast < size_t > ( callee ) ];
 			int64_t pointer = b.long_mode ? 8 : 4;
 
