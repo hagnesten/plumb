@@ -3784,7 +3784,7 @@ namespace decompiler {
 			} else if ( last && last->control == x86::flow::JUMP && item.out_count == 0 ) {
 
 				out_block.end = term::TAIL;
-				state.flush ( 0xFFFFFFFFu );
+				state.flush ( long_mode ? ~( ( 1u << 0 ) | ( 1u << 1 ) | ( 1u << 2 ) | ( 1u << 8 ) | ( 1u << 9 ) | ( 1u << 10 ) | ( 1u << 11 ) | ( 0x3Fu << 16 ) ) : 0xFFFFFFFFu );
 
 				int32_t call = state.call_expr ( *last, 0xFFFFFFFFu );
 
