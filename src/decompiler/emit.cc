@@ -172,6 +172,14 @@ namespace decompiler {
 		base::list < uint8_t > referenced;
 		int32_t next_number = 0;
 		int32_t result_var = -1;
+		bool inline_mode = false;
+		bool ended = false;
+		bool flatten_else = false;
+		base::list < uint8_t > hidden;
+		base::list < int8_t > loop_letter;
+		int32_t next_letter = 0;
+		int32_t last_assign = -1;
+		int32_t last_assign_line = -1;
 		bool operand = false;
 		bool no_casts = false;
 		bool virtual_notes = false;
@@ -322,9 +330,12 @@ namespace decompiler {
 			if ( !user && item.kind == var_kind::PARAMETER && b.has_prototype && item.position >= 0 && item.position < b.prototype.count && b.prototype.names [ item.position ] [ 0 ] )
 				user = b.prototype.names [ item.position ];
 
-			if ( !user && index != result_var && index < b.call_names.count ( ) && !b.call_names [ static_cast < size_t > ( index ) ].empty ( ) ) {
+			static const wchar_t* const letters [ 10 ] = { L"i", L"j", L"k", L"m", L"n", L"ii", L"jj", L"kk", L"mm", L"nn" };
+			bool lettered = !user && index < loop_letter.count ( ) && loop_letter [ static_cast < size_t > ( index ) ] >= 0;
 
-				user = b.call_names [ static_cast < size_t > ( index ) ].get ( );
+			if ( !user && index != result_var && ( lettered || ( index < b.call_names.count ( ) && !b.call_names [ static_cast < size_t > ( index ) ].empty ( ) ) ) ) {
+
+				user = lettered ? letters [ loop_letter [ static_cast < size_t > ( index ) ] ] : b.call_names [ static_cast < size_t > ( index ) ].get ( );
 
 				if ( b.out ) {
 
@@ -1696,20 +1707,54 @@ namespace decompiler {
 
 		}
 
+		void semicolon ( ) {
+
+			if ( !inline_mode )
+				out.put ( L";" );
+
+		}
+
+		int32_t statement_index ( const statement& item ) const {
+
+			return static_cast < int32_t > ( &item - b.statements.data ( ) );
+
+		}
+
+		void inline_statement ( int32_t index ) {
+
+			bool keep_ternary = no_ternary;
+
+			inline_mode = true;
+			no_ternary = false;
+			statement_line ( b.statements [ static_cast < size_t > ( index ) ] );
+			inline_mode = false;
+			no_ternary = keep_ternary;
+
+		}
+
 		void statement_line ( const statement& item ) {
 
 			if ( item.kind == stmt::NOP )
 				return;
 
+			int32_t index = statement_index ( item );
+
+			if ( !inline_mode && index >= 0 && index < hidden.count ( ) && hidden [ static_cast < size_t > ( index ) ] )
+				return;
+
 			if ( dry )
 				return;
 
-			hoisted.clear ( );
-			hoisted_temp.clear ( );
-			out.begin ( item.address );
+			if ( !inline_mode ) {
 
-			if ( no_ternary && item.kind == stmt::EXPR && hoist ( item.right, item.address ) )
+				hoisted.clear ( );
+				hoisted_temp.clear ( );
 				out.begin ( item.address );
+
+				if ( no_ternary && item.kind == stmt::EXPR && hoist ( item.right, item.address ) )
+					out.begin ( item.address );
+
+			}
 
 			switch ( item.kind ) {
 
@@ -1723,18 +1768,20 @@ namespace decompiler {
 
 						int64_t step_value = b.exprs [ static_cast < size_t > ( right.b ) ].value;
 
-						value ( item.left, 0 );
+						if ( step_value == 1 || step_value == -1 ) {
 
-						if ( step_value == 1 || step_value == -1 )
 							out.put ( step_value == 1 ? L"++" : L"--", syntax::OPERATOR );
-						else {
+							value ( item.left, 0 );
 
+						} else {
+
+							value ( item.left, 0 );
 							out.put ( step_value < 0 ? L" -= " : L" += ", syntax::OPERATOR );
 							number ( step_value < 0 ? -step_value : step_value, right.size, !simple_constant ( step_value ), false );
 
 						}
 
-						out.put ( L";" );
+						semicolon ( );
 
 						break;
 
@@ -1780,7 +1827,7 @@ namespace decompiler {
 					else
 						value ( item.right, 2 );
 
-					out.put ( L";" );
+					semicolon ( );
 
 					break;
 
@@ -1788,7 +1835,7 @@ namespace decompiler {
 
 				case stmt::EXPR:
 					value ( item.right, 0 );
-					out.put ( L";" );
+					semicolon ( );
 					break;
 
 				case stmt::ASM:
@@ -1803,9 +1850,21 @@ namespace decompiler {
 
 			}
 
+			if ( inline_mode )
+				return;
+
 			out.finish ( );
 			hoisted.clear ( );
 			hoisted_temp.clear ( );
+
+			const expr& target = b.exprs [ static_cast < size_t > ( item.left >= 0 ? item.left : 0 ) ];
+
+			if ( item.kind == stmt::ASSIGN && item.left >= 0 && target.kind == op::VAR ) {
+
+				last_assign = index;
+				last_assign_line = out.r->lines.count ( ) - 1;
+
+			}
 
 		}
 
@@ -1842,6 +1901,7 @@ namespace decompiler {
 
 			wanted_label [ static_cast < size_t > ( block ) ] = 1;
 			gotos++;
+			ended = true;
 
 			if ( dry )
 				return;
@@ -1858,6 +1918,7 @@ namespace decompiler {
 
 		void body ( int32_t block ) {
 
+			ended = false;
 			label ( block );
 			emitted [ static_cast < size_t > ( block ) ] = 1;
 
@@ -1929,6 +1990,7 @@ namespace decompiler {
 
 		void close_brace ( ) {
 
+			ended = false;
 			out.indent--;
 
 			if ( dry )
@@ -1997,6 +2059,8 @@ namespace decompiler {
 
 		void return_line ( const block_code& item ) {
 
+			ended = true;
+
 			if ( dry )
 				return;
 
@@ -2060,6 +2124,8 @@ namespace decompiler {
 		}
 
 		void jump_line ( const wchar_t* keyword, uint64_t address ) {
+
+			ended = false;
 
 			if ( dry )
 				return;
@@ -2242,12 +2308,23 @@ namespace decompiler {
 
 			open_brace ( item.last, chained ? L"else if" : L"if", item.condition, negated );
 
+			ended = false;
+
 			if ( !special ( then_part, -2, context, item.last ) )
 				region ( then_part, follow, context );
 
+			bool then_ends = ended && flatten_else;
+
 			out.indent--;
 
-			if ( else_part != follow && else_part >= 0 ) {
+			if ( else_part != follow && else_part >= 0 && then_ends ) {
+
+				brace ( L"}" );
+
+				if ( !special ( else_part, -2, context, item.last ) )
+					region ( else_part, follow, context );
+
+			} else if ( else_part != follow && else_part >= 0 ) {
 
 				bool chain = !emitted [ static_cast < size_t > ( else_part ) ] && b.code [ static_cast < size_t > ( else_part ) ].end == term::BRANCH && empty_block ( else_part ) && pred [ static_cast < size_t > ( else_part ) ].count ( ) == 1 && !header [ static_cast < size_t > ( else_part ) ] && follow_of ( else_part, stop, context ) == follow && !wanted_label [ static_cast < size_t > ( else_part ) ];
 
@@ -2278,6 +2355,142 @@ namespace decompiler {
 				brace ( L"}" );
 
 			return follow;
+
+		}
+
+		int32_t loop_step ( int32_t start, const base::list < uint8_t >& members, int32_t condition ) {
+
+			int32_t latch = -1;
+
+			for ( int32_t p : pred [ static_cast < size_t > ( start ) ] ) {
+
+				if ( members [ static_cast < size_t > ( p ) ] )
+					latch = latch < 0 ? p : -2;
+
+			}
+
+			if ( latch < 0 || latch == start )
+				return -1;
+
+			const block_code& tail = b.code [ static_cast < size_t > ( latch ) ];
+
+			if ( tail.end != term::FALL || tail.taken != start )
+				return -1;
+
+			int32_t last = -1;
+
+			for ( int32_t s = tail.first; s < tail.first + tail.count && s < b.statements.count ( ); s++ ) {
+
+				if ( b.statements [ static_cast < size_t > ( s ) ].kind != stmt::NOP )
+					last = s;
+
+			}
+
+			if ( last < 0 )
+				return -1;
+
+			const statement& line = b.statements [ static_cast < size_t > ( last ) ];
+
+			if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 )
+				return -1;
+
+			const expr& left = b.exprs [ static_cast < size_t > ( line.left ) ];
+			const expr& right = b.exprs [ static_cast < size_t > ( line.right ) ];
+
+			if ( left.kind != op::VAR || right.kind != op::ADD || right.a < 0 || right.b < 0 || ( right.bits & FLOATING ) )
+				return -1;
+
+			const expr& base_var = b.exprs [ static_cast < size_t > ( right.a ) ];
+
+			if ( base_var.kind != op::VAR || base_var.value != left.value || b.exprs [ static_cast < size_t > ( right.b ) ].kind != op::CONST )
+				return -1;
+
+			if ( condition >= 0 && !b.references ( condition, static_cast < int32_t > ( left.value ), -1 ) )
+				return -1;
+
+			return last;
+
+		}
+
+		void name_loop_var ( int32_t var ) {
+
+			if ( var < 0 || var >= loop_letter.count ( ) || loop_letter [ static_cast < size_t > ( var ) ] >= 0 || var == result_var )
+				return;
+
+			const variable& item = b.vars [ static_cast < size_t > ( var ) ];
+
+			if ( item.kind == var_kind::PARAMETER || next_letter >= 10 )
+				return;
+
+			loop_letter [ static_cast < size_t > ( var ) ] = static_cast < int8_t > ( next_letter++ );
+
+		}
+
+		bool open_for ( uint64_t address, int32_t condition, bool negated, int32_t step, bool need_init ) {
+
+			int32_t var = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( b.statements [ static_cast < size_t > ( step ) ].left ) ].value );
+			int32_t init = -1;
+
+			if ( !dry && last_assign >= 0 && last_assign_line >= 0 && last_assign_line == out.r->lines.count ( ) - 1 ) {
+
+				const statement& seed = b.statements [ static_cast < size_t > ( last_assign ) ];
+
+				if ( b.exprs [ static_cast < size_t > ( seed.left ) ].value == var )
+					init = last_assign;
+
+			}
+
+			if ( need_init && ( dry || init < 0 ) )
+				return false;
+
+			name_loop_var ( var );
+
+			if ( dry ) {
+
+				out.indent++;
+
+				return true;
+
+			}
+
+			if ( init >= 0 ) {
+
+				const line held = out.r->lines.back ( );
+
+				out.r->lines.pop ( );
+				out.r->text.resize ( static_cast < size_t > ( held.text ) );
+				out.r->spans.resize ( static_cast < size_t > ( held.first_span ) );
+				last_assign = -1;
+				last_assign_line = -1;
+
+			}
+
+			hoisted.clear ( );
+			hoisted_temp.clear ( );
+			out.begin ( address );
+			out.put ( L"for", syntax::CONTROL );
+			paren_open ( );
+
+			if ( init >= 0 )
+				inline_statement ( init );
+
+			out.put ( condition >= 0 ? L"; " : L"; ;" );
+
+			if ( condition >= 0 ) {
+
+				value ( negated ? b.negate ( condition ) : condition, 0 );
+				out.put ( L";" );
+
+			}
+
+			out.put ( L" " );
+			inline_statement ( step );
+			paren_close ( );
+			out.finish ( );
+			brace ( L"{" );
+			out.indent++;
+
+			return true;
 
 		}
 
@@ -2334,10 +2547,16 @@ namespace decompiler {
 			if ( item.end == term::BRANCH && empty_block ( start ) && ( ( item.taken == exit && members [ static_cast < size_t > ( item.other ) ] ) || ( item.other == exit && members [ static_cast < size_t > ( item.taken ) ] ) ) ) {
 
 				bool stay_taken = item.other == exit;
+				int32_t step = loop_step ( start, members, item.condition );
 
 				label ( start );
 				emitted [ static_cast < size_t > ( start ) ] = 1;
-				open_brace ( item.last, L"while", item.condition, !stay_taken );
+
+				if ( step >= 0 && open_for ( item.last, item.condition, !stay_taken, step, false ) )
+					hidden [ static_cast < size_t > ( step ) ] = 1;
+				else
+					open_brace ( item.last, L"while", item.condition, !stay_taken );
+
 				region ( stay_taken ? item.taken : item.other, start, inner );
 				close_brace ( );
 
@@ -2376,7 +2595,12 @@ namespace decompiler {
 
 			}
 
-			open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"while", b.constant ( 1, 1 ), false );
+			int32_t forever_step = loop_step ( start, members, -1 );
+
+			if ( forever_step >= 0 && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, -1, false, forever_step, true ) )
+				hidden [ static_cast < size_t > ( forever_step ) ] = 1;
+			else
+				open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"while", b.constant ( 1, 1 ), false );
 
 			frame body_frame = inner;
 
@@ -2650,6 +2874,8 @@ namespace decompiler {
 			}
 
 			wanted_label.fill ( static_cast < size_t > ( count ), 0 );
+			hidden.fill ( b.statements.size ( ), 0 );
+			loop_letter.fill ( b.vars.size ( ), -1 );
 			var_number.fill ( b.vars.size ( ), -1 );
 			referenced.fill ( b.vars.size ( ), 0 );
 
