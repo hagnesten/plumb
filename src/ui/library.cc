@@ -294,7 +294,11 @@ namespace ui {
 
 		}
 
-		if ( runtime )
+		bool fresh = runtime != runtime_logged;
+
+		runtime_logged = runtime;
+
+		if ( runtime && fresh )
 			log ( log_kind::GOOD, base::writer ( ).add ( L"Recognized " ).grouped ( static_cast < uint64_t > ( runtime ) ).add ( runtime == 1 ? L" runtime library function." : L" runtime library functions." ).text ( ) );
 
 		names_revision++;

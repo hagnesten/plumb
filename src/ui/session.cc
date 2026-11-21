@@ -1143,6 +1143,8 @@ namespace ui {
 		base::writer symbols;
 		bool symbolized = load_pdb && loader::load_symbols ( file, symbols );
 
+		runtime_logged = -1;
+
 		load_problem.set ( L"" );
 		string_addresses.clear ( );
 		string_order.clear ( );
