@@ -1826,6 +1826,41 @@ namespace decompiler {
 
 		}
 
+		bool jumps_through_rax ( uint64_t address ) const {
+
+			const builder& k = *b;
+
+			for ( int32_t hop = 0; hop < 4; hop++ ) {
+
+				x86::instruction step;
+
+				if ( !k.db->decode ( address, step ) || step.name != mnemonic::jmp || step.count != 1 )
+					return false;
+
+				if ( step.operands [ 0 ].type == x86::kind::REG )
+					return step.operands [ 0 ].reg == x86::RAX;
+
+				if ( step.direct ( ) ) {
+
+					address = step.target ( );
+
+					continue;
+
+				}
+
+				uint64_t offset = 0;
+
+				if ( step.operands [ 0 ].type != x86::kind::MEM || !step.operands [ 0 ].rip_relative ( ) || !k.file->offset_of ( step.next ( ) + static_cast < uint64_t > ( step.operands [ 0 ].value ), offset ) || offset + 8 > k.file->size )
+					return false;
+
+				address = k.file->read64 ( offset );
+
+			}
+
+			return false;
+
+		}
+
 		int32_t call_expr ( const x86::instruction& ins, uint32_t live_after ) {
 
 			builder& k = *b;
@@ -1839,6 +1874,29 @@ namespace decompiler {
 				direct = ins.operands [ 0 ].rip_relative ( ) ? ins.next ( ) + static_cast < uint64_t > ( ins.operands [ 0 ].value ) : static_cast < uint64_t > ( ins.operands [ 0 ].value );
 			else
 				target = read ( ins, 0 );
+
+			if ( direct && k.long_mode && jumps_through_rax ( direct ) ) {
+
+				target = family_value ( 0 );
+				direct = 0;
+
+			}
+
+			bool through_vtable = false;
+
+			if ( target >= 0 && k.long_mode ) {
+
+				const expr& slot = k.exprs [ static_cast < size_t > ( target ) ];
+
+				if ( slot.kind == op::LOAD && slot.a >= 0 ) {
+
+					const expr& where = k.exprs [ static_cast < size_t > ( slot.a ) ];
+
+					through_vtable = where.kind == op::LOAD || ( where.kind == op::ADD && where.a >= 0 && k.exprs [ static_cast < size_t > ( where.a ) ].kind == op::LOAD );
+
+				}
+
+			}
 
 			wchar_t name [ 200 ];
 			int32_t callee = direct ? k.db->function_starting ( direct ) : -1;
@@ -1876,6 +1934,9 @@ namespace decompiler {
 
 				if ( count >= 0 )
 					highest = count - 1;
+
+				if ( through_vtable )
+					highest = base::max ( highest, 0 );
 
 				for ( int32_t i = 0; i <= highest && i < 16; i++ ) {
 
