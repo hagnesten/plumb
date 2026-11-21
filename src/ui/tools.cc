@@ -97,15 +97,19 @@ namespace ui {
 
 	bool app::code_number ( uint64_t& key, int64_t& value, bool& hex_now ) const {
 
-		const decompiler::result* code = const_cast < app* > ( this )->pseudocode_for ( now->function );
-
-		if ( !code )
-			return false;
-
 		for ( int32_t attempt = 0; attempt < 2; attempt++ ) {
 
-			int32_t row = attempt ? code_hover_line : now->code_line;
-			int32_t col = attempt ? code_hover_col : now->code_col;
+			bool hovered = attempt == 0;
+
+			if ( !hovered && showing != view::PSEUDOCODE )
+				continue;
+
+			const decompiler::result* code = const_cast < app* > ( this )->pseudocode_for ( hovered ? code_hover_function : now->function );
+			int32_t row = hovered ? code_hover_line : now->code_line;
+			int32_t col = hovered ? code_hover_col : now->code_col;
+
+			if ( !code )
+				continue;
 
 			if ( row < 0 || row >= code->lines.count ( ) )
 				continue;

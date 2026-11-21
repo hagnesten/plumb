@@ -1011,6 +1011,7 @@ namespace ui {
 		math::vec2 code_menu_at;
 		int32_t code_hover_line = -1;
 		int32_t code_hover_col = -1;
+		uint64_t code_hover_function = 0;
 		uint64_t reference_target = ~0ull;
 		double blink_from = 0.0;
 		bool caret_live = false;

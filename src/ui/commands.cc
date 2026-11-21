@@ -53,7 +53,7 @@ namespace ui {
 		{ L"Switch light or dark theme", L"Ctrl+Shift+L" },
 		{ L"Follow reference", L"Enter" },
 		{ L"Rename", L"N" },
-		{ L"Comment", L";" },
+		{ L"Comment", L"; or /" },
 		{ L"Set type or prototype", L"Y" },
 		{ L"Make struct from variable", L"S" },
 		{ L"Toggle bookmark", L"Ctrl+D" },
@@ -197,7 +197,7 @@ namespace ui {
 			case command::NUMBER_RADIX:
 			case command::NUMBER_CHAR:
 			case command::NUMBER_RESET:
-				return analyzed && ( showing == view::PSEUDOCODE || ( ( showing == view::LISTING || showing == view::GRAPH ) && db->is_covered ( now->cursor_address ) ) );
+				return analyzed && ( showing == view::PSEUDOCODE || code_hover_line >= 0 || ( ( showing == view::LISTING || showing == view::GRAPH ) && db->is_covered ( now->cursor_address ) ) );
 
 			case command::NUMBER_BINARY:
 			case command::NUMBER_FLOAT:
@@ -1177,7 +1177,7 @@ namespace ui {
 			case command::NUMBER_FLOAT:
 			case command::NUMBER_RESET: {
 
-				if ( showing == view::PSEUDOCODE ) {
+				if ( showing == view::PSEUDOCODE || code_hover_line >= 0 ) {
 
 					uint64_t key = 0;
 					int64_t number = 0;

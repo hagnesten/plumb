@@ -285,8 +285,6 @@ namespace ui {
 		if ( !mouse_down )
 			now->code_selecting = false;
 
-		code_hover_line = -1;
-		code_hover_col = -1;
 		now->code_y = static_cast < float > ( now->code_line );
 		now->code_ready = true;
 
@@ -456,6 +454,7 @@ namespace ui {
 
 						code_hover_line = row;
 						code_hover_col = item.indent * metric::code_indent + ( at - item.text );
+						code_hover_function = code->function;
 
 					}
 
