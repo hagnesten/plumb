@@ -91,6 +91,7 @@
     <ClCompile Include="src\analysis\runtime_names.cc" />
     <ClCompile Include="src\decompiler\apis.cc" />
     <ClCompile Include="src\ui\shell\history.cc" />
+    <ClCompile Include="src\decompiler\conditions.cc" />
     <ClCompile Include="src\decompiler\facts.cc" />
     <ClCompile Include="src\decompiler\returns.cc" />
     <ClCompile Include="src\decompiler\webs.cc" />

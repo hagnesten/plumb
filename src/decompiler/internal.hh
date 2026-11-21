@@ -221,6 +221,10 @@ namespace decompiler {
 
 		void fold_returns ( );
 
+		void merge_conditions ( );
+
+		void sink_into_tests ( );
+
 		void split_webs ( );
 
 		void coalesce_copies ( );
