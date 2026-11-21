@@ -32,6 +32,7 @@ namespace decompiler {
 		syntax kind = syntax::PLAIN;
 		uint64_t target = 0;
 		int64_t value = 0;
+		int32_t occurrence = 0;
 
 	};
 
@@ -100,6 +101,8 @@ namespace decompiler {
 
 	bool parse_type ( const wchar_t* text, bool long_mode, c_type& out, wchar_t* clean, int32_t room );
 
+	bool char_literal ( int64_t value, wchar_t* out, int32_t room );
+
 	bool parse_prototype ( const wchar_t* text, bool long_mode, c_prototype& out, base::writer& problem );
 
 	struct namer {
@@ -156,7 +159,7 @@ namespace decompiler {
 
 		}
 
-		virtual wchar_t number_form ( uint64_t, int64_t ) {
+		virtual wchar_t number_form ( uint64_t, int64_t, int32_t ) {
 
 			return 0;
 

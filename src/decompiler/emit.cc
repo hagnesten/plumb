@@ -175,6 +175,9 @@ namespace decompiler {
 		bool operand = false;
 		bool no_casts = false;
 		bool virtual_notes = false;
+		base::list < uint64_t > number_addresses;
+		base::list < int64_t > number_values;
+		int32_t last_occurrence = 0;
 
 		void note_slot ( int32_t callee ) {
 
@@ -558,7 +561,7 @@ namespace decompiler {
 
 		void number ( int64_t value, uint8_t size, bool hex_form, bool is_unsigned ) {
 
-			wchar_t text [ 40 ];
+			wchar_t text [ 80 ];
 			int32_t length = 0;
 			bool negative = value < 0 && !( size < 8 && value > 0 );
 			uint64_t magnitude = negative ? static_cast < uint64_t > ( -value ) : static_cast < uint64_t > ( value );
@@ -572,7 +575,8 @@ namespace decompiler {
 
 			bool fits = negative ? magnitude <= 0x80000000ull : magnitude <= ( is_unsigned ? 0xFFFFFFFFull : 0x7FFFFFFFull );
 			bool unsigned_suffix = is_unsigned && !negative;
-			wchar_t form = b.names && !dry ? b.names->number_form ( out.open ? out.current.address : 0, value ) : 0;
+			int32_t occurrence = next_occurrence ( value );
+			wchar_t form = b.names && !dry ? b.names->number_form ( out.open ? out.current.address : 0, value, occurrence ) : 0;
 
 			hex_form = hex_form || unsigned_suffix || magnitude > 0xFFFFFFFFull;
 
@@ -580,17 +584,26 @@ namespace decompiler {
 				hex_form = true;
 			else if ( form == L'd' )
 				hex_form = false;
-			else if ( form == L'c' && value >= 0x20 && value <= 0x7E ) {
+			else if ( form == L'c' && char_literal ( value, text, 40 ) ) {
 
-				wchar_t c = static_cast < wchar_t > ( value );
+				put_number ( text, value );
 
-				text [ length++ ] = L'\'';
+				return;
 
-				if ( c == L'\'' || c == L'\\' )
-					text [ length++ ] = L'\\';
+			} else if ( form == L'b' ) {
 
-				text [ length++ ] = c;
-				text [ length++ ] = L'\'';
+				uint64_t bits = negative ? static_cast < uint64_t > ( value ) & ( size >= 8 ? ~0ull : ( ( 1ull << ( size * 8 ) ) - 1 ) ) : magnitude;
+				int32_t top = 63;
+
+				while ( top > 0 && !( ( bits >> top ) & 1 ) )
+					top--;
+
+				text [ length++ ] = L'0';
+				text [ length++ ] = L'b';
+
+				for ( int32_t bit = top; bit >= 0 && length < 78; bit-- )
+					text [ length++ ] = ( bits >> bit ) & 1 ? L'1' : L'0';
+
 				text [ length ] = 0;
 				put_number ( text, value );
 
@@ -601,7 +614,7 @@ namespace decompiler {
 			if ( negative )
 				text [ length++ ] = L'-';
 
-			if ( hex_form && magnitude >= 10 ) {
+			if ( hex_form && ( magnitude >= 10 || form == L'h' ) ) {
 
 				wchar_t digits [ 20 ];
 
@@ -652,8 +665,35 @@ namespace decompiler {
 
 			out.put ( text, syntax::NUMBER );
 
-			if ( out.r->spans.count ( ) > before )
+			if ( out.r->spans.count ( ) > before ) {
+
 				out.r->spans.back ( ).value = value;
+				out.r->spans.back ( ).occurrence = last_occurrence;
+
+			}
+
+		}
+
+		int32_t next_occurrence ( int64_t value ) {
+
+			uint64_t address = out.open ? out.current.address : 0;
+			int32_t count = 0;
+
+			if ( dry )
+				return 0;
+
+			for ( int32_t i = 0; i < number_addresses.count ( ); i++ ) {
+
+				if ( number_addresses [ static_cast < size_t > ( i ) ] == address && number_values [ static_cast < size_t > ( i ) ] == value )
+					count++;
+
+			}
+
+			number_addresses.push ( address );
+			number_values.push ( value );
+			last_occurrence = count;
+
+			return count;
 
 		}
 
@@ -2407,6 +2447,8 @@ namespace decompiler {
 
 			emitted.fill ( static_cast < size_t > ( count ), 0 );
 			labeled.fill ( static_cast < size_t > ( count ), 0 );
+			number_addresses.clear ( );
+			number_values.clear ( );
 			gotos = 0;
 			depth = 0;
 			next_temp = 1;
@@ -2753,6 +2795,99 @@ namespace decompiler {
 			target.lines.push ( item );
 
 		}
+
+	}
+
+	bool char_literal ( int64_t value, wchar_t* out, int32_t room ) {
+
+		uint64_t raw = static_cast < uint64_t > ( value );
+		uint8_t bytes [ 8 ];
+		int32_t count = 0;
+
+		if ( value < 0 || room < 12 )
+			return false;
+
+		do {
+
+			bytes [ count++ ] = static_cast < uint8_t > ( raw & 0xFF );
+			raw >>= 8;
+
+		} while ( raw && count < 8 );
+
+		if ( raw )
+			return false;
+
+		int32_t length = 0;
+
+		out [ length++ ] = L'\'';
+
+		for ( int32_t i = count - 1; i >= 0; i-- ) {
+
+			uint8_t c = bytes [ i ];
+			const wchar_t* escape = nullptr;
+
+			switch ( c ) {
+
+				case 0:
+					escape = L"\\0";
+					break;
+
+				case '\n':
+					escape = L"\\n";
+					break;
+
+				case '\r':
+					escape = L"\\r";
+					break;
+
+				case '\t':
+					escape = L"\\t";
+					break;
+
+				case '\'':
+					escape = L"\\'";
+					break;
+
+				case '\\':
+					escape = L"\\\\";
+					break;
+
+				default:
+					break;
+
+			}
+
+			if ( length + 6 >= room )
+				return false;
+
+			if ( escape ) {
+
+				if ( count > 1 && c != 0 && c != '\'' && c != '\\' )
+					return false;
+
+				for ( ; *escape; escape++ )
+					out [ length++ ] = *escape;
+
+			} else if ( c >= 0x20 && c <= 0x7E )
+				out [ length++ ] = static_cast < wchar_t > ( c );
+			else if ( count == 1 ) {
+
+				static const wchar_t digits [ ] = L"0123456789ABCDEF";
+
+				out [ length++ ] = L'\\';
+				out [ length++ ] = L'x';
+				out [ length++ ] = digits [ c >> 4 ];
+				out [ length++ ] = digits [ c & 15 ];
+
+			} else
+				return false;
+
+		}
+
+		out [ length++ ] = L'\'';
+		out [ length ] = 0;
+
+		return true;
 
 	}
 

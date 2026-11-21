@@ -696,7 +696,7 @@ namespace ui {
 
 		const wchar_t* comment_at ( uint64_t address ) const;
 
-		wchar_t code_number_form ( uint64_t address, int64_t value ) const;
+		wchar_t code_number_form ( uint64_t address, int64_t value, int32_t occurrence ) const;
 
 		bool code_field ( int32_t& index, int32_t& offset ) const;
 
@@ -1198,7 +1198,7 @@ namespace ui {
 
 		bool number_in_line ( const decompiler::result& code, const decompiler::line& item, int32_t column, uint64_t& key, int64_t& value, bool& hex_now ) const;
 
-		uint64_t code_number_key ( uint64_t address, int64_t value ) const;
+		uint64_t code_number_key ( uint64_t address, int64_t value, int32_t occurrence ) const;
 
 		void set_local ( uint64_t function, const wchar_t* key, const wchar_t* name, const wchar_t* type );
 

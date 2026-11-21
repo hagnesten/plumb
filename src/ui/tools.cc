@@ -78,18 +78,18 @@ namespace ui {
 
 	}
 
-	uint64_t app::code_number_key ( uint64_t address, int64_t value ) const {
+	uint64_t app::code_number_key ( uint64_t address, int64_t value, int32_t occurrence ) const {
 
-		return address ^ ( static_cast < uint64_t > ( value ) * 0x9E3779B97F4A7C15ull );
+		return address ^ ( static_cast < uint64_t > ( value ) * 0x9E3779B97F4A7C15ull ) ^ ( static_cast < uint64_t > ( occurrence ) * 0xD6E8FEB86659FD93ull );
 
 	}
 
-	wchar_t app::code_number_form ( uint64_t address, int64_t value ) const {
+	wchar_t app::code_number_form ( uint64_t address, int64_t value, int32_t occurrence ) const {
 
 		if ( !address || code_numbers.empty ( ) )
 			return 0;
 
-		const wchar_t* form = user_text ( code_numbers, code_number_key ( address, value ) );
+		const wchar_t* form = user_text ( code_numbers, code_number_key ( address, value, occurrence ) );
 
 		return form ? form [ 0 ] : 0;
 
@@ -144,7 +144,7 @@ namespace ui {
 			int32_t skip = part.length > 0 && text [ 0 ] == L'-' ? 1 : 0;
 
 			value = part.value;
-			key = code_number_key ( item.address, value );
+			key = code_number_key ( item.address, value, part.occurrence );
 			hex_now = part.length > skip + 1 && text [ skip ] == L'0' && text [ skip + 1 ] == L'x';
 
 			return true;

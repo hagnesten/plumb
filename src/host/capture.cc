@@ -298,6 +298,16 @@ static bool capture_mode ( ) {
 			app->mouse_button ( 0, false );
 			step ( 1 );
 
+		} else if ( base::same_text ( command, L"caret" ) ) {
+
+			app->now->code_line = static_cast < int32_t > ( reader.number ( ) ) - 1;
+			app->now->code_col = static_cast < int32_t > ( reader.number ( ) );
+			app->now->code_anchor = app->now->code_line;
+			app->now->code_anchor_col = app->now->code_col;
+			app->now->code_ranged = false;
+			app->mouse_leave ( );
+			step ( 2 );
+
 		} else if ( base::same_text ( command, L"rclick" ) ) {
 
 			float x = reader.number ( );
@@ -649,6 +659,12 @@ struct plain_names : decompiler::namer {
 		out [ length ] = 0;
 
 		return length >= 2;
+
+	}
+
+	wchar_t number_form ( uint64_t address, int64_t value, int32_t occurrence ) override {
+
+		return owner->code_number_form ( address, value, occurrence );
 
 	}
 

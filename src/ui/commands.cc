@@ -198,10 +198,10 @@ namespace ui {
 
 			case command::NUMBER_RADIX:
 			case command::NUMBER_CHAR:
+			case command::NUMBER_BINARY:
 			case command::NUMBER_RESET:
 				return analyzed && ( showing == view::PSEUDOCODE || code_hover_line >= 0 || ( ( showing == view::LISTING || showing == view::GRAPH ) && db->is_covered ( now->cursor_address ) ) );
 
-			case command::NUMBER_BINARY:
 			case command::NUMBER_FLOAT:
 				return analyzed && ( showing == view::LISTING || showing == view::GRAPH ) && db->is_covered ( now->cursor_address );
 
@@ -1206,14 +1206,27 @@ namespace ui {
 					wchar_t first = current ? current [ 0 ] : 0;
 					const wchar_t* form = L"";
 
+					wchar_t probe [ 40 ];
+
 					if ( action == command::NUMBER_RADIX )
 						form = hex_now ? L"d" : L"h";
-					else if ( action == command::NUMBER_CHAR )
-						form = first == L'c' || number < 0x20 || number > 0x7E ? L"" : L"c";
+					else if ( action == command::NUMBER_CHAR ) {
 
-					if ( action == command::NUMBER_CHAR && !form [ 0 ] && first != L'c' ) {
+						if ( first != L'c' && !decompiler::char_literal ( number, probe, 40 ) ) {
 
-						log ( log_kind::WARN, L"This number isn't a printable character." );
+							log ( log_kind::WARN, L"This number can't be written as a character constant." );
+
+							break;
+
+						}
+
+						form = first == L'c' ? L"" : L"c";
+
+					} else if ( action == command::NUMBER_BINARY )
+						form = first == L'b' ? L"" : L"b";
+					else if ( action == command::NUMBER_FLOAT ) {
+
+						log ( log_kind::WARN, L"The float form is only for the disassembly." );
 
 						break;
 
