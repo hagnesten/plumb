@@ -168,6 +168,32 @@ namespace base {
 
 	}
 
+	inline bool parse_hex ( const wchar_t* text, uint64_t& value ) {
+
+		value = 0;
+
+		if ( text [ 0 ] == L'#' )
+			text++;
+		else if ( text [ 0 ] == L'0' && ( text [ 1 ] == L'x' || text [ 1 ] == L'X' ) )
+			text += 2;
+
+		int32_t digits = 0;
+
+		for ( ; *text; text++, digits++ ) {
+
+			wchar_t c = fold_case ( *text );
+
+			if ( digits >= 16 || !( ( c >= L'0' && c <= L'9' ) || ( c >= L'a' && c <= L'f' ) ) )
+				return false;
+
+			value = ( value << 4 ) | static_cast < uint64_t > ( c <= L'9' ? c - L'0' : c - L'a' + 10 );
+
+		}
+
+		return digits > 0;
+
+	}
+
 	template < typename type >
 	class list {
 
