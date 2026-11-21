@@ -11,6 +11,7 @@ namespace decompiler {
 		namer* names = nullptr;
 		uint64_t commented = 0;
 		int32_t indent = 0;
+		int32_t slot_note = -1;
 		line current;
 
 		wchar_t last ( int32_t back = 1 ) const {
@@ -28,6 +29,7 @@ namespace decompiler {
 			current.indent = indent;
 			current.address = address;
 			open = true;
+			slot_note = -1;
 
 		}
 
@@ -94,6 +96,34 @@ namespace decompiler {
 			if ( !open )
 				return;
 
+			if ( slot_note >= 0 ) {
+
+				bool keep = spaced;
+				wchar_t digits [ 16 ];
+				int32_t length = 0;
+				int32_t value = slot_note;
+
+				do {
+
+					digits [ length++ ] = static_cast < wchar_t > ( L'0' + value % 10 );
+					value /= 10;
+
+				} while ( value && length < 15 );
+
+				wchar_t text [ 32 ] = L" // vfunc ";
+				int32_t at = 10;
+
+				while ( length )
+					text [ at++ ] = digits [ --length ];
+
+				text [ at ] = 0;
+				spaced = false;
+				slot_note = -1;
+				put ( text, syntax::COMMENT );
+				spaced = keep;
+
+			}
+
 			if ( names && current.address && current.address != commented ) {
 
 				const wchar_t* note = names->comment ( current.address );
@@ -144,6 +174,33 @@ namespace decompiler {
 		int32_t result_var = -1;
 		bool operand = false;
 		bool no_casts = false;
+		bool virtual_notes = false;
+
+		void note_slot ( int32_t callee ) {
+
+			if ( callee < 0 )
+				return;
+
+			const expr& load = b.exprs [ static_cast < size_t > ( callee ) ];
+			int64_t pointer = b.long_mode ? 8 : 4;
+
+			if ( load.kind != op::LOAD || load.size != pointer || load.a < 0 )
+				return;
+
+			const expr& where = b.exprs [ static_cast < size_t > ( load.a ) ];
+			int64_t offset = -1;
+
+			if ( where.kind == op::LOAD )
+				offset = 0;
+			else if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::LOAD && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST )
+				offset = b.exprs [ static_cast < size_t > ( where.b ) ].value;
+
+			if ( offset < 0 || offset % pointer || offset / pointer > 4096 )
+				return;
+
+			out.slot_note = static_cast < int32_t > ( offset / pointer );
+
+		}
 		int32_t gotos = 0;
 		int32_t depth = 0;
 		bool no_ternary = false;
@@ -158,6 +215,7 @@ namespace decompiler {
 			next_number = owner.params;
 			no_ternary = owner.names && owner.names->expand_ternary ( );
 			no_casts = owner.names && owner.names->hide_casts ( );
+			virtual_notes = owner.names && owner.names->virtual_notes ( );
 
 		}
 
@@ -951,6 +1009,9 @@ namespace decompiler {
 					} else if ( target )
 						number ( static_cast < int64_t > ( target ), 8, true, false );
 					else {
+
+						if ( virtual_notes && !dry )
+							note_slot ( item.a );
 
 						out.put ( L"(" );
 						value ( item.a, 14 );

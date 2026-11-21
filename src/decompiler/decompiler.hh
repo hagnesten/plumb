@@ -150,6 +150,12 @@ namespace decompiler {
 
 		}
 
+		virtual bool virtual_notes ( ) {
+
+			return false;
+
+		}
+
 		virtual wchar_t number_form ( uint64_t, int64_t ) {
 
 			return 0;
