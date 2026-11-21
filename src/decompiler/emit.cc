@@ -350,6 +350,99 @@ namespace decompiler {
 
 	};
 
+	static void short_symbol ( wchar_t* name ) {
+
+		if ( name [ 0 ] != L'?' )
+			return;
+
+		const wchar_t* at = name + 1;
+		int32_t special = 0;
+
+		if ( at [ 0 ] == L'?' ) {
+
+			if ( at [ 1 ] == L'0' )
+				special = 1;
+			else if ( at [ 1 ] == L'1' )
+				special = 2;
+			else
+				return;
+
+			at += 2;
+
+		}
+
+		const wchar_t* parts [ 8 ];
+		int32_t sizes [ 8 ];
+		int32_t count = 0;
+
+		while ( *at && *at != L'@' && count < 8 ) {
+
+			const wchar_t* start = at;
+
+			while ( *at && *at != L'@' ) {
+
+				if ( !( ( *at >= L'a' && *at <= L'z' ) || ( *at >= L'A' && *at <= L'Z' ) || ( *at >= L'0' && *at <= L'9' ) || *at == L'_' ) )
+					return;
+
+				at++;
+
+			}
+
+			parts [ count ] = start;
+			sizes [ count ] = static_cast < int32_t > ( at - start );
+			count++;
+
+			if ( *at == L'@' )
+				at++;
+
+		}
+
+		if ( *at != L'@' || count == 0 )
+			return;
+
+		wchar_t result [ 200 ];
+		int32_t length = 0;
+
+		auto add = [ & ] ( const wchar_t* text, int32_t size ) {
+
+			for ( int32_t i = 0; i < size && length < 190; i++ )
+				result [ length++ ] = text [ i ];
+
+		};
+
+		for ( int32_t i = count - 1; i >= 1; i-- ) {
+
+			add ( parts [ i ], sizes [ i ] );
+			add ( L"::", 2 );
+
+		}
+
+		if ( special == 2 )
+			add ( L"~", 1 );
+
+		if ( special && count >= 2 )
+			add ( parts [ 1 ], sizes [ 1 ] );
+		else
+			add ( parts [ 0 ], sizes [ 0 ] );
+
+		if ( special && count == 1 ) {
+
+			add ( L"::", 2 );
+
+			if ( special == 2 )
+				add ( L"~", 1 );
+
+			add ( parts [ 0 ], sizes [ 0 ] );
+
+		}
+
+		result [ length ] = 0;
+
+		for ( int32_t i = 0; i <= length; i++ )
+			name [ i ] = result [ i ];
+
+	}
+
 	struct emitter {
 
 		builder& b;
@@ -1122,6 +1215,8 @@ namespace decompiler {
 
 			if ( address != b.file->base && b.names->name ( address, true, text, 200 ) ) {
 
+				short_symbol ( text );
+
 				bool code = b.db->function_starting ( address ) >= 0;
 
 				if ( code ) {
@@ -1449,6 +1544,7 @@ namespace decompiler {
 						int32_t callee = b.db->function_starting ( target );
 						bool imported = callee < 0 || ( b.db->functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK );
 
+						short_symbol ( name );
 						out.put ( name, imported ? syntax::IMPORT : syntax::FUNCTION, target );
 
 					} else if ( target )
@@ -4446,6 +4542,8 @@ namespace decompiler {
 
 		if ( !b.names->name ( b.function, true, name, 300 ) )
 			name [ 0 ] = 0;
+
+		short_symbol ( name );
 
 		if ( b.long_mode && b.params > 0 && !( b.has_prototype && b.prototype.variadic ) )
 			head.out.put ( L"__fastcall ", syntax::KEYWORD );
