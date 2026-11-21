@@ -233,16 +233,22 @@ print(decompile("fn_140012A40"));
 
 | Function | Result |
 | --- | --- |
-| `debug_start()` | Starts the open executable under the debugger. Breakpoints are set first |
-| `debug_state()` | `"idle"`, `"running"`, `"paused"`, `"exited"` or `"failed"`. Works with nothing open |
+| `debug_start()` | Starts the open executable under the debugger and stops at its entry point. For a DLL it starts the host from `debug_command()`, or `rundll32` with the first export, and stops at the DLL's entry point |
+| `debug_attach([process])` | Attaches to a running process by ID (as text) or name. Without one it attaches to the process running the open file. Works with nothing open only if a file is open |
+| `debug_detach()` | Lets an attached process keep running without the debugger |
+| `debug_command()`, `set_debug_command(text)` | Arguments for an executable, or `"host.exe arguments"` for a DLL |
+| `debug_state()`, `debug_note()` | `"idle"`, `"running"`, `"paused"`, `"exited"` or `"failed"`, and why it last stopped, like `"Breakpoint hit"`. Work with nothing open |
 | `debug_wait([ms])` | Waits until the process pauses or ends, up to `ms` (10 seconds if left out), and gives the state |
-| `debug_continue()`, `debug_step_into()`, `debug_step_over()` | Resume or step a paused process. Steps wait for the new state |
-| `debug_pause()`, `debug_stop()` | Break into or end the process |
+| `debug_continue()`, `debug_step_into()`, `debug_step_over()`, `debug_step_out()` | Resume or step a paused process. Steps wait for the new state |
+| `debug_run_to(a)` | Runs until `a`, like F4 |
+| `debug_pause()`, `debug_stop()` | Break into or end the process. `debug_stop` waits until it has exited |
 | `pc()`, `register(name)`, `registers()` | While paused: the instruction pointer, one register, or `[name, value]` for each |
-| `debug_read(a, n)` | Reads `n` bytes of the live process. Image addresses are moved to where the image is loaded |
+| `debug_read(a, n)`, `debug_write(a, bytes)` | Reads or writes live memory while paused. Image addresses are moved to where the image is loaded, and breakpoint bytes never show |
 | `debug_evaluate(text)` | Evaluates a watch expression like `"[rsp+8]"` or `"rcx+0x10"` |
+| `debug_modules()`, `processes()` | `[path, base, size]` for every loaded module, and `[id, name]` for every running process |
 | `breakpoints()`, `add_breakpoint(a [, condition])`, `del_breakpoint(a)` | Breakpoints, optionally conditional |
 | `condition(a)`, `set_condition(a, text)` | Breakpoint conditions like `"rax == 0"` or `"rcx > 0x10"`. Setting one adds the breakpoint |
+| `set_hardware_breakpoint(a [, "x" or "w 4" or "rw 8"])`, `del_hardware_breakpoint(a)`, `hardware_breakpoints()` | Up to four debug-register breakpoints that stop on execution, writes or any access, without touching the code |
 
 ```c
 add_breakpoint(entry());
