@@ -810,7 +810,7 @@ namespace ui {
 
 			length = 0;
 
-			for ( int32_t k = 0; k < item.indent * 4 && length < 1000; k++ )
+			for ( int32_t k = 0; k < item.indent * metric::code_indent && length < 1000; k++ )
 				text [ length++ ] = L' ';
 
 			for ( int32_t k = 0; k < item.length && length < 1000; k++ )
@@ -879,7 +879,7 @@ namespace ui {
 			if ( code && now->code_line >= 0 && now->code_line < code->lines.count ( ) ) {
 
 				const decompiler::line& item = code->lines [ static_cast < size_t > ( now->code_line ) ];
-				int32_t column = now->code_col - item.indent * 4;
+				int32_t column = now->code_col - item.indent * metric::code_indent;
 
 				for ( int32_t s = 0; s < item.span_count; s++ ) {
 

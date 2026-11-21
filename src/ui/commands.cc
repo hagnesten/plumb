@@ -1329,8 +1329,8 @@ namespace ui {
 
 				for ( const decompiler::line& item : code->lines ) {
 
-					for ( int32_t i = 0; i < item.indent; i++ )
-						text.push ( L'\t' );
+					for ( int32_t i = 0; i < item.indent * metric::code_indent; i++ )
+						text.push ( L' ' );
 
 					for ( int32_t i = 0; i < item.length; i++ )
 						text.push ( code->text [ static_cast < size_t > ( item.text + i ) ] );

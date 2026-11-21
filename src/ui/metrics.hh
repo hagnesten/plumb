@@ -8,6 +8,7 @@ namespace ui::metric {
 	constexpr float rail = 36.0f;
 	constexpr float rail_slot = 34.0f;
 	constexpr float code_row = 17.0f;
+	constexpr int32_t code_indent = 2;
 	constexpr float list_row = 20.0f;
 	constexpr float log_row = 16.0f;
 	constexpr float menu_row = 24.0f;

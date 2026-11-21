@@ -140,7 +140,7 @@ namespace ui {
 			return false;
 
 		const decompiler::line& item = code->lines [ static_cast < size_t > ( now->code_line ) ];
-		int32_t column = now->code_col - item.indent * 4;
+		int32_t column = now->code_col - item.indent * metric::code_indent;
 
 		for ( int32_t s = 0; s < item.span_count; s++ ) {
 

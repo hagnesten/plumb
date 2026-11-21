@@ -32,7 +32,7 @@ namespace ui {
 			return false;
 
 		const decompiler::line& item = code->lines [ static_cast < size_t > ( now->code_line ) ];
-		int32_t column = now->code_col - item.indent * 4;
+		int32_t column = now->code_col - item.indent * metric::code_indent;
 
 		for ( int32_t s = 0; s < item.span_count; s++ ) {
 
@@ -112,7 +112,7 @@ namespace ui {
 
 			const decompiler::line& item = code->lines [ static_cast < size_t > ( row ) ];
 
-			if ( number_in_line ( *code, item, col - item.indent * 4, key, value, hex_now ) )
+			if ( number_in_line ( *code, item, col - item.indent * metric::code_indent, key, value, hex_now ) )
 				return true;
 
 		}

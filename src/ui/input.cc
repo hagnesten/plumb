@@ -722,7 +722,7 @@ namespace ui {
 					wchar_t text [ 1024 ];
 					int32_t length = 0;
 
-					for ( int32_t k = 0; k < item.indent * 4 && length < 1000; k++ )
+					for ( int32_t k = 0; k < item.indent * metric::code_indent && length < 1000; k++ )
 						text [ length++ ] = L' ';
 
 					for ( int32_t k = 0; k < item.length && length < 1000; k++ )
