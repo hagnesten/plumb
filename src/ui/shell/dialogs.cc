@@ -381,4 +381,54 @@ namespace ui {
 
 	}
 
+	void app::draw_discard ( ) {
+
+		settle ( discard_show, discard_open ? 1.0f : 0.0f );
+
+		float show = math::saturate ( discard_show );
+
+		if ( show <= 0.004f )
+			return;
+
+		render::canvas& c = canvas;
+		uint64_t blocker = make_id ( "discard_blocker" );
+		widget& block = state ( blocker );
+
+		interact ( blocker, math::rect ( 0.0f, 0.0f, w, h ), block );
+		c.fill ( math::rect ( 0.0f, 0.0f, w, h ), 0.0f, ink ( tone::SHADOW ).fade ( 0.45f * show ) );
+
+		math::rect box ( math::floor ( w * 0.5f - 280.0f ), math::floor ( h * 0.5f - 86.0f ), 560.0f, 172.0f );
+
+		c.push ( box.center ( ), 1.0f, show );
+		c.shadow ( box, metric::radius, 14.0f, ink ( tone::SHADOW ).fade ( 0.7f ), math::vec2 ( 0.0f, 4.0f ) );
+		c.outline ( box, metric::radius, ink ( tone::RAISED ), 1.0f, ink ( tone::LINE_STRONG ) );
+
+		uint64_t surface = make_id ( "discard_surface" );
+		widget& surface_state = state ( surface );
+
+		interact ( surface, box, surface_state );
+
+		c.icon ( icons::WARNING, math::vec2 ( box.x + 36.0f, box.y + 36.0f ), 18.0f, ink ( tone::WARNING ) );
+		c.text ( L"Save your changes?", render::font::HEADING, math::vec2 ( box.x + 60.0f, box.y + 36.0f ), ink ( tone::INK ) );
+
+		base::writer detail;
+
+		detail.add ( L"Names, comments and types in " ).add ( file.name.get ( ) ).add ( L" aren't saved to the project yet." );
+		c.text ( detail.text ( ), render::font::UI, math::vec2 ( box.x + 60.0f, box.y + 70.0f ), ink ( tone::INK_SOFT ), render::align::LEFT, box.w - 84.0f );
+
+		float buttons_y = box.bottom ( ) - 50.0f;
+		float right = box.right ( ) - 24.0f;
+		bool save = button ( make_id ( "discard_save" ), math::rect ( right - 96.0f, buttons_y, 96.0f, 30.0f ), L"Save", 0, true );
+		bool drop = button ( make_id ( "discard_drop" ), math::rect ( right - 216.0f, buttons_y, 112.0f, 30.0f ), L"Don't save", 0, false );
+		bool cancel = button ( make_id ( "discard_cancel" ), math::rect ( right - 320.0f, buttons_y, 96.0f, 30.0f ), L"Cancel", 0, false );
+
+		c.pop ( );
+
+		if ( cancel )
+			discard_open = false;
+		else if ( save || drop )
+			finish_discard ( save );
+
+	}
+
 }

@@ -294,7 +294,9 @@ namespace ui {
 
 			if ( code == VK_ESCAPE ) {
 
-				if ( menu_open >= 0 )
+				if ( discard_open )
+					discard_open = false;
+				else if ( menu_open >= 0 )
 					menu_open = -1;
 				else if ( colors_open && !focused_field )
 					close_colors ( false );
@@ -337,6 +339,15 @@ namespace ui {
 					palette_pick++;
 				else if ( code == VK_UP )
 					palette_pick--;
+
+				continue;
+
+			}
+
+			if ( discard_open ) {
+
+				if ( code == VK_RETURN )
+					finish_discard ( true );
 
 				continue;
 

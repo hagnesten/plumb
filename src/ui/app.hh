@@ -684,7 +684,9 @@ namespace ui {
 
 		void changed ( );
 
-		bool confirm_discard ( );
+		bool confirm_discard ( int32_t next, const wchar_t* path );
+
+		void finish_discard ( bool save );
 
 		int32_t struct_named ( const wchar_t* name ) const;
 
@@ -936,6 +938,10 @@ namespace ui {
 		bool font_fields_ready = false;
 		uint32_t custom_colors [ 2 ] [ static_cast < int32_t > ( tone::COUNT ) ] = { };
 		bool custom_set [ 2 ] [ static_cast < int32_t > ( tone::COUNT ) ] = { };
+		bool discard_open = false;
+		float discard_show = 0.0f;
+		int32_t discard_next = 0;
+		base::text discard_path;
 		bool colors_open = false;
 		float colors_show = 0.0f;
 		int32_t colors_tab = 0;
@@ -1260,6 +1266,8 @@ namespace ui {
 		void draw_settings ( );
 
 		void draw_colors ( );
+
+		void draw_discard ( );
 
 		void open_colors ( );
 

@@ -481,32 +481,41 @@ namespace ui {
 
 	}
 
-	bool app::confirm_discard ( ) {
+	bool app::confirm_discard ( int32_t next, const wchar_t* path ) {
 
-		if ( !dirty || !file.loaded ( ) || !window || !persist )
+		if ( !dirty || !file.loaded ( ) || !persist )
 			return true;
 
-		base::writer question;
+		discard_open = true;
+		discard_next = next;
+		discard_path.set ( path ? path : L"" );
+		pending = base::max ( pending, 3 );
 
-		question.add ( L"Save your changes to " ).add ( file.name.get ( ) ).add ( L" before closing it?" );
+		return false;
 
-		int answer = MessageBoxW ( static_cast < HWND > ( window ), question.text ( ), L"Plumb", MB_YESNOCANCEL | MB_ICONWARNING );
+	}
 
-		if ( answer == IDCANCEL )
-			return false;
+	void app::finish_discard ( bool save ) {
 
-		if ( answer == IDYES )
+		discard_open = false;
+
+		if ( save )
 			run ( command::SAVE_PROJECT );
 
 		dirty = false;
 
-		return true;
+		if ( discard_next == 1 )
+			pending_request = request::CLOSE;
+		else if ( discard_next == 2 && !discard_path.empty ( ) )
+			open_file ( discard_path.get ( ) );
+		else
+			close_file ( );
 
 	}
 
 	bool app::can_close ( ) {
 
-		return confirm_discard ( );
+		return confirm_discard ( 1, nullptr );
 
 	}
 

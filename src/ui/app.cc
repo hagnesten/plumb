@@ -891,6 +891,7 @@ namespace ui {
 		draw_settings ( );
 		draw_colors ( );
 		draw_prompt ( );
+		draw_discard ( );
 		draw_signature ( );
 		draw_tip ( );
 

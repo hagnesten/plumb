@@ -1125,7 +1125,7 @@ namespace ui {
 
 		}
 
-		if ( !confirm_discard ( ) )
+		if ( !confirm_discard ( 2, from_project.empty ( ) ? path : from_project.get ( ) ) )
 			return false;
 
 		close_file ( );

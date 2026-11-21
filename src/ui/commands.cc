@@ -297,7 +297,7 @@ namespace ui {
 
 			case command::CLOSE:
 
-				if ( confirm_discard ( ) )
+				if ( confirm_discard ( 0, nullptr ) )
 					close_file ( );
 
 				break;
