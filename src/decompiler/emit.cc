@@ -174,6 +174,8 @@ namespace decompiler {
 		int32_t result_var = -1;
 		bool inline_mode = false;
 		bool ended = false;
+		bool bare_unsigned = false;
+		bool explicit_zero = false;
 		base::list < uint8_t > hidden;
 		base::list < int8_t > loop_letter;
 		int32_t next_letter = 0;
@@ -640,6 +642,45 @@ namespace decompiler {
 
 		}
 
+		uint64_t shape_target = 0;
+		bool shape_ok = false;
+		c_prototype* shape = nullptr;
+
+		~emitter ( ) {
+
+			delete shape;
+
+		}
+
+		bool callee_unsigned ( uint64_t target, int32_t index ) {
+
+			if ( !target || !b.names )
+				return false;
+
+			if ( target != shape_target ) {
+
+				shape_target = target;
+				shape_ok = false;
+
+				const wchar_t* declared = b.names->prototype ( target );
+
+				if ( declared ) {
+
+					if ( !shape )
+						shape = new c_prototype ( );
+
+					base::writer problem;
+
+					shape_ok = parse_prototype ( declared, b.long_mode, *shape, problem );
+
+				}
+
+			}
+
+			return shape_ok && index < shape->count && ( shape->params [ index ].bits & UNSIGNED ) && !shape->params [ index ].pointer;
+
+		}
+
 		void number ( int64_t value, uint8_t size, bool hex_form, bool is_unsigned ) {
 
 			wchar_t text [ 80 ];
@@ -647,15 +688,18 @@ namespace decompiler {
 			bool negative = value < 0 && !( size < 8 && value > 0 );
 			uint64_t magnitude = negative ? static_cast < uint64_t > ( -value ) : static_cast < uint64_t > ( value );
 
-			if ( negative && ( is_unsigned || ( magnitude > 0x100000000ull && hex_form ) ) ) {
+			if ( negative && ( is_unsigned || bare_unsigned || ( magnitude > 0x100000000ull && hex_form ) ) ) {
 
 				negative = false;
 				magnitude = size >= 8 ? static_cast < uint64_t > ( value ) : static_cast < uint64_t > ( value ) & ( ( 1ull << ( size * 8 ) ) - 1 );
 
 			}
 
-			bool fits = negative ? magnitude <= 0x80000000ull : magnitude <= ( is_unsigned ? 0xFFFFFFFFull : 0x7FFFFFFFull );
-			bool unsigned_suffix = is_unsigned && !negative;
+			if ( bare_unsigned && magnitude > 9 )
+				hex_form = true;
+
+			bool fits = negative ? magnitude <= 0x80000000ull : magnitude <= ( is_unsigned || bare_unsigned ? 0xFFFFFFFFull : 0x7FFFFFFFull );
+			bool unsigned_suffix = is_unsigned && !negative && !bare_unsigned;
 			int32_t occurrence = next_occurrence ( value );
 			wchar_t form = b.names && !dry ? b.names->number_form ( out.open ? out.current.address : 0, value, occurrence ) : 0;
 
@@ -1048,7 +1092,7 @@ namespace decompiler {
 				const expr& zero = b.exprs [ static_cast < size_t > ( item.b ) ];
 				const expr& tested = b.exprs [ static_cast < size_t > ( item.a ) ];
 
-				if ( zero.kind == op::CONST && zero.value == 0 && !( zero.bits & POINTER ) && !( tested.bits & FLOATING ) ) {
+				if ( zero.kind == op::CONST && zero.value == 0 && !( zero.bits & POINTER ) && !( tested.bits & FLOATING ) && !explicit_zero ) {
 
 					if ( item.kind == op::NE ) {
 
@@ -1184,7 +1228,11 @@ namespace decompiler {
 
 						}
 
+						bool unsigned_slot = passed.kind == op::CONST && passed.value < -9 && passed.size <= 4 && callee_unsigned ( target, i );
+
+						bare_unsigned = unsigned_slot;
 						value ( argument, 2 );
+						bare_unsigned = false;
 
 					}
 
@@ -1277,13 +1325,30 @@ namespace decompiler {
 					value ( item.a, 14 );
 					break;
 
-				case op::TERNARY:
+				case op::TERNARY: {
+
+					auto arm = [ & ] ( int32_t e, int32_t level ) {
+
+						const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+						bare_unsigned = node.kind == op::CONST && node.size == 4 && node.value < -9;
+						value ( e, level );
+						bare_unsigned = false;
+
+					};
+
+					const expr& test = b.exprs [ static_cast < size_t > ( item.a ) ];
+
+					explicit_zero = test.kind == op::EQ || test.kind == op::NE;
 					value ( item.a, 4 );
+					explicit_zero = false;
 					out.put ( L" ? ", syntax::OPERATOR );
-					value ( item.b, 4 );
+					arm ( item.b, 4 );
 					out.put ( L" : ", syntax::OPERATOR );
-					value ( item.c, 3 );
+					arm ( item.c, 3 );
 					break;
+
+				}
 
 				default: {
 
