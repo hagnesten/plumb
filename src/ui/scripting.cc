@@ -120,6 +120,9 @@ namespace ui {
 
 		source.push ( 0 );
 
+		if ( last_script.get ( ) != path )
+			last_script.set ( path );
+
 		return run_script_text ( source.data ( ), path, capture );
 
 	}

@@ -98,7 +98,9 @@ namespace ui {
 		{ L"Collapse local declarations", L"Ctrl+Num -" },
 		{ L"Name virtual functions by vtable slot", L"" },
 		{ L"Settings", L"Ctrl+," },
-		{ L"Colors", L"Ctrl+Shift+," }
+		{ L"Colors", L"Ctrl+Shift+," },
+		{ L"Run script file", L"Alt+F7" },
+		{ L"Run the last script again", L"Ctrl+F7" }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -754,6 +756,19 @@ namespace ui {
 					close_colors ( false );
 				else
 					open_colors ( );
+
+				break;
+
+			case command::RUN_SCRIPT:
+				pending_request = request::SCRIPT;
+				break;
+
+			case command::RERUN_SCRIPT:
+
+				if ( last_script.empty ( ) )
+					log ( log_kind::WARN, L"No script has run yet. Alt+F7 picks one." );
+				else
+					run_script_file ( last_script.get ( ), nullptr );
 
 				break;
 
@@ -1421,9 +1436,37 @@ namespace ui {
 		uint64_t address = 0;
 
 		if ( base::same_text ( word, L"help" ) )
-			log ( log_kind::INFO, L"Commands: go <address|name>, entry, back, forward, section <name>, view <asm|c|hex|headers|calls>, find <pattern>, search <text|#value|c:text>, functions where <calls X|calledby X|refs text|name X|size > N|callers > N|thunk|leaf|named|noted> [and ...], asm <instruction>, patch <hex bytes>, revert, xor <key|auto>, sig, rename <name>, comment <text>, split, theme <light|dark>, open, close, clear" );
+			log ( log_kind::INFO, L"Commands: run <file.psc>, psc <script>, go <address|name>, entry, back, forward, section <name>, view <asm|c|hex|headers|calls>, find <pattern>, search <text|#value|c:text>, functions where <calls X|calledby X|refs text|name X|size > N|callers > N|thunk|leaf|named|noted> [and ...], asm <instruction>, patch <hex bytes>, revert, xor <key|auto>, sig, rename <name>, comment <text>, split, theme <light|dark>, open, close, clear" );
 		else if ( base::same_text ( word, L"clear" ) )
 			output.clear ( );
+		else if ( base::same_text ( word, L"run" ) ) {
+
+			if ( rest [ 0 ] == L'"' ) {
+
+				rest++;
+
+				for ( wchar_t* c = rest; *c; c++ ) {
+
+					if ( *c == L'"' )
+						*c = 0;
+
+				}
+
+			}
+
+			if ( rest [ 0 ] )
+				run_script_file ( rest, nullptr );
+			else
+				run ( command::RUN_SCRIPT );
+
+		} else if ( base::same_text ( word, L"psc" ) ) {
+
+			if ( rest [ 0 ] )
+				run_script_text ( rest, L"command line", nullptr );
+			else
+				log ( log_kind::WARN, L"Type Plumb Script after psc, like  psc print(hex(here()))" );
+
+		}
 		else if ( base::same_text ( word, L"open" ) )
 			run ( command::OPEN );
 		else if ( base::same_text ( word, L"close" ) )

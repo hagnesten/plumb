@@ -279,6 +279,10 @@ namespace ui {
 
 				if ( code == VK_F9 )
 					run ( key_shift && !debugger::active ( ) ? command::DEBUG_COVERAGE : command::DEBUG_RUN );
+				else if ( code == VK_F7 && key_alt )
+					run ( command::RUN_SCRIPT );
+				else if ( code == VK_F7 && key_control )
+					run ( command::RERUN_SCRIPT );
 				else if ( code == VK_F7 )
 					run ( command::DEBUG_STEP_INTO );
 				else if ( code == VK_F8 )

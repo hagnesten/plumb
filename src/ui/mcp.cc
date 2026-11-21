@@ -34,7 +34,8 @@ namespace ui {
 		{ "set_prototype", "Set a function's C prototype, like int __fastcall parse(char* text, int length). The C view and callers use it.", "{\"type\":\"object\",\"properties\":{\"function\":{\"type\":\"string\"},\"prototype\":{\"type\":\"string\"}},\"required\":[\"function\",\"prototype\"]}" },
 		{ "compare_with", "Compare the open file with another build of it. Lists functions that changed, exist only here, or exist only in the other file.", "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Full path to the other build\"},\"show_same\":{\"type\":\"boolean\"}},\"required\":[\"path\"]}" },
 		{ "emulate", "Run a function in Plumb's x86 emulator without starting the program. Reports the result, the imports it calls and any readable strings it writes, which recovers decrypted strings. Decoded strings become comments.", "{\"type\":\"object\",\"properties\":{\"function\":{\"type\":\"string\"},\"registers\":{\"type\":\"string\",\"description\":\"Optional starting registers like rcx=0x40 rdx=5\"}},\"required\":[\"function\"]}" },
-		{ "save_project", "Save names, comments, notes, types and patches to the .plumb project beside the binary.", "{\"type\":\"object\",\"properties\":{}}" }
+		{ "save_project", "Save names, comments, notes, types and patches to the .plumb project beside the binary.", "{\"type\":\"object\",\"properties\":{}}" },
+		{ "run_script", "Run Plumb Script (.psc), a C-like scripting language with Plumb's API: functions(), name(a), set_name(a, n), refs_to(a), instruction(a), decompile(f), bytes(a, n), find_bytes(p) and more. Returns everything the script prints, or the error with its line.", "{\"type\":\"object\",\"properties\":{\"source\":{\"type\":\"string\",\"description\":\"Script text\"},\"path\":{\"type\":\"string\",\"description\":\"Or the full path of a .psc file\"}}}" }
 	};
 
 	struct mcp_text {
@@ -238,6 +239,58 @@ namespace ui {
 				analysis_finished ( );
 
 			return mcp_call ( "binary_info", nullptr, out );
+
+		}
+
+		if ( base::same_text ( name, "run_script" ) ) {
+
+			const json::value* given = args ? args->get ( "source" ) : nullptr;
+			base::list < wchar_t > captured;
+			bool ok = false;
+
+			if ( given && given->kind == json::type::STRING ) {
+
+				const char* utf8 = given->string ( );
+				int32_t length = 0;
+
+				while ( utf8 [ length ] )
+					length++;
+
+				base::list < wchar_t > source;
+				int32_t made = length ? MultiByteToWideChar ( CP_UTF8, 0, utf8, length, nullptr, 0 ) : 0;
+
+				source.resize ( static_cast < size_t > ( made + 1 ) );
+
+				if ( made )
+					MultiByteToWideChar ( CP_UTF8, 0, utf8, length, source.data ( ), made );
+
+				source [ static_cast < size_t > ( made ) ] = 0;
+				ok = run_script_text ( source.data ( ), L"mcp", &captured );
+
+			} else {
+
+				text_arg ( args, "path", buffer, 1024 );
+
+				if ( !buffer [ 0 ] ) {
+
+					problem.add ( L"Give the script as source, or the path of a .psc file." );
+
+					return finish ( false );
+
+				}
+
+				ok = run_script_file ( buffer, &captured );
+
+			}
+
+			text.out = base::move ( captured );
+
+			if ( text.out.empty ( ) )
+				text.line ( ok ? L"The script ran and printed nothing." : L"The script failed." );
+
+			out = base::move ( text.out );
+
+			return ok;
 
 		}
 

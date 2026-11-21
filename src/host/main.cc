@@ -254,17 +254,23 @@ static void render_main ( ) {
 			break;
 
 		case ui::request::OPEN:
-		case ui::request::COMPARE: {
+		case ui::request::COMPARE:
+		case ui::request::SCRIPT: {
 
 			IFileOpenDialog* dialog = nullptr;
 
 			if ( SUCCEEDED ( CoCreateInstance ( CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS ( &dialog ) ) ) ) {
 
 				COMDLG_FILTERSPEC kinds [ 4 ] = { { L"Executables and libraries", L"*.exe;*.dll;*.sys;*.ocx;*.cpl;*.scr;*.efi" }, { L"Plumb projects", L"*.plumb" }, { L"Object and data files", L"*.obj;*.bin;*.dat;*.rom" }, { L"All files", L"*.*" } };
+				COMDLG_FILTERSPEC scripts [ 2 ] = { { L"Plumb scripts", L"*.psc" }, { L"All files", L"*.*" } };
 				IShellItem* picked = nullptr;
 
-				dialog->SetFileTypes ( 4, kinds );
-				dialog->SetTitle ( asked == ui::request::COMPARE ? L"Compare with another build" : L"Open a binary" );
+				if ( asked == ui::request::SCRIPT )
+					dialog->SetFileTypes ( 2, scripts );
+				else
+					dialog->SetFileTypes ( 4, kinds );
+
+				dialog->SetTitle ( asked == ui::request::COMPARE ? L"Compare with another build" : ( asked == ui::request::SCRIPT ? L"Run a Plumb script" : L"Open a binary" ) );
 
 				if ( SUCCEEDED ( dialog->Show ( main_window ) ) && SUCCEEDED ( dialog->GetResult ( &picked ) ) ) {
 
@@ -274,6 +280,8 @@ static void render_main ( ) {
 
 						if ( asked == ui::request::COMPARE )
 							program->compare_with ( path );
+						else if ( asked == ui::request::SCRIPT )
+							program->run_script_file ( path, nullptr );
 						else
 							program->open_file ( path );
 
@@ -558,8 +566,21 @@ static LRESULT __stdcall procedure ( HWND window, UINT message, WPARAM wide, LPA
 			HDROP drop = reinterpret_cast < HDROP > ( wide );
 			wchar_t path [ 1024 ];
 
-			if ( DragQueryFileW ( drop, 0, path, 1024 ) )
-				program->open_file ( path );
+			if ( DragQueryFileW ( drop, 0, path, 1024 ) ) {
+
+				int32_t length = 0;
+
+				while ( path [ length ] )
+					length++;
+
+				bool script_file = length > 4 && path [ length - 4 ] == L'.' && ( path [ length - 3 ] | 32 ) == L'p' && ( path [ length - 2 ] | 32 ) == L's' && ( path [ length - 1 ] | 32 ) == L'c';
+
+				if ( script_file )
+					program->run_script_file ( path, nullptr );
+				else
+					program->open_file ( path );
+
+			}
 
 			DragFinish ( drop );
 			SetForegroundWindow ( window );
