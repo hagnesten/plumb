@@ -600,6 +600,11 @@ namespace ui {
 
 					continue;
 
+				case VK_OEM_2:
+				case VK_DIVIDE:
+					run ( command::COMMENT );
+					continue;
+
 				case VK_SUBTRACT:
 				case VK_ADD:
 
