@@ -1428,7 +1428,7 @@ namespace ui {
 
 		}
 
-		int32_t slot = db->virtual_of ( item.start );
+		int32_t slot = name_virtuals ? db->virtual_of ( item.start ) : -1;
 
 		if ( slot >= 0 ) {
 

@@ -95,7 +95,9 @@ namespace ui {
 		{ L"Breakpoint condition", L"Shift+F2" },
 		{ L"Emulate function", L"Ctrl+Alt+E" },
 		{ L"Hide casts in C", L"\\" },
-		{ L"Collapse local declarations", L"Ctrl+Num -" }
+		{ L"Collapse local declarations", L"Ctrl+Num -" },
+		{ L"Name virtual functions by vtable slot", L"" },
+		{ L"Settings", L"Ctrl+," }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -123,6 +125,8 @@ namespace ui {
 			case command::THEME:
 			case command::SHORTCUTS:
 			case command::ABOUT:
+			case command::SETTINGS:
+			case command::NAME_VIRTUALS:
 				return true;
 
 			case command::BACK:
@@ -253,6 +257,9 @@ namespace ui {
 
 			case command::COLLAPSE_LOCALS:
 				return c_collapse_locals;
+
+			case command::NAME_VIRTUALS:
+				return name_virtuals;
 
 			case command::DEBUG_BREAKPOINT:
 				return is_breakpoint ( now->cursor_address );
@@ -726,6 +733,17 @@ namespace ui {
 			case command::COLLAPSE_LOCALS:
 				c_collapse_locals = !c_collapse_locals;
 				names_revision++;
+				break;
+
+			case command::NAME_VIRTUALS:
+				name_virtuals = !name_virtuals;
+				names_revision++;
+				annotation_revision++;
+				log ( log_kind::INFO, name_virtuals ? L"Virtual functions are named Class::vfunc_N and calls through a vtable show their slot." : L"Virtual functions keep plain fn_ names." );
+				break;
+
+			case command::SETTINGS:
+				settings_open = !settings_open;
 				break;
 
 			case command::SEARCH_ALL:

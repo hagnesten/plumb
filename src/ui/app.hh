@@ -214,6 +214,8 @@ namespace ui {
 		EMULATE,
 		HIDE_CASTS,
 		COLLAPSE_LOCALS,
+		NAME_VIRTUALS,
+		SETTINGS,
 		COUNT,
 
 	};
@@ -269,6 +271,13 @@ namespace ui {
 		uint64_t id;
 		math::rect area;
 		hit kind;
+
+	};
+
+	struct sample_token {
+
+		const wchar_t* text;
+		tone kind;
 
 	};
 
@@ -916,6 +925,19 @@ namespace ui {
 		bool about_open = false;
 		float about_show = 0.0f;
 		bool keys_open = false;
+		bool settings_open = false;
+		float settings_show = 0.0f;
+		wchar_t font_names [ 3 ] [ 64 ] = { };
+		float font_sizes [ 3 ] = { };
+		bool fonts_dirty = false;
+		field font_fields [ 3 ];
+		uint32_t font_seen [ 3 ] = { };
+		bool font_fields_ready = false;
+		uint32_t custom_colors [ 2 ] [ static_cast < int32_t > ( tone::COUNT ) ] = { };
+		bool custom_set [ 2 ] [ static_cast < int32_t > ( tone::COUNT ) ] = { };
+		field tone_fields [ 32 ];
+		uint32_t tone_seen [ 32 ] = { };
+		int32_t tone_fields_theme = -1;
 		float keys_show = 0.0f;
 
 		bool prompt_open = false;
@@ -985,6 +1007,7 @@ namespace ui {
 		bool c_no_ternary = false;
 		bool c_hide_casts = false;
 		bool c_collapse_locals = false;
+		bool name_virtuals = true;
 		math::vec2 code_menu_at;
 		int32_t code_hover_line = -1;
 		int32_t code_hover_col = -1;
@@ -1222,6 +1245,16 @@ namespace ui {
 
 		void draw_dialogs ( );
 
+		void draw_settings ( );
+
+		void apply_fonts ( );
+
+		uint32_t tone_hex ( tone value, bool bright ) const;
+
+		bool settings_check ( uint64_t id, math::rect area, const wchar_t* label, bool value );
+
+		void draw_sample ( math::rect area, const sample_token* tokens, int32_t count, render::font role, float advance );
+
 		void draw_prompt ( );
 
 		void draw_signature ( );
@@ -1253,6 +1286,14 @@ namespace ui {
 		void key_cap ( math::vec2 at, const wchar_t* keys, render::color tint, bool right );
 
 	};
+
+	int32_t tone_choice_count ( );
+
+	tone tone_choice ( int32_t index );
+
+	const char* tone_choice_key ( int32_t index );
+
+	const wchar_t* tone_choice_label ( int32_t index );
 
 	const wchar_t* command_label ( command action );
 

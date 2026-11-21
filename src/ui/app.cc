@@ -61,12 +61,44 @@ namespace ui {
 
 		for ( int32_t i = 0; i < static_cast < int32_t > ( tone::COUNT ); i++ ) {
 
-			render::color dark = render::rgb ( dark_tones [ i ], tone_alpha [ i ] [ 0 ] );
-			render::color bright = render::rgb ( light_tones [ i ], tone_alpha [ i ] [ 1 ] );
+			render::color dark = render::rgb ( custom_set [ 0 ] [ i ] ? custom_colors [ 0 ] [ i ] : dark_tones [ i ], tone_alpha [ i ] [ 0 ] );
+			render::color bright = render::rgb ( custom_set [ 1 ] [ i ] ? custom_colors [ 1 ] [ i ] : light_tones [ i ], tone_alpha [ i ] [ 1 ] );
 
 			tones [ i ] = render::mix ( dark, bright, t );
 
 		}
+
+	}
+
+	uint32_t app::tone_hex ( tone value, bool bright ) const {
+
+		int32_t i = static_cast < int32_t > ( value );
+
+		if ( custom_set [ bright ? 1 : 0 ] [ i ] )
+			return custom_colors [ bright ? 1 : 0 ] [ i ];
+
+		return bright ? light_tones [ i ] : dark_tones [ i ];
+
+	}
+
+	void app::apply_fonts ( ) {
+
+		fonts_dirty = false;
+
+		if ( !gpu )
+			return;
+
+		for ( int32_t g = 0; g < 3; g++ ) {
+
+			for ( int32_t k = 0; k < 64; k++ )
+				gpu->font_names [ g ] [ k ] = font_names [ g ] [ k ];
+
+			gpu->font_sizes [ g ] = font_sizes [ g ];
+
+		}
+
+		gpu->set_fonts ( );
+		pending = base::max ( pending, 3 );
 
 	}
 
@@ -798,6 +830,10 @@ namespace ui {
 		if ( browser_open && browsing == panel::REFERENCES && file.loaded ( ) )
 			refresh_references ( );
 		update_theme ( );
+
+		if ( fonts_dirty )
+			apply_fonts ( );
+
 		layout ( );
 		canvas.begin ( gpu, dpi, math::vec2 ( 0.0f, 0.0f ), static_cast < float > ( clock ) );
 		canvas.fill ( math::rect ( 0.0f, 0.0f, w, h ), 0.0f, ink ( tone::BASE ) );
@@ -824,6 +860,7 @@ namespace ui {
 		draw_menu ( );
 		draw_palette ( );
 		draw_dialogs ( );
+		draw_settings ( );
 		draw_prompt ( );
 		draw_signature ( );
 		draw_tip ( );

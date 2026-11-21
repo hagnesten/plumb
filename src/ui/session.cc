@@ -987,6 +987,12 @@ namespace ui {
 
 		}
 
+		bool virtual_notes ( ) override {
+
+			return owner->name_virtuals;
+
+		}
+
 		wchar_t number_form ( uint64_t address, int64_t value ) override {
 
 			return owner->code_number_form ( address, value );

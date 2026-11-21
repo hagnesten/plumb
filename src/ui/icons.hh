@@ -6,6 +6,7 @@ namespace icons {
 
 	constexpr uint32_t MENU = 0xE700;
 	constexpr uint32_t ADD = 0xE710;
+	constexpr uint32_t REMOVE = 0xE738;
 	constexpr uint32_t CANCEL = 0xE711;
 	constexpr uint32_t MORE = 0xE712;
 	constexpr uint32_t SETTINGS = 0xE713;
