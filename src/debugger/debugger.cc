@@ -1,8 +1,19 @@
 #include "debugger/debugger.hh"
 #include "x86/x86.hh"
 #include <windows.h>
+#include <tlhelp32.h>
 
 namespace debugger {
+
+	enum class purpose : int32_t {
+
+		USER,
+		ENTRY,
+		STEP_OVER,
+		RUN_TO,
+		STEP_OUT,
+
+	};
 
 	struct breakpoint {
 
@@ -10,6 +21,7 @@ namespace debugger {
 		uint8_t original = 0;
 		bool armed = false;
 		bool temporary = false;
+		purpose use = purpose::USER;
 
 	};
 
@@ -41,24 +53,40 @@ namespace debugger {
 	static snapshot shared;
 	static volatile long pending = 0;
 	static volatile long wanted_serial = 0;
+	static volatile long hardware_serial = 0;
 	static base::list < uint64_t > wanted;
 	static base::list < base::text > messages;
 	static base::list < condition_entry > conditions;
 	static base::list < uint64_t > cover_wanted;
 	static base::list < uint64_t > cover_hits;
 	static base::list < cover_point > cover;
+	static base::list < module_info > loaded;
+	static hardware_point hardware_wanted [ 4 ];
 	static wchar_t target [ 600 ];
+	static wchar_t command_tail [ 1000 ];
+	static wchar_t module_name [ 260 ];
+	static uint32_t attach_id = 0;
 	static uint64_t entry = 0;
+	static uint64_t run_target = 0;
 	static bool wide_target = true;
 
 	static HANDLE process = nullptr;
+	static DWORD process_id = 0;
 	static base::list < thread_entry > threads;
 	static base::list < breakpoint > points;
+	static hardware_point hardware [ 4 ];
 	static uint64_t image_base = 0;
 	static uint64_t reinsert = 0;
 	static bool stepping = false;
+	static bool stepping_out = false;
+	static bool out_finishing = false;
+	static bool out_ignore_step = false;
+	static bool attach_announced = false;
+	static int64_t out_steps = 0;
 	static bool entry_reached = false;
+	static bool resume_flag = false;
 	static long synced_serial = -1;
+	static long hardware_synced = -1;
 
 	static const wchar_t* const names64 [ 18 ] = { L"RAX", L"RCX", L"RDX", L"RBX", L"RSP", L"RBP", L"RSI", L"RDI", L"R8", L"R9", L"R10", L"R11", L"R12", L"R13", L"R14", L"R15", L"RIP", L"RFLAGS" };
 	static const wchar_t* const names32 [ 18 ] = { L"EAX", L"ECX", L"EDX", L"EBX", L"ESP", L"EBP", L"ESI", L"EDI", L"", L"", L"", L"", L"", L"", L"", L"", L"EIP", L"EFLAGS" };
@@ -83,6 +111,36 @@ namespace debugger {
 
 	}
 
+	static void append_number ( wchar_t* note, int32_t& at, uint64_t value, bool hex ) {
+
+		static const wchar_t digits [ ] = L"0123456789ABCDEF";
+		wchar_t reverse [ 24 ];
+		int32_t n = 0;
+		uint64_t radix = hex ? 16 : 10;
+
+		do {
+
+			reverse [ n++ ] = digits [ value % radix ];
+			value /= radix;
+
+		} while ( value && n < 23 );
+
+		while ( n && at < 190 )
+			note [ at++ ] = reverse [ --n ];
+
+		note [ at ] = 0;
+
+	}
+
+	static void append_text ( wchar_t* note, int32_t& at, const wchar_t* text ) {
+
+		for ( ; *text && at < 190; text++ )
+			note [ at++ ] = *text;
+
+		note [ at ] = 0;
+
+	}
+
 	static HANDLE thread_handle ( DWORD id ) {
 
 		for ( const thread_entry& item : threads ) {
@@ -104,20 +162,98 @@ namespace debugger {
 
 	}
 
-	static bool write_byte ( uint64_t address, uint8_t value ) {
+	static bool write_memory ( uint64_t address, const void* data, size_t size ) {
 
 		SIZE_T done = 0;
 		DWORD old = 0;
 		void* at = reinterpret_cast < void* > ( address );
 
-		VirtualProtectEx ( process, at, 1, PAGE_EXECUTE_READWRITE, &old );
+		VirtualProtectEx ( process, at, size, PAGE_EXECUTE_READWRITE, &old );
 
-		bool ok = WriteProcessMemory ( process, at, &value, 1, &done ) && done == 1;
+		bool ok = WriteProcessMemory ( process, at, data, size, &done ) && done == size;
 
-		VirtualProtectEx ( process, at, 1, old, &old );
-		FlushInstructionCache ( process, at, 1 );
+		VirtualProtectEx ( process, at, size, old, &old );
+		FlushInstructionCache ( process, at, size );
 
 		return ok;
+
+	}
+
+	static bool write_byte ( uint64_t address, uint8_t value ) {
+
+		return write_memory ( address, &value, 1 );
+
+	}
+
+	static void path_of ( HANDLE file, wchar_t* out, int32_t room ) {
+
+		out [ 0 ] = 0;
+
+		if ( !file )
+			return;
+
+		wchar_t full [ 600 ];
+		DWORD length = GetFinalPathNameByHandleW ( file, full, 600, FILE_NAME_NORMALIZED );
+
+		if ( !length || length >= 600 )
+			return;
+
+		const wchar_t* from = full;
+
+		if ( full [ 0 ] == L'\\' && full [ 1 ] == L'\\' && full [ 2 ] == L'?' && full [ 3 ] == L'\\' )
+			from = full + 4;
+
+		int32_t k = 0;
+
+		for ( ; from [ k ] && k < room - 1; k++ )
+			out [ k ] = from [ k ];
+
+		out [ k ] = 0;
+
+	}
+
+	static const wchar_t* leaf_of ( const wchar_t* path ) {
+
+		const wchar_t* leaf = path;
+
+		for ( const wchar_t* at = path; *at; at++ ) {
+
+			if ( *at == L'\\' || *at == L'/' )
+				leaf = at + 1;
+
+		}
+
+		return leaf;
+
+	}
+
+	static uint64_t image_size ( uint64_t base ) {
+
+		uint8_t header [ 0x400 ] = { };
+
+		if ( !read_memory ( base, header, sizeof ( header ) ) )
+			return 0;
+
+		uint32_t pe = *reinterpret_cast < const uint32_t* > ( header + 0x3C );
+
+		if ( pe + 0x58 > sizeof ( header ) )
+			return 0;
+
+		return *reinterpret_cast < const uint32_t* > ( header + pe + 0x50 );
+
+	}
+
+	static void add_module ( uint64_t base, HANDLE file ) {
+
+		module_info item;
+
+		item.base = base;
+		item.size = image_size ( base );
+		path_of ( file, item.path, 300 );
+
+		AcquireSRWLockExclusive ( &lock );
+		loaded.push ( item );
+		ReleaseSRWLockExclusive ( &lock );
 
 	}
 
@@ -169,6 +305,19 @@ namespace debugger {
 			item.armed = true;
 
 			return;
+
+		}
+
+		for ( const breakpoint& other : points ) {
+
+			if ( &other != &item && other.armed && other.address == item.address ) {
+
+				item.original = other.original;
+				item.armed = true;
+
+				return;
+
+			}
 
 		}
 
@@ -250,26 +399,45 @@ namespace debugger {
 
 	}
 
+	static bool shared_trap ( const breakpoint& item ) {
+
+		for ( const breakpoint& other : points ) {
+
+			if ( &other != &item && other.armed && other.address == item.address )
+				return true;
+
+		}
+
+		return false;
+
+	}
+
 	static void disarm ( breakpoint& item ) {
 
 		if ( !item.armed )
 			return;
 
-		write_byte ( item.address, item.original );
+		if ( !shared_trap ( item ) )
+			write_byte ( item.address, item.original );
+
 		item.armed = false;
 
 	}
 
 	static int32_t find_point ( uint64_t address ) {
 
+		int32_t found = -1;
+
 		for ( int32_t i = 0; i < points.count ( ); i++ ) {
 
-			if ( points [ static_cast < size_t > ( i ) ].address == address )
-				return i;
+			const breakpoint& item = points [ static_cast < size_t > ( i ) ];
+
+			if ( item.address == address && ( found < 0 || ( item.armed && !points [ static_cast < size_t > ( found ) ].armed ) || ( item.temporary && !points [ static_cast < size_t > ( found ) ].temporary && item.armed ) ) )
+				found = i;
 
 		}
 
-		return -1;
+		return found;
 
 	}
 
@@ -317,7 +485,12 @@ namespace debugger {
 
 		for ( uint64_t address : copy ) {
 
-			if ( find_point ( address ) >= 0 )
+			bool present = false;
+
+			for ( const breakpoint& item : points )
+				present = present || ( item.address == address && !item.temporary );
+
+			if ( present )
 				continue;
 
 			breakpoint& item = points.emplace ( );
@@ -384,6 +557,9 @@ namespace debugger {
 			if ( trap )
 				context.EFlags |= 0x100;
 
+			if ( resume_flag )
+				context.EFlags |= 0x10000;
+
 			SetThreadContext ( thread, &context );
 
 			return;
@@ -403,11 +579,136 @@ namespace debugger {
 		if ( trap )
 			context.EFlags |= 0x100;
 
+		if ( resume_flag )
+			context.EFlags |= 0x10000;
+
 		Wow64SetThreadContext ( thread, &context );
 
 	}
 
-	static void publish ( status state, HANDLE thread, const wchar_t* note ) {
+	static void debug_registers ( HANDLE thread, bool clear_status ) {
+
+		uint64_t addresses [ 4 ] = { };
+		uint64_t control = 0;
+
+		for ( int32_t i = 0; i < 4; i++ ) {
+
+			const hardware_point& item = hardware [ i ];
+
+			if ( !item.used || !image_base )
+				continue;
+
+			uint64_t rw = item.kind == watch_kind::EXECUTE ? 0 : ( item.kind == watch_kind::WRITE ? 1 : 3 );
+			uint64_t length = item.kind == watch_kind::EXECUTE ? 0 : ( item.length >= 8 ? 2 : ( item.length >= 4 ? 3 : ( item.length >= 2 ? 1 : 0 ) ) );
+
+			addresses [ i ] = image_base + item.rva;
+			control |= 1ull << ( i * 2 );
+			control |= rw << ( 16 + i * 4 );
+			control |= length << ( 18 + i * 4 );
+
+		}
+
+		if ( wide_target ) {
+
+			CONTEXT context = { };
+
+			context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+
+			if ( !GetThreadContext ( thread, &context ) )
+				return;
+
+			context.Dr0 = addresses [ 0 ];
+			context.Dr1 = addresses [ 1 ];
+			context.Dr2 = addresses [ 2 ];
+			context.Dr3 = addresses [ 3 ];
+			context.Dr7 = control;
+
+			if ( clear_status )
+				context.Dr6 = 0;
+
+			SetThreadContext ( thread, &context );
+
+			return;
+
+		}
+
+		WOW64_CONTEXT context = { };
+
+		context.ContextFlags = WOW64_CONTEXT_DEBUG_REGISTERS;
+
+		if ( !Wow64GetThreadContext ( thread, &context ) )
+			return;
+
+		context.Dr0 = static_cast < DWORD > ( addresses [ 0 ] );
+		context.Dr1 = static_cast < DWORD > ( addresses [ 1 ] );
+		context.Dr2 = static_cast < DWORD > ( addresses [ 2 ] );
+		context.Dr3 = static_cast < DWORD > ( addresses [ 3 ] );
+		context.Dr7 = static_cast < DWORD > ( control );
+
+		if ( clear_status )
+			context.Dr6 = 0;
+
+		Wow64SetThreadContext ( thread, &context );
+
+	}
+
+	static int32_t hardware_hit ( HANDLE thread ) {
+
+		uint64_t status_bits = 0;
+
+		if ( wide_target ) {
+
+			CONTEXT context = { };
+
+			context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+
+			if ( GetThreadContext ( thread, &context ) )
+				status_bits = context.Dr6;
+
+		} else {
+
+			WOW64_CONTEXT context = { };
+
+			context.ContextFlags = WOW64_CONTEXT_DEBUG_REGISTERS;
+
+			if ( Wow64GetThreadContext ( thread, &context ) )
+				status_bits = context.Dr6;
+
+		}
+
+		for ( int32_t i = 0; i < 4; i++ ) {
+
+			if ( ( status_bits & ( 1ull << i ) ) && hardware [ i ].used )
+				return i;
+
+		}
+
+		return -1;
+
+	}
+
+	static void sync_hardware ( ) {
+
+		long serial = __atomic_load_n ( &hardware_serial, __ATOMIC_ACQUIRE );
+
+		if ( serial == hardware_synced || !process )
+			return;
+
+		hardware_synced = serial;
+
+		AcquireSRWLockShared ( &lock );
+
+		for ( int32_t i = 0; i < 4; i++ )
+			hardware [ i ] = hardware_wanted [ i ];
+
+		ReleaseSRWLockShared ( &lock );
+
+		for ( const thread_entry& item : threads )
+			debug_registers ( item.handle, false );
+
+	}
+
+	static void publish ( status state, HANDLE thread, DWORD thread_id, const wchar_t* note ) {
 
 		snapshot value;
 
@@ -418,7 +719,9 @@ namespace debugger {
 		value.state = state;
 		value.image_base = image_base;
 		value.wide = wide_target;
-
+		value.attached = attach_id != 0;
+		value.process_id = process_id;
+		value.thread_id = thread_id;
 		value.stack_count = 0;
 
 		if ( thread && get_registers ( thread, value.registers ) ) {
@@ -501,63 +804,201 @@ namespace debugger {
 
 	}
 
+	static void module_ready ( uint64_t base ) {
+
+		image_base = base;
+
+		if ( !attach_id && entry ) {
+
+			breakpoint& start_point = points.emplace ( );
+
+			start_point.address = image_base + entry;
+			start_point.temporary = true;
+			start_point.use = purpose::ENTRY;
+			arm ( start_point );
+
+		}
+
+		arm_coverage ( );
+		synced_serial = -1;
+		hardware_synced = -1;
+		sync_points ( );
+		sync_hardware ( );
+
+		wchar_t note [ 200 ] = { };
+		int32_t at = 0;
+
+		append_text ( note, at, module_name [ 0 ] ? module_name : leaf_of ( target ) );
+		append_text ( note, at, L" is loaded at 0x" );
+		append_number ( note, at, base, true );
+		log_text ( note );
+
+	}
+
+	static bool matches_module ( const wchar_t* path ) {
+
+		return module_name [ 0 ] && path [ 0 ] && base::compare_folded ( leaf_of ( path ), module_name ) == 0;
+
+	}
+
+	static bool step_out_next ( HANDLE thread, bool& armed_call ) {
+
+		uint64_t registers [ 18 ] = { };
+		uint8_t bytes [ 16 ] = { };
+		x86::instruction ins;
+
+		armed_call = false;
+
+		if ( ++out_steps > 2000000 || !get_registers ( thread, registers ) || !read_memory ( registers [ 16 ], bytes, 16 ) || !x86::decode ( bytes, 16, registers [ 16 ], wide_target, ins ) )
+			return false;
+
+		if ( ins.control == x86::flow::CALL ) {
+
+			armed_call = true;
+
+			breakpoint& item = points.emplace ( );
+
+			item.address = registers [ 16 ] + ins.length;
+			item.temporary = true;
+			item.use = purpose::STEP_OUT;
+			arm ( item );
+
+			return true;
+
+		}
+
+		if ( ins.control == x86::flow::RETURN )
+			out_finishing = true;
+
+		adjust ( thread, false, 0, true );
+
+		return true;
+
+	}
+
+	static void release_traps ( ) {
+
+		for ( breakpoint& item : points )
+			disarm ( item );
+
+		for ( cover_point& item : cover ) {
+
+			if ( item.armed ) {
+
+				write_byte ( item.address, item.original );
+				item.armed = false;
+
+			}
+
+		}
+
+		for ( int32_t i = 0; i < 4; i++ )
+			hardware [ i ].used = false;
+
+		for ( const thread_entry& item : threads )
+			debug_registers ( item.handle, true );
+
+	}
+
+	static void finish ( const wchar_t* note ) {
+
+		publish ( status::EXITED, nullptr, 0, note );
+		log_text ( note );
+
+		AcquireSRWLockExclusive ( &lock );
+		loaded.clear ( );
+		ReleaseSRWLockExclusive ( &lock );
+
+		threads.clear ( );
+		points.clear ( );
+		cover.clear ( );
+		process = nullptr;
+		process_id = 0;
+		image_base = 0;
+
+	}
+
 	static unsigned long __stdcall run ( void* ) {
 
-		STARTUPINFOW startup = { };
-		PROCESS_INFORMATION info = { };
-		wchar_t command [ 700 ];
-		wchar_t folder [ 600 ];
-		int32_t length = 0;
-		int32_t slash = 0;
+		if ( attach_id ) {
 
-		command [ length++ ] = L'"';
+			if ( !DebugActiveProcess ( attach_id ) ) {
 
-		for ( int32_t i = 0; target [ i ] && length < 690; i++ ) {
+				wchar_t note [ 200 ] = { };
+				int32_t at = 0;
 
-			command [ length++ ] = target [ i ];
-			folder [ i ] = target [ i ];
+				append_text ( note, at, L"Couldn't attach to process " );
+				append_number ( note, at, attach_id, false );
+				append_text ( note, at, L" (Windows error " );
+				append_number ( note, at, GetLastError ( ), false );
+				append_text ( note, at, L")" );
+				publish ( status::FAILED, nullptr, 0, note );
 
-			if ( target [ i ] == L'\\' || target [ i ] == L'/' )
-				slash = i;
+				return 0;
+
+			}
+
+			DebugSetProcessKillOnExit ( FALSE );
+			publish ( status::RUNNING, nullptr, 0, L"Attached" );
+
+		} else {
+
+			STARTUPINFOW startup = { };
+			PROCESS_INFORMATION info = { };
+			wchar_t command [ 1700 ];
+			wchar_t folder [ 600 ];
+			int32_t length = 0;
+			int32_t slash = 0;
+
+			command [ length++ ] = L'"';
+
+			for ( int32_t i = 0; target [ i ] && length < 690; i++ ) {
+
+				command [ length++ ] = target [ i ];
+				folder [ i ] = target [ i ];
+
+				if ( target [ i ] == L'\\' || target [ i ] == L'/' )
+					slash = i;
+
+			}
+
+			command [ length++ ] = L'"';
+
+			if ( command_tail [ 0 ] ) {
+
+				command [ length++ ] = L' ';
+
+				for ( int32_t i = 0; command_tail [ i ] && length < 1690; i++ )
+					command [ length++ ] = command_tail [ i ];
+
+			}
+
+			command [ length ] = 0;
+			folder [ slash ] = 0;
+			startup.cb = sizeof ( startup );
+
+			if ( !CreateProcessW ( target, command, nullptr, nullptr, FALSE, DEBUG_ONLY_THIS_PROCESS | CREATE_NEW_CONSOLE, nullptr, slash ? folder : nullptr, &startup, &info ) ) {
+
+				wchar_t note [ 200 ] = { };
+				int32_t at = 0;
+
+				append_text ( note, at, L"Couldn't start the process (Windows error " );
+				append_number ( note, at, GetLastError ( ), false );
+				append_text ( note, at, L")" );
+				publish ( status::FAILED, nullptr, 0, note );
+
+				return 0;
+
+			}
+
+			CloseHandle ( info.hThread );
+			CloseHandle ( info.hProcess );
+			publish ( status::RUNNING, nullptr, 0, L"Process started" );
 
 		}
-
-		command [ length++ ] = L'"';
-		command [ length ] = 0;
-		folder [ slash ] = 0;
-		startup.cb = sizeof ( startup );
-
-		if ( !CreateProcessW ( target, command, nullptr, nullptr, FALSE, DEBUG_ONLY_THIS_PROCESS | CREATE_NEW_CONSOLE, nullptr, slash ? folder : nullptr, &startup, &info ) ) {
-
-			wchar_t note [ 120 ] = L"Couldn't start the process (Windows error ";
-			int32_t at = 42;
-			DWORD error = GetLastError ( );
-			wchar_t digits [ 12 ];
-			int32_t n = 0;
-
-			do {
-
-				digits [ n++ ] = static_cast < wchar_t > ( L'0' + error % 10 );
-				error /= 10;
-
-			} while ( error );
-
-			while ( n )
-				note [ at++ ] = digits [ --n ];
-
-			note [ at++ ] = L')';
-			note [ at ] = 0;
-			publish ( status::FAILED, nullptr, note );
-
-			return 0;
-
-		}
-
-		CloseHandle ( info.hThread );
-		CloseHandle ( info.hProcess );
-		publish ( status::RUNNING, nullptr, L"Process started" );
 
 		bool alive = true;
+		bool detach = false;
 		DWORD exit_code = 0;
 
 		while ( alive ) {
@@ -572,6 +1013,15 @@ namespace debugger {
 					DebugBreakProcess ( process );
 				else if ( value == static_cast < long > ( order::STOP ) && process )
 					TerminateProcess ( process, 1 );
+				else if ( value == static_cast < long > ( order::DETACH ) && process ) {
+
+					release_traps ( );
+					DebugActiveProcessStop ( process_id );
+					finish ( L"Detached from the process" );
+
+					return 0;
+
+				}
 
 				sync_points ( );
 
@@ -583,6 +1033,8 @@ namespace debugger {
 			bool pause = false;
 			wchar_t note [ 200 ] = { };
 
+			resume_flag = false;
+
 			switch ( event.dwDebugEventCode ) {
 
 				case CREATE_PROCESS_DEBUG_EVENT: {
@@ -590,21 +1042,19 @@ namespace debugger {
 					thread_entry& item = threads.emplace ( );
 
 					process = event.u.CreateProcessInfo.hProcess;
-					image_base = reinterpret_cast < uint64_t > ( event.u.CreateProcessInfo.lpBaseOfImage );
+					process_id = event.dwProcessId;
 					item.id = event.dwThreadId;
 					item.handle = event.u.CreateProcessInfo.hThread;
+
+					uint64_t base = reinterpret_cast < uint64_t > ( event.u.CreateProcessInfo.lpBaseOfImage );
+
+					add_module ( base, event.u.CreateProcessInfo.hFile );
 
 					if ( event.u.CreateProcessInfo.hFile )
 						CloseHandle ( event.u.CreateProcessInfo.hFile );
 
-					breakpoint& start_point = points.emplace ( );
-
-					start_point.address = image_base + entry;
-					start_point.temporary = true;
-					arm_coverage ( );
-					arm ( start_point );
-					synced_serial = -1;
-					sync_points ( );
+					if ( !module_name [ 0 ] )
+						module_ready ( base );
 
 					break;
 
@@ -616,6 +1066,7 @@ namespace debugger {
 
 					item.id = event.dwThreadId;
 					item.handle = event.u.CreateThread.hThread;
+					debug_registers ( item.handle, false );
 
 					break;
 
@@ -637,12 +1088,60 @@ namespace debugger {
 
 					break;
 
-				case LOAD_DLL_DEBUG_EVENT:
+				case LOAD_DLL_DEBUG_EVENT: {
+
+					uint64_t base = reinterpret_cast < uint64_t > ( event.u.LoadDll.lpBaseOfDll );
+
+					add_module ( base, event.u.LoadDll.hFile );
+
+					AcquireSRWLockShared ( &lock );
+
+					bool wanted_one = !loaded.empty ( ) && matches_module ( loaded.back ( ).path );
+
+					ReleaseSRWLockShared ( &lock );
 
 					if ( event.u.LoadDll.hFile )
 						CloseHandle ( event.u.LoadDll.hFile );
 
+					if ( wanted_one && !image_base )
+						module_ready ( base );
+
 					break;
+
+				}
+
+				case UNLOAD_DLL_DEBUG_EVENT: {
+
+					uint64_t base = reinterpret_cast < uint64_t > ( event.u.UnloadDll.lpBaseOfDll );
+
+					AcquireSRWLockExclusive ( &lock );
+
+					for ( int32_t i = 0; i < loaded.count ( ); i++ ) {
+
+						if ( loaded [ static_cast < size_t > ( i ) ].base == base ) {
+
+							loaded.remove_at ( static_cast < size_t > ( i ) );
+
+							break;
+
+						}
+
+					}
+
+					ReleaseSRWLockExclusive ( &lock );
+
+					if ( base == image_base ) {
+
+						points.clear ( );
+						cover.clear ( );
+						image_base = 0;
+						log_text ( L"The module being debugged was unloaded" );
+
+					}
+
+					break;
+
+				}
 
 				case OUTPUT_DEBUG_STRING_EVENT:
 					read_debug_string ( event.u.DebugString );
@@ -658,7 +1157,6 @@ namespace debugger {
 					if ( code == EXCEPTION_BREAKPOINT || code == 0x4000001F ) {
 
 						int32_t hit = find_point ( at );
-
 						int32_t covered = hit < 0 ? find_cover ( at ) : -1;
 
 						if ( covered >= 0 && cover [ static_cast < size_t > ( covered ) ].armed ) {
@@ -676,40 +1174,79 @@ namespace debugger {
 						} else if ( hit >= 0 && points [ static_cast < size_t > ( hit ) ].armed ) {
 
 							breakpoint& item = points [ static_cast < size_t > ( hit ) ];
-							bool temporary = item.temporary;
+							purpose use = item.use;
 
-							disarm ( item );
 							adjust ( thread, true, at, false );
 
-							if ( temporary ) {
+							if ( item.temporary ) {
 
-								if ( item.address == image_base + entry && !entry_reached ) {
+								bool user_here = false;
 
-									entry_reached = true;
-									lstrcpyW ( note, L"Stopped at the entry point" );
-
-								} else
-									lstrcpyW ( note, L"Stepped over the call" );
-
+								disarm ( item );
 								points.remove_at ( static_cast < size_t > ( hit ) );
+
+								for ( breakpoint& other : points ) {
+
+									if ( other.address != at )
+										continue;
+
+									user_here = user_here || !other.temporary;
+									disarm ( other );
+
+								}
+
+								if ( user_here )
+									reinsert = at;
+
+								if ( use == purpose::STEP_OUT && stepping_out ) {
+
+									bool armed_call = false;
+
+									if ( !step_out_next ( thread, armed_call ) ) {
+
+										stepping_out = false;
+										pause = true;
+										lstrcpyW ( note, L"Stopped stepping out" );
+
+									}
+
+								} else {
+
+									pause = true;
+
+									if ( use == purpose::ENTRY && !entry_reached ) {
+
+										entry_reached = true;
+										lstrcpyW ( note, L"Stopped at the entry point" );
+
+									} else if ( use == purpose::RUN_TO )
+										lstrcpyW ( note, L"Reached the cursor" );
+									else
+										lstrcpyW ( note, L"Stepped over the call" );
+
+								}
 
 							} else {
 
+								disarm ( item );
 								reinsert = at;
+								stepping_out = false;
 								lstrcpyW ( note, L"Breakpoint hit" );
+								pause = true;
 
 							}
-
-							pause = true;
 
 						} else if ( entry_reached ) {
 
 							pause = true;
-							lstrcpyW ( note, L"Paused" );
+							lstrcpyW ( note, attach_id && !attach_announced ? L"Attached" : L"Paused" );
+							attach_announced = true;
 
 						}
 
 					} else if ( code == EXCEPTION_SINGLE_STEP || code == 0x4000001E ) {
+
+						int32_t watched = hardware_hit ( thread );
 
 						if ( reinsert ) {
 
@@ -722,7 +1259,44 @@ namespace debugger {
 
 						}
 
-						if ( stepping ) {
+						if ( watched >= 0 ) {
+
+							static const wchar_t* const kinds [ 3 ] = { L"execute", L"write", L"access" };
+							int32_t write_at = 0;
+
+							debug_registers ( thread, true );
+							stepping = false;
+							stepping_out = false;
+							pause = true;
+							resume_flag = hardware [ watched ].kind == watch_kind::EXECUTE;
+							append_text ( note, write_at, L"Hardware breakpoint " );
+							append_number ( note, write_at, static_cast < uint64_t > ( watched + 1 ), false );
+							append_text ( note, write_at, L" (" );
+							append_text ( note, write_at, kinds [ static_cast < int32_t > ( hardware [ watched ].kind ) ] );
+							append_text ( note, write_at, L")" );
+
+						} else if ( stepping_out ) {
+
+							bool armed_call = false;
+
+							if ( out_ignore_step )
+								out_ignore_step = false;
+							else if ( out_finishing ) {
+
+								stepping_out = false;
+								out_finishing = false;
+								pause = true;
+								lstrcpyW ( note, L"Stepped out" );
+
+							} else if ( !step_out_next ( thread, armed_call ) ) {
+
+								stepping_out = false;
+								pause = true;
+								lstrcpyW ( note, L"Stopped stepping out" );
+
+							}
+
+						} else if ( stepping ) {
 
 							stepping = false;
 							pause = true;
@@ -741,6 +1315,7 @@ namespace debugger {
 							write [ 12 + i ] = digits [ ( code >> ( 28 - i * 4 ) ) & 15 ];
 
 						pause = true;
+						stepping_out = false;
 						reply = DBG_EXCEPTION_NOT_HANDLED;
 						log_text ( note );
 
@@ -748,12 +1323,13 @@ namespace debugger {
 
 					if ( pause ) {
 
-						publish ( status::PAUSED, thread, note );
+						publish ( status::PAUSED, thread, event.dwThreadId, note );
 
 						while ( true ) {
 
 							WaitForSingleObject ( wake, 100 );
 							sync_points ( );
+							sync_hardware ( );
 
 							long value = InterlockedExchange ( &pending, 0 );
 
@@ -763,6 +1339,14 @@ namespace debugger {
 							if ( value == static_cast < long > ( order::STOP ) ) {
 
 								TerminateProcess ( process, 1 );
+
+								break;
+
+							}
+
+							if ( value == static_cast < long > ( order::DETACH ) ) {
+
+								detach = true;
 
 								break;
 
@@ -789,6 +1373,7 @@ namespace debugger {
 
 									item.address = registers [ 16 ] + ins.length;
 									item.temporary = true;
+									item.use = purpose::STEP_OVER;
 									arm ( item );
 
 								} else {
@@ -798,12 +1383,40 @@ namespace debugger {
 
 								}
 
+							} else if ( value == static_cast < long > ( order::STEP_OUT ) ) {
+
+								bool armed_call = false;
+
+								stepping_out = true;
+								out_finishing = false;
+								out_ignore_step = false;
+								out_steps = 0;
+
+								if ( !step_out_next ( thread, armed_call ) )
+									stepping_out = false;
+
+								if ( stepping_out && armed_call && reinsert )
+									out_ignore_step = true;
+								else if ( stepping_out )
+									trap = false;
+
+							} else if ( value == static_cast < long > ( order::RUN_TO ) && run_target ) {
+
+								breakpoint& item = points.emplace ( );
+
+								item.address = run_target;
+								item.temporary = true;
+								item.use = purpose::RUN_TO;
+								arm ( item );
+
 							}
 
 							if ( trap )
 								adjust ( thread, false, 0, true );
+							else if ( resume_flag )
+								adjust ( thread, false, 0, false );
 
-							publish ( status::RUNNING, nullptr, L"Running" );
+							publish ( status::RUNNING, nullptr, 0, L"Running" );
 
 							break;
 
@@ -825,45 +1438,41 @@ namespace debugger {
 
 			}
 
+			if ( alive )
+				sync_hardware ( );
+
+			if ( detach ) {
+
+				release_traps ( );
+				ContinueDebugEvent ( event.dwProcessId, event.dwThreadId, reply );
+				DebugActiveProcessStop ( process_id );
+				finish ( L"Detached from the process" );
+
+				return 0;
+
+			}
+
 			ContinueDebugEvent ( event.dwProcessId, event.dwThreadId, reply );
 
 		}
 
-		wchar_t note [ 80 ] = L"Process exited with code ";
-		int32_t at = 25;
-		wchar_t digits [ 12 ];
-		int32_t n = 0;
-		DWORD value = exit_code;
+		wchar_t note [ 80 ] = { };
+		int32_t at = 0;
 
-		do {
-
-			digits [ n++ ] = static_cast < wchar_t > ( L'0' + value % 10 );
-			value /= 10;
-
-		} while ( value );
-
-		while ( n )
-			note [ at++ ] = digits [ --n ];
-
-		note [ at ] = 0;
+		append_text ( note, at, L"Process exited with code " );
+		append_number ( note, at, exit_code, false );
 
 		AcquireSRWLockExclusive ( &lock );
 		shared.exit_code = exit_code;
 		ReleaseSRWLockExclusive ( &lock );
 
-		publish ( status::EXITED, nullptr, note );
-		log_text ( note );
-		threads.clear ( );
-		points.clear ( );
-		cover.clear ( );
-		process = nullptr;
-		image_base = 0;
+		finish ( note );
 
 		return 0;
 
 	}
 
-	bool start ( const wchar_t* path, uint64_t entry_rva, bool wide ) {
+	static bool launch ( uint32_t id, const wchar_t* path, const wchar_t* arguments, const wchar_t* module, uint64_t entry_rva, bool wide ) {
 
 		if ( active ( ) )
 			return false;
@@ -881,17 +1490,35 @@ namespace debugger {
 
 		int32_t i = 0;
 
-		for ( ; path [ i ] && i < 599; i++ )
+		for ( ; path && path [ i ] && i < 599; i++ )
 			target [ i ] = path [ i ];
 
 		target [ i ] = 0;
+		i = 0;
+
+		for ( ; arguments && arguments [ i ] && i < 999; i++ )
+			command_tail [ i ] = arguments [ i ];
+
+		command_tail [ i ] = 0;
+		i = 0;
+
+		for ( ; module && module [ i ] && i < 259; i++ )
+			module_name [ i ] = module [ i ];
+
+		module_name [ i ] = 0;
+		attach_id = id;
 		entry = entry_rva;
 		wide_target = wide;
 		reinsert = 0;
 		stepping = false;
-		entry_reached = false;
+		stepping_out = false;
+		entry_reached = id != 0;
+		attach_announced = false;
+		out_ignore_step = false;
 		synced_serial = -1;
+		hardware_synced = -1;
 		pending = 0;
+		image_base = 0;
 
 		AcquireSRWLockExclusive ( &lock );
 
@@ -900,11 +1527,24 @@ namespace debugger {
 		shared = snapshot ( );
 		shared.serial = serial + 1;
 		shared.state = status::RUNNING;
+		loaded.clear ( );
 		ReleaseSRWLockExclusive ( &lock );
 
 		worker = CreateThread ( nullptr, 0, run, nullptr, 0, nullptr );
 
 		return worker != nullptr;
+
+	}
+
+	bool start ( const wchar_t* path, const wchar_t* arguments, const wchar_t* module, uint64_t entry_rva, bool wide ) {
+
+		return launch ( 0, path, arguments, module, entry_rva, wide );
+
+	}
+
+	bool attach ( uint32_t process_id_value, const wchar_t* module, uint64_t entry_rva, bool wide ) {
+
+		return process_id_value && launch ( process_id_value, L"", L"", module, entry_rva, wide );
 
 	}
 
@@ -914,6 +1554,15 @@ namespace debugger {
 
 		if ( wake )
 			SetEvent ( wake );
+
+	}
+
+	void run_to ( uint64_t rva ) {
+
+		snapshot now = read ( );
+
+		run_target = now.image_base ? now.image_base + rva : 0;
+		send ( order::RUN_TO );
 
 	}
 
@@ -927,6 +1576,21 @@ namespace debugger {
 
 		ReleaseSRWLockExclusive ( &lock );
 		InterlockedIncrement ( &wanted_serial );
+
+		if ( wake )
+			SetEvent ( wake );
+
+	}
+
+	void set_hardware ( const hardware_point* list, int32_t count ) {
+
+		AcquireSRWLockExclusive ( &lock );
+
+		for ( int32_t i = 0; i < 4; i++ )
+			hardware_wanted [ i ] = i < count ? list [ i ] : hardware_point ( );
+
+		ReleaseSRWLockExclusive ( &lock );
+		InterlockedIncrement ( &hardware_serial );
 
 		if ( wake )
 			SetEvent ( wake );
@@ -991,7 +1655,117 @@ namespace debugger {
 		if ( !process || read ( ).state != status::PAUSED )
 			return false;
 
-		return read_memory ( address, out, size );
+		if ( !read_memory ( address, out, size ) )
+			return false;
+
+		uint8_t* bytes = static_cast < uint8_t* > ( out );
+
+		for ( const breakpoint& item : points ) {
+
+			if ( item.armed && item.address >= address && item.address < address + size )
+				bytes [ item.address - address ] = item.original;
+
+		}
+
+		for ( const cover_point& item : cover ) {
+
+			if ( item.armed && item.address >= address && item.address < address + size )
+				bytes [ item.address - address ] = item.original;
+
+		}
+
+		return true;
+
+	}
+
+	bool poke ( uint64_t address, const void* data, size_t size ) {
+
+		if ( !process || read ( ).state != status::PAUSED || !size )
+			return false;
+
+		const uint8_t* bytes = static_cast < const uint8_t* > ( data );
+
+		for ( size_t k = 0; k < size; k++ ) {
+
+			uint64_t at = address + k;
+			bool trapped = false;
+
+			for ( breakpoint& item : points ) {
+
+				if ( item.armed && item.address == at ) {
+
+					item.original = bytes [ k ];
+					trapped = true;
+
+				}
+
+			}
+
+			for ( cover_point& item : cover ) {
+
+				if ( item.armed && item.address == at ) {
+
+					item.original = bytes [ k ];
+					trapped = true;
+
+				}
+
+			}
+
+			if ( !trapped && !write_memory ( at, bytes + k, 1 ) )
+				return false;
+
+		}
+
+		return true;
+
+	}
+
+	int32_t modules ( base::list < module_info >& out ) {
+
+		out.clear ( );
+
+		AcquireSRWLockShared ( &lock );
+
+		for ( const module_info& item : loaded )
+			out.push ( item );
+
+		ReleaseSRWLockShared ( &lock );
+
+		return out.count ( );
+
+	}
+
+	int32_t processes ( base::list < process_entry >& out ) {
+
+		out.clear ( );
+
+		HANDLE snap = CreateToolhelp32Snapshot ( TH32CS_SNAPPROCESS, 0 );
+
+		if ( snap == INVALID_HANDLE_VALUE )
+			return 0;
+
+		PROCESSENTRY32W item = { };
+
+		item.dwSize = sizeof ( item );
+
+		for ( BOOL more = Process32FirstW ( snap, &item ); more; more = Process32NextW ( snap, &item ) ) {
+
+			process_entry& made = out.emplace ( );
+			int32_t k = 0;
+
+			made.id = item.th32ProcessID;
+
+			for ( ; item.szExeFile [ k ] && k < 259; k++ )
+				made.name [ k ] = item.szExeFile [ k ];
+
+			made.name [ k ] = 0;
+
+		}
+
+		CloseHandle ( snap );
+
+		return out.count ( );
 
 	}
 
