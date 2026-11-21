@@ -221,6 +221,12 @@ namespace ui {
 		COLORS,
 		RUN_SCRIPT,
 		RERUN_SCRIPT,
+		DEBUG_ATTACH,
+		DEBUG_DETACH,
+		DEBUG_STEP_OUT,
+		DEBUG_RUN_TO,
+		DEBUG_HARDWARE,
+		DEBUG_COMMAND_LINE,
 		COUNT,
 
 	};
@@ -788,6 +794,12 @@ namespace ui {
 
 		void start_debugging ( bool record );
 
+		bool attach_debugger ( const wchar_t* text );
+
+		bool set_hardware_point ( uint64_t address, const wchar_t* text );
+
+		void sync_hardware ( );
+
 		void merge_coverage ( );
 
 		bool evaluate_watch ( const wchar_t* text, uint64_t& value ) const;
@@ -1057,6 +1069,10 @@ namespace ui {
 		base::list < uint64_t > breakpoints;
 		debugger::snapshot debug_state;
 		uint64_t debug_pc = 0;
+		base::text debug_command;
+		debugger::hardware_point hardware_points [ 4 ];
+		base::list < debugger::module_info > debug_modules;
+		uint32_t modules_seen = 0;
 		bool c_spaced = false;
 		bool c_no_ternary = false;
 		bool c_hide_casts = false;

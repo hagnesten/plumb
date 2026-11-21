@@ -1,4 +1,5 @@
 #include "ui/app.hh"
+#include <windows.h>
 
 namespace ui {
 
@@ -114,15 +115,288 @@ namespace ui {
 
 		debugger::set_coverage ( rvas.data ( ), rvas.count ( ) );
 		sync_breakpoints ( );
+		sync_hardware ( );
 
-		if ( debugger::start ( file.path.get ( ), file.entry - file.base, file.wide ( ) ) ) {
+		base::writer host;
+		base::writer arguments;
+		const wchar_t* given = debug_command.empty ( ) ? L"" : debug_command.get ( );
+
+		if ( file.dll ) {
+
+			if ( given [ 0 ] ) {
+
+				const wchar_t* at = given;
+				bool quoted = *at == L'"';
+
+				if ( quoted )
+					at++;
+
+				while ( *at && ( quoted ? *at != L'"' : *at != L' ' ) )
+					host.add ( *at++ );
+
+				if ( quoted && *at == L'"' )
+					at++;
+
+				while ( *at == L' ' )
+					at++;
+
+				arguments.add ( at );
+
+			} else {
+
+				wchar_t folder [ 300 ];
+				UINT length = file.wide ( ) ? GetSystemDirectoryW ( folder, 300 ) : GetSystemWow64DirectoryW ( folder, 300 );
+
+				if ( !length )
+					length = GetSystemDirectoryW ( folder, 300 );
+
+				folder [ length < 300 ? length : 299 ] = 0;
+				host.add ( folder ).add ( L"\\rundll32.exe" );
+				arguments.add ( L"\"" ).add ( file.path.get ( ) ).add ( L"\"," );
+
+				const wchar_t* export_name = nullptr;
+
+				for ( const loader::exported& item : file.exports ) {
+
+					if ( !export_name && !item.name.empty ( ) )
+						export_name = item.name.get ( );
+
+				}
+
+				if ( export_name )
+					arguments.add ( export_name );
+				else
+					arguments.add ( L"#1" );
+
+			}
+
+		} else {
+
+			host.add ( file.path.get ( ) );
+			arguments.add ( given );
+
+		}
+
+		if ( debugger::start ( host.text ( ), arguments.text ( ), file.dll ? file.name.get ( ) : L"", file.entry ? file.entry - file.base : 0, file.wide ( ) ) ) {
 
 			if ( record )
 				log ( log_kind::INFO, base::writer ( ).add ( L"Starting " ).add ( file.name.get ( ) ).add ( L" and recording which of its " ).grouped ( static_cast < uint64_t > ( coverage_blocks.count ( ) ) ).add ( L" blocks run." ).text ( ) );
+			else if ( file.dll )
+				log ( log_kind::INFO, base::writer ( ).add ( L"Starting " ).add ( host.text ( ) ).add ( L" to load " ).add ( file.name.get ( ) ).add ( L". It stops at the DLL's entry point." ).text ( ) );
 			else
 				log ( log_kind::INFO, base::writer ( ).add ( L"Starting " ).add ( file.name.get ( ) ).add ( L" under the debugger. It stops at the entry point." ).text ( ) );
 
 		}
+
+	}
+
+	bool app::attach_debugger ( const wchar_t* text ) {
+
+		base::list < debugger::process_entry > list;
+		uint32_t chosen = 0;
+		int32_t matches = 0;
+		bool digits = text [ 0 ] != 0;
+
+		for ( const wchar_t* at = text; *at; at++ )
+			digits = digits && *at >= L'0' && *at <= L'9';
+
+		debugger::processes ( list );
+
+		if ( digits ) {
+
+			for ( const wchar_t* at = text; *at; at++ )
+				chosen = chosen * 10 + static_cast < uint32_t > ( *at - L'0' );
+
+			matches = 1;
+
+		} else {
+
+			const wchar_t* wanted = text [ 0 ] ? text : file.name.get ( );
+			base::writer with_extension;
+
+			with_extension.add ( wanted ).add ( L".exe" );
+
+			for ( const debugger::process_entry& item : list ) {
+
+				if ( base::compare_folded ( item.name, wanted ) != 0 && base::compare_folded ( item.name, with_extension.text ( ) ) != 0 )
+					continue;
+
+				if ( !chosen )
+					chosen = item.id;
+
+				matches++;
+
+			}
+
+		}
+
+		if ( !chosen ) {
+
+			log ( log_kind::WARN, text [ 0 ] ? base::writer ( ).add ( L"No running process matches \"" ).add ( text ).add ( L"\"." ).text ( ) : base::writer ( ).add ( file.name.get ( ) ).add ( L" isn't running. Type the name or ID of the process that loads it." ).text ( ) );
+
+			return false;
+
+		}
+
+		const wchar_t* process_name = L"";
+
+		for ( const debugger::process_entry& item : list ) {
+
+			if ( item.id == chosen )
+				process_name = item.name;
+
+		}
+
+		bool main_image = !file.dll && base::compare_folded ( process_name, file.name.get ( ) ) == 0;
+
+		coverage_blocks.clear ( );
+		debugger::set_coverage ( nullptr, 0 );
+		sync_breakpoints ( );
+		sync_hardware ( );
+
+		if ( !debugger::attach ( chosen, main_image ? L"" : file.name.get ( ), file.entry ? file.entry - file.base : 0, file.wide ( ) ) )
+			return false;
+
+		base::writer line;
+
+		line.add ( L"Attaching to " ).add ( process_name [ 0 ] ? process_name : L"process" ).add ( L" (" ).number ( static_cast < int64_t > ( chosen ) ).add ( L")" );
+
+		if ( matches > 1 )
+			line.add ( L", the first of " ).number ( matches ).add ( L" with that name" );
+
+		line.add ( L"." );
+		log ( log_kind::INFO, line.text ( ) );
+
+		return true;
+
+	}
+
+	bool app::set_hardware_point ( uint64_t address, const wchar_t* text ) {
+
+		uint64_t rva = address - file.base;
+		int32_t slot = -1;
+
+		for ( int32_t i = 0; i < 4; i++ ) {
+
+			if ( hardware_points [ i ].used && hardware_points [ i ].rva == rva )
+				slot = i;
+
+		}
+
+		while ( *text == L' ' )
+			text++;
+
+		if ( !text [ 0 ] ) {
+
+			if ( slot >= 0 ) {
+
+				hardware_points [ slot ] = debugger::hardware_point ( );
+				sync_hardware ( );
+				log ( log_kind::INFO, base::writer ( ).add ( L"Hardware breakpoint removed at " ).hex ( address ).text ( ) );
+
+			}
+
+			return slot >= 0;
+
+		}
+
+		debugger::watch_kind kind = debugger::watch_kind::EXECUTE;
+		const wchar_t* at = text;
+
+		if ( ( at [ 0 ] == L'r' || at [ 0 ] == L'R' ) && ( at [ 1 ] == L'w' || at [ 1 ] == L'W' ) ) {
+
+			kind = debugger::watch_kind::ACCESS;
+			at += 2;
+
+		} else if ( at [ 0 ] == L'a' || at [ 0 ] == L'A' ) {
+
+			kind = debugger::watch_kind::ACCESS;
+			at++;
+
+		} else if ( at [ 0 ] == L'w' || at [ 0 ] == L'W' ) {
+
+			kind = debugger::watch_kind::WRITE;
+			at++;
+
+		} else if ( at [ 0 ] == L'x' || at [ 0 ] == L'X' || at [ 0 ] == L'e' || at [ 0 ] == L'E' )
+			at++;
+		else {
+
+			log ( log_kind::WARN, L"Write x, w 4 or rw 8." );
+
+			return false;
+
+		}
+
+		while ( *at == L' ' )
+			at++;
+
+		int32_t length = 1;
+
+		if ( *at >= L'0' && *at <= L'9' ) {
+
+			length = 0;
+
+			while ( *at >= L'0' && *at <= L'9' )
+				length = length * 10 + ( *at++ - L'0' );
+
+		} else if ( kind != debugger::watch_kind::EXECUTE )
+			length = 4;
+
+		if ( kind == debugger::watch_kind::EXECUTE )
+			length = 1;
+
+		if ( length != 1 && length != 2 && length != 4 && length != 8 ) {
+
+			log ( log_kind::WARN, L"Hardware breakpoints watch 1, 2, 4 or 8 bytes." );
+
+			return false;
+
+		}
+
+		if ( address & static_cast < uint64_t > ( length - 1 ) ) {
+
+			log ( log_kind::WARN, base::writer ( ).add ( L"A " ).number ( length ).add ( L" byte hardware breakpoint has to start on a multiple of " ).number ( length ).add ( L"." ).text ( ) );
+
+			return false;
+
+		}
+
+		if ( slot < 0 ) {
+
+			for ( int32_t i = 0; i < 4 && slot < 0; i++ ) {
+
+				if ( !hardware_points [ i ].used )
+					slot = i;
+
+			}
+
+		}
+
+		if ( slot < 0 ) {
+
+			log ( log_kind::WARN, L"All four hardware breakpoints are in use. Remove one first." );
+
+			return false;
+
+		}
+
+		debugger::hardware_point& item = hardware_points [ slot ];
+
+		item.used = true;
+		item.rva = rva;
+		item.kind = kind;
+		item.length = length;
+		sync_hardware ( );
+		log ( log_kind::INFO, base::writer ( ).add ( L"Hardware breakpoint " ).number ( slot + 1 ).add ( L" at " ).hex ( address ).add ( kind == debugger::watch_kind::EXECUTE ? L" stops when it runs." : ( kind == debugger::watch_kind::WRITE ? L" stops on writes." : L" stops on any access." ) ).text ( ) );
+
+		return true;
+
+	}
+
+	void app::sync_hardware ( ) {
+
+		debugger::set_hardware ( hardware_points, 4 );
 
 	}
 

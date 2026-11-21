@@ -100,7 +100,13 @@ namespace ui {
 		{ L"Settings", L"Ctrl+," },
 		{ L"Colors", L"Ctrl+Shift+," },
 		{ L"Run script file", L"Alt+F7" },
-		{ L"Run the last script again", L"Ctrl+F7" }
+		{ L"Run the last script again", L"Ctrl+F7" },
+		{ L"Attach to process", L"Ctrl+Alt+P" },
+		{ L"Detach", L"" },
+		{ L"Step out", L"Shift+F8" },
+		{ L"Run to cursor", L"F4" },
+		{ L"Hardware breakpoint", L"Alt+F2" },
+		{ L"Process command line", L"" }
 	};
 
 	const wchar_t* command_label ( command action ) {
@@ -197,6 +203,29 @@ namespace ui {
 
 			case command::DEBUG_BREAKPOINT:
 				return analyzed && db->is_start ( now->cursor_address );
+
+			case command::DEBUG_ATTACH:
+				return has && !debugger::active ( ) && ( file.type == loader::format::PE32 || file.type == loader::format::PE64 );
+
+			case command::DEBUG_DETACH:
+				return debugger::active ( ) && debug_state.attached;
+
+			case command::DEBUG_STEP_OUT:
+				return debug_state.state == debugger::status::PAUSED;
+
+			case command::DEBUG_RUN_TO:
+				return analyzed && debug_state.state == debugger::status::PAUSED && db->is_start ( now->cursor_address );
+
+			case command::DEBUG_HARDWARE: {
+
+				uint64_t offset = 0;
+
+				return has && file.offset_of ( now->cursor_address, offset );
+
+			}
+
+			case command::DEBUG_COMMAND_LINE:
+				return has && ( file.type == loader::format::PE32 || file.type == loader::format::PE64 );
 
 			case command::NUMBER_RADIX:
 			case command::NUMBER_CHAR:
@@ -826,9 +855,9 @@ namespace ui {
 
 				}
 
-				if ( ( file.type != loader::format::PE32 && file.type != loader::format::PE64 ) || file.dll ) {
+				if ( file.type != loader::format::PE32 && file.type != loader::format::PE64 ) {
 
-					log ( log_kind::WARN, L"Only executables can be started. To debug a DLL, open and run the process that loads it." );
+					log ( log_kind::WARN, L"Only Windows executables and DLLs can be debugged." );
 
 					break;
 
@@ -839,6 +868,25 @@ namespace ui {
 				break;
 
 			}
+
+			case command::DEBUG_ATTACH:
+			case command::DEBUG_HARDWARE:
+			case command::DEBUG_COMMAND_LINE:
+				open_prompt ( action, now->cursor_address );
+				break;
+
+			case command::DEBUG_DETACH:
+				debugger::send ( debugger::order::DETACH );
+				log ( log_kind::INFO, L"Detaching. The process keeps running." );
+				break;
+
+			case command::DEBUG_STEP_OUT:
+				debugger::send ( debugger::order::STEP_OUT );
+				break;
+
+			case command::DEBUG_RUN_TO:
+				debugger::run_to ( now->cursor_address - file.base );
+				break;
 
 			case command::DEBUG_PAUSE:
 				debugger::send ( debugger::order::PAUSE );

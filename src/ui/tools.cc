@@ -280,6 +280,21 @@ namespace ui {
 			fill = user_text ( notes, address );
 		else if ( action == command::DEBUG_CONDITION )
 			fill = user_text ( conditions, address );
+		else if ( action == command::DEBUG_COMMAND_LINE && !debug_command.empty ( ) )
+			fill = debug_command.get ( );
+		else if ( action == command::DEBUG_HARDWARE ) {
+
+			for ( const debugger::hardware_point& item : hardware_points ) {
+
+				if ( item.used && file.base + item.rva == address )
+					fill = item.kind == debugger::watch_kind::EXECUTE ? L"x" : ( item.kind == debugger::watch_kind::WRITE ? L"w" : L"rw" );
+
+			}
+
+			if ( !fill )
+				fill = db && db->is_start ( address ) ? L"x" : L"w 4";
+
+		}
 		else if ( ( action == command::FIND_SIGNATURE || action == command::SEARCH_ALL ) && !search_query.empty ( ) )
 			fill = search_query.get ( );
 		else if ( action == command::XOR_DECODE )
@@ -449,6 +464,19 @@ namespace ui {
 				break;
 
 			}
+
+			case command::DEBUG_ATTACH:
+				attach_debugger ( text );
+				break;
+
+			case command::DEBUG_HARDWARE:
+				set_hardware_point ( prompt_address, text );
+				break;
+
+			case command::DEBUG_COMMAND_LINE:
+				debug_command.set ( text );
+				log ( log_kind::INFO, length ? base::writer ( ).add ( file.dll ? L"F9 runs " : L"F9 passes " ).add ( text ).text ( ) : ( file.dll ? L"F9 loads the DLL with rundll32." : L"F9 starts the program without arguments." ) );
+				break;
 
 			case command::NOTE:
 				set_user_text ( notes, prompt_address, text );

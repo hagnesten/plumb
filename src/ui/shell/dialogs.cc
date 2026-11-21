@@ -153,6 +153,12 @@ namespace ui {
 			title = L"Patch bytes";
 		else if ( prompt_action == command::XOR_DECODE )
 			title = L"Decode XOR bytes";
+		else if ( prompt_action == command::DEBUG_ATTACH )
+			title = L"Attach to process";
+		else if ( prompt_action == command::DEBUG_HARDWARE )
+			title = L"Hardware breakpoint";
+		else if ( prompt_action == command::DEBUG_COMMAND_LINE )
+			title = file.dll ? L"Host process for this DLL" : L"Process arguments";
 		else if ( prompt_mode == 1 )
 			title = L"Rename variable";
 		else if ( prompt_mode == 2 )
@@ -178,6 +184,12 @@ namespace ui {
 			detail.add ( L"Text in every instruction.  #0x40 finds immediates and offsets.  c:text searches the C." );
 		else if ( prompt_action == command::XOR_DECODE )
 			detail.add ( L"Key bytes in hex like 5A or DE AD BE EF, then an optional decimal length, or auto." );
+		else if ( prompt_action == command::DEBUG_ATTACH )
+			detail.add ( L"A process ID or name. Empty attaches to the running " ).add ( file.name.get ( ) ).add ( file.dll ? L" host." : L"." );
+		else if ( prompt_action == command::DEBUG_HARDWARE )
+			detail.add ( L"x stops when it runs, w 4 on writes, rw 8 on any access. Empty removes it. Up to four." );
+		else if ( prompt_action == command::DEBUG_COMMAND_LINE )
+			detail.add ( file.dll ? L"The program that loads the DLL, then its arguments. Empty uses rundll32." : L"Arguments passed when F9 starts the program." );
 		else if ( prompt_mode == 1 || prompt_mode == 2 ) {
 
 			wchar_t name [ 200 ];
@@ -228,7 +240,7 @@ namespace ui {
 		uint64_t field_id = make_id ( "prompt" );
 
 		const wchar_t* hint = prompt_action == command::FIND_SIGNATURE ? L"Pattern" : ( prompt_action == command::COMMENT ? L"Comment, empty to remove" : ( prompt_action == command::NOTE ? L"What this function does, empty to remove" : L"New name, empty to reset" ) );
-		bool code_font = prompt_action == command::EMULATE || prompt_action == command::DEBUG_WATCH || prompt_action == command::DEBUG_CONDITION || prompt_action == command::FIND_SIGNATURE || prompt_action == command::SEARCH_ALL || prompt_action == command::ASSEMBLE || prompt_action == command::PATCH_BYTES || prompt_action == command::XOR_DECODE || prompt_mode >= 2;
+		bool code_font = prompt_action == command::EMULATE || prompt_action == command::DEBUG_WATCH || prompt_action == command::DEBUG_CONDITION || prompt_action == command::DEBUG_HARDWARE || prompt_action == command::DEBUG_COMMAND_LINE || prompt_action == command::FIND_SIGNATURE || prompt_action == command::SEARCH_ALL || prompt_action == command::ASSEMBLE || prompt_action == command::PATCH_BYTES || prompt_action == command::XOR_DECODE || prompt_mode >= 2;
 
 		if ( prompt_action == command::SEARCH_ALL )
 			hint = L"call rax,  #0x40,  c:GetProcAddress";
@@ -244,6 +256,12 @@ namespace ui {
 			hint = L"Starting registers like  rcx=0x40 rdx=5,  or empty";
 		else if ( prompt_action == command::DEBUG_CONDITION )
 			hint = L"rax == 0,  empty makes it unconditional";
+		else if ( prompt_action == command::DEBUG_ATTACH )
+			hint = L"1234  or  notepad.exe";
+		else if ( prompt_action == command::DEBUG_HARDWARE )
+			hint = L"x,  w 4,  rw 8";
+		else if ( prompt_action == command::DEBUG_COMMAND_LINE )
+			hint = file.dll ? L"C:\\path\\host.exe --flag" : L"--flag value";
 
 		if ( prompt_mode == 2 )
 			hint = L"int32_t, char*, DWORD, MyStruct*  (empty resets)";

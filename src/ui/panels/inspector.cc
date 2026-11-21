@@ -191,6 +191,80 @@ namespace ui {
 
 			}
 
+			bool any_hardware = false;
+
+			for ( const debugger::hardware_point& item : hardware_points )
+				any_hardware = any_hardware || item.used;
+
+			if ( any_hardware ) {
+
+				static const wchar_t* const kinds [ 3 ] = { L"execute", L"write", L"access" };
+
+				heading ( L"HARDWARE" );
+
+				for ( int32_t i = 0; i < 4; i++ ) {
+
+					const debugger::hardware_point& item = hardware_points [ i ];
+
+					if ( !item.used )
+						continue;
+
+					base::writer slot;
+					base::writer what;
+					wchar_t name [ 200 ];
+
+					slot.add ( L"DR" ).number ( i );
+					what.hex ( file.base + item.rva ).add ( L"  " ).add ( kinds [ static_cast < int32_t > ( item.kind ) ] );
+
+					if ( item.kind != debugger::watch_kind::EXECUTE )
+						what.add ( L" " ).number ( item.length );
+
+					if ( symbol_name ( file.base + item.rva, true, name, 200 ) )
+						what.add ( L"  " ).add ( name );
+
+					pair ( slot.text ( ), what.text ( ), render::font::MONO_SMALL, ink ( tone::INK ) );
+
+				}
+
+			}
+
+			if ( debugger::active ( ) && ( debug_state.serial != modules_seen || frame_index % 30 == 0 ) ) {
+
+				debugger::modules ( debug_modules );
+				modules_seen = debug_state.serial;
+
+			}
+
+			if ( debugger::active ( ) && !debug_modules.empty ( ) ) {
+
+				heading ( L"MODULES" );
+
+				for ( const debugger::module_info& item : debug_modules ) {
+
+					const wchar_t* leaf = item.path;
+
+					for ( const wchar_t* at = item.path; *at; at++ ) {
+
+						if ( *at == L'\\' || *at == L'/' )
+							leaf = at + 1;
+
+					}
+
+					base::writer where;
+
+					where.hex ( item.base, debug_state.wide ? 12 : 8 );
+
+					if ( item.size )
+						where.add ( L"  " ).hex ( item.size );
+
+					bool ours = item.base == debug_state.image_base;
+
+					pair ( leaf [ 0 ] ? leaf : L"?", where.text ( ), render::font::MONO_SMALL, ink ( ours ? tone::ACCENT : tone::INK_SOFT ) );
+
+				}
+
+			}
+
 			if ( !watches.empty ( ) ) {
 
 				heading ( L"WATCH" );

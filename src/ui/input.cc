@@ -275,9 +275,15 @@ namespace ui {
 			if ( focused_field && edit_keys ( *focused_field, code ) )
 				continue;
 
-			if ( code == VK_F9 || code == VK_F7 || code == VK_F8 || code == VK_F12 || code == VK_F2 ) {
+			if ( code == VK_F9 || code == VK_F7 || code == VK_F8 || code == VK_F12 || code == VK_F2 || ( code == VK_F4 && !key_alt ) ) {
 
-				if ( code == VK_F9 )
+				if ( code == VK_F4 )
+					run ( command::DEBUG_RUN_TO );
+				else if ( code == VK_F8 && key_shift )
+					run ( command::DEBUG_STEP_OUT );
+				else if ( code == VK_F2 && key_alt )
+					run ( command::DEBUG_HARDWARE );
+				else if ( code == VK_F9 )
 					run ( key_shift && !debugger::active ( ) ? command::DEBUG_COVERAGE : command::DEBUG_RUN );
 				else if ( code == VK_F7 && key_alt )
 					run ( command::RUN_SCRIPT );
@@ -378,6 +384,8 @@ namespace ui {
 					run ( command::ASSEMBLE );
 				else if ( code == 'E' )
 					run ( command::EMULATE );
+				else if ( code == 'P' )
+					run ( command::DEBUG_ATTACH );
 				else if ( code == 'B' )
 					run ( command::PATCH_BYTES );
 				else if ( code == 'R' )
