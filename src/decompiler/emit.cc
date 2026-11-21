@@ -375,6 +375,7 @@ namespace decompiler {
 		bool bare_unsigned = false;
 		bool explicit_zero = false;
 		base::list < uint8_t > hidden;
+		base::list < uint8_t > element;
 		base::list < int8_t > loop_letter;
 		int32_t next_letter = 0;
 		int32_t last_assign = -1;
@@ -770,6 +771,17 @@ namespace decompiler {
 				out.put ( L"struct", syntax::KEYWORD );
 				out.put ( L" " );
 				out.put ( base::writer ( ).add ( name ).add ( L"_t" ).text ( ), syntax::TYPE );
+				out.put ( L" *" );
+
+				return;
+
+			}
+
+			if ( index < element.count ( ) && element [ static_cast < size_t > ( index ) ] ) {
+
+				uint8_t shape = element [ static_cast < size_t > ( index ) ];
+
+				type_name ( shape & 0x1F, ( shape & 0x80 ) ? FLOATING : 0, false, !( shape & 0x80 ) );
 				out.put ( L" *" );
 
 				return;
@@ -1189,6 +1201,34 @@ namespace decompiler {
 
 			}
 
+			if ( var >= 0 && var < element.count ( ) && element [ static_cast < size_t > ( var ) ] && ( element [ static_cast < size_t > ( var ) ] & 0x1F ) == item.size ) {
+
+				var_name ( var, name );
+
+				if ( offset == 0 ) {
+
+					if ( parent > 14 )
+						out.put ( L"(" );
+
+					out.put ( L"*", syntax::OPERATOR );
+					out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
+
+					if ( parent > 14 )
+						out.put ( L")" );
+
+				} else {
+
+					out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
+					out.put ( L"[" );
+					out.put ( base::writer ( ).number ( static_cast < int32_t > ( offset / item.size ) ).text ( ), syntax::NUMBER );
+					out.put ( L"]" );
+
+				}
+
+				return;
+
+			}
+
 			if ( var >= 0 && field_of ( var, offset ) ) {
 
 				wchar_t field [ 32 ] = L"field_";
@@ -1247,7 +1287,7 @@ namespace decompiler {
 			else if ( where.kind == op::ADD && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST )
 				var = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( where.a ) ].value );
 
-			bool fielded = var >= 0 && ( has_struct ( var ) || ( var < b.var_structs.count ( ) && !b.var_structs [ static_cast < size_t > ( var ) ].empty ( ) ) );
+			bool fielded = var >= 0 && ( has_struct ( var ) || ( var < b.var_structs.count ( ) && !b.var_structs [ static_cast < size_t > ( var ) ].empty ( ) ) || ( var < element.count ( ) && ( element [ static_cast < size_t > ( var ) ] & 0x1F ) == item.size ) );
 
 			if ( item.bits & FLOATING || fielded || ( where.kind == op::ADDRESS && where.value >= 0 ) ) {
 
@@ -3805,6 +3845,151 @@ namespace decompiler {
 
 	}
 
+	static void typed_pointers ( builder& b, base::list < uint8_t >& element ) {
+
+		int32_t total = b.vars.count ( );
+		base::list < uint8_t > bad;
+
+		element.clear ( );
+		element.fill ( static_cast < size_t > ( total ), 0 );
+		bad.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			const variable& item = b.vars [ static_cast < size_t > ( v ) ];
+
+			if ( item.kind != var_kind::PARAMETER || item.size != 8 || ( item.bits & FLOATING ) || ( v < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( v ) ].empty ( ) ) )
+				bad [ static_cast < size_t > ( v ) ] = 1;
+
+		}
+
+		base::list < uint8_t > direct;
+
+		direct.fill ( static_cast < size_t > ( total ), 0 );
+
+		auto record = [ & ] ( int32_t v, const expr& load, int64_t offset ) {
+
+			if ( v < 0 || v >= total || bad [ static_cast < size_t > ( v ) ] )
+				return;
+
+			if ( offset == 0 )
+				direct [ static_cast < size_t > ( v ) ] = 1;
+
+			uint8_t size = load.size;
+
+			if ( size != 1 && size != 2 && size != 4 && size != 8 ) {
+
+				bad [ static_cast < size_t > ( v ) ] = 1;
+
+				return;
+
+			}
+
+			uint8_t shape = static_cast < uint8_t > ( size | ( ( load.bits & FLOATING ) ? 0x80 : 0 ) );
+			uint8_t& slot = element [ static_cast < size_t > ( v ) ];
+
+			if ( offset % size != 0 || offset < 0 || ( slot && slot != shape ) ) {
+
+				bad [ static_cast < size_t > ( v ) ] = 1;
+
+				return;
+
+			}
+
+			slot = shape;
+
+		};
+
+		auto var_of = [ & ] ( int32_t e ) {
+
+			return e >= 0 && b.exprs [ static_cast < size_t > ( e ) ].kind == op::VAR ? static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( e ) ].value ) : -1;
+
+		};
+
+		auto walk = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+			if ( e < 0 || depth > 96 )
+				return;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind == op::VAR ) {
+
+				if ( node.value >= 0 && node.value < total )
+					bad [ static_cast < size_t > ( node.value ) ] = 1;
+
+				return;
+
+			}
+
+			if ( node.kind == op::LOAD && node.a >= 0 ) {
+
+				const expr& where = b.exprs [ static_cast < size_t > ( node.a ) ];
+
+				if ( where.kind == op::VAR ) {
+
+					record ( static_cast < int32_t > ( where.value ), node, 0 );
+
+					return;
+
+				}
+
+				if ( where.kind == op::ADD && var_of ( where.a ) >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST ) {
+
+					record ( var_of ( where.a ), node, b.exprs [ static_cast < size_t > ( where.b ) ].value );
+
+					return;
+
+				}
+
+			}
+
+			if ( ( node.kind == op::EQ || node.kind == op::NE ) && var_of ( node.a ) >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( node.b ) ].value == 0 )
+				return;
+
+			self ( self, node.a, depth + 1 );
+			self ( self, node.b, depth + 1 );
+			self ( self, node.c, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+		};
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& item = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( item.kind == stmt::NOP || item.kind == stmt::ASM )
+					continue;
+
+				walk ( walk, item.left, 0 );
+				walk ( walk, item.right, 0 );
+
+			}
+
+			walk ( walk, block.condition, 0 );
+			walk ( walk, block.selector, 0 );
+
+			if ( b.returns_value || block.end == term::TAIL )
+				walk ( walk, block.returned, 0 );
+
+		}
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			if ( bad [ static_cast < size_t > ( v ) ] || !direct [ static_cast < size_t > ( v ) ] )
+				element [ static_cast < size_t > ( v ) ] = 0;
+
+		}
+
+	}
+
 	static bool unique_name ( const base::list < base::text >& taken, const wchar_t* base_name, wchar_t* out ) {
 
 		int32_t length = 0;
@@ -4076,6 +4261,7 @@ namespace decompiler {
 		}
 
 		name_from_calls ( b, body_emitter.result_var );
+		typed_pointers ( b, body_emitter.element );
 
 		body_emitter.out.r = &body;
 		body_emitter.dry = true;
@@ -4156,6 +4342,7 @@ namespace decompiler {
 		head.var_number = body_emitter.var_number;
 		head.next_number = body_emitter.next_number;
 		head.result_var = body_emitter.result_var;
+		head.element = body_emitter.element;
 		head.out.r = &out;
 
 		for ( int32_t v = 0; v < b.vars.count ( ); v++ ) {
