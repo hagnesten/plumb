@@ -21,7 +21,9 @@ namespace decompiler {
 		{ L"NTSTATUS", 4, SIGNED }, { L"HRESULT", 4, SIGNED }, { L"char32_t", 4, UNSIGNED }, { L"QWORD", 8, UNSIGNED },
 		{ L"ULONGLONG", 8, UNSIGNED }, { L"LONGLONG", 8, SIGNED }, { L"DWORD64", 8, UNSIGNED }, { L"ULONG64", 8, UNSIGNED },
 		{ L"LONG64", 8, SIGNED }, { L"bool", 1, UNSIGNED }, { L"_Bool", 1, UNSIGNED }, { L"float", 4, FLOATING },
-		{ L"FLOAT", 4, FLOATING }, { L"double", 8, FLOATING }
+		{ L"FLOAT", 4, FLOATING }, { L"double", 8, FLOATING }, { L"_BYTE", 1, UNSIGNED }, { L"_WORD", 2, UNSIGNED },
+		{ L"_DWORD", 4, UNSIGNED }, { L"_QWORD", 8, UNSIGNED }, { L"_BOOL1", 1, UNSIGNED }, { L"_BOOL4", 4, UNSIGNED },
+		{ L"_BOOL8", 8, UNSIGNED }
 	};
 
 	static const wchar_t* pointer_types [ ] = {
@@ -165,6 +167,9 @@ namespace decompiler {
 
 				stars++;
 
+				if ( length && text [ length - 1 ] != L'*' && length < room - 3 )
+					text [ length++ ] = L' ';
+
 				if ( length < room - 2 )
 					text [ length++ ] = L'*';
 
@@ -292,7 +297,7 @@ namespace decompiler {
 		if ( named ) {
 
 			out.size = named->size;
-			out.bits = named->bits;
+			out.bits = is_unsigned && ( named->bits & SIGNED ) ? UNSIGNED : named->bits;
 
 		} else if ( sized_pointer ) {
 

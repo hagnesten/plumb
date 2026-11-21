@@ -304,30 +304,56 @@ namespace decompiler {
 
 		}
 
-		void type_name ( uint8_t size, uint8_t bits, bool pointer ) {
+		void type_name ( uint8_t size, uint8_t bits, bool pointer, bool memory = false ) {
 
-			const wchar_t* text = L"int64_t";
+			const wchar_t* text = L"__int64";
 
 			if ( bits & FLOATING )
 				text = size == 4 ? L"float" : ( size == 8 ? L"double" : L"__m128" );
 			else if ( pointer )
-				text = L"uint8_t*";
-			else {
+				text = L"_BYTE *";
+			else if ( memory && !( bits & SIGNED ) ) {
+
+				switch ( size ) {
+
+					case 1:
+						text = L"_BYTE";
+						break;
+
+					case 2:
+						text = L"_WORD";
+						break;
+
+					case 4:
+						text = L"_DWORD";
+						break;
+
+					case 16:
+						text = L"_OWORD";
+						break;
+
+					default:
+						text = L"_QWORD";
+						break;
+
+				}
+
+			} else {
 
 				bool is_unsigned = ( bits & UNSIGNED ) != 0;
 
 				switch ( size ) {
 
 					case 1:
-						text = is_unsigned ? L"uint8_t" : L"char";
+						text = is_unsigned ? L"unsigned __int8" : L"char";
 						break;
 
 					case 2:
-						text = is_unsigned ? L"uint16_t" : L"int16_t";
+						text = is_unsigned ? L"unsigned __int16" : L"__int16";
 						break;
 
 					case 4:
-						text = is_unsigned ? L"uint32_t" : L"int32_t";
+						text = is_unsigned ? L"unsigned int" : L"int";
 						break;
 
 					case 16:
@@ -335,7 +361,7 @@ namespace decompiler {
 						break;
 
 					default:
-						text = is_unsigned ? L"uint64_t" : L"int64_t";
+						text = is_unsigned ? L"unsigned __int64" : L"__int64";
 						break;
 
 				}
@@ -343,6 +369,13 @@ namespace decompiler {
 			}
 
 			out.put ( text, syntax::TYPE );
+
+		}
+
+		void name_after_type ( ) {
+
+			if ( out.last ( ) != L'*' )
+				out.put ( L" " );
 
 		}
 
@@ -366,7 +399,7 @@ namespace decompiler {
 				out.put ( L"struct", syntax::KEYWORD );
 				out.put ( L" " );
 				out.put ( base::writer ( ).add ( name ).add ( L"_t" ).text ( ), syntax::TYPE );
-				out.put ( L"*" );
+				out.put ( L" *" );
 
 				return;
 
@@ -642,8 +675,8 @@ namespace decompiler {
 					if ( !exact ) {
 
 						out.put ( L"*(" );
-						type_name ( item.size, item.bits, false );
-						out.put ( L"*)&" );
+						type_name ( item.size, item.bits, false, true );
+						out.put ( L" *)&" );
 
 					}
 
@@ -679,8 +712,8 @@ namespace decompiler {
 				if ( scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value == item.size ) {
 
 					out.put ( L"((" );
-					type_name ( item.size, item.bits, false );
-					out.put ( L"*)" );
+					type_name ( item.size, item.bits, false, true );
+					out.put ( L" *)" );
 					value ( where.a, 14 );
 					out.put ( L")[" );
 					value ( scaled.a, 0 );
@@ -696,8 +729,8 @@ namespace decompiler {
 				out.put ( L"(" );
 
 			out.put ( L"*(", syntax::OPERATOR );
-			type_name ( item.size, item.bits, false );
-			out.put ( L"*)" );
+			type_name ( item.size, item.bits, false, true );
+			out.put ( L" *)" );
 			value ( item.a, 14 );
 
 			if ( parent > 14 )
@@ -1158,7 +1191,7 @@ namespace decompiler {
 				hoist ( item.a, address );
 				out.begin ( address );
 				type_name ( item.size, item.bits, false );
-				out.put ( L" " );
+				name_after_type ( );
 				out.put ( base::writer ( ).add ( L"t" ).number ( number ).text ( ), syntax::LOCAL );
 				out.put ( L";" );
 				out.finish ( );
@@ -2690,14 +2723,14 @@ namespace decompiler {
 				wchar_t var [ 64 ];
 
 				head.var_type ( found );
-				head.out.put ( L" " );
+				head.name_after_type ( );
 				head.var_name ( found, var );
 				head.out.put ( var, syntax::PARAMETER );
 
 			} else if ( b.has_prototype && position < b.prototype.count ) {
 
 				head.out.put ( b.prototype.types [ position ], syntax::TYPE );
-				head.out.put ( L" " );
+				head.name_after_type ( );
 
 				if ( b.prototype.names [ position ] [ 0 ] )
 					head.out.put ( b.prototype.names [ position ], syntax::PARAMETER );
@@ -2707,7 +2740,7 @@ namespace decompiler {
 			} else {
 
 				head.type_name ( b.long_mode ? 8 : 4, 0, false );
-				head.out.put ( L" " );
+				head.name_after_type ( );
 				head.out.put ( base::writer ( ).add ( L"a" ).number ( position + 1 ).text ( ), syntax::PARAMETER );
 
 			}
@@ -2749,7 +2782,7 @@ namespace decompiler {
 
 			head.out.begin ( 0 );
 			head.var_type ( v );
-			head.out.put ( L" " );
+			head.name_after_type ( );
 			head.var_name ( v, var );
 			head.out.put ( var, syntax::LOCAL );
 			head.out.put ( L";" );
