@@ -478,6 +478,13 @@ namespace ui {
 
 					const wchar_t* key = shown;
 
+					for ( const decompiler::name_alias& alias : code->aliases ) {
+
+						if ( base::same_text ( alias.shown, shown ) )
+							key = alias.key;
+
+					}
+
 					for ( const local_entry& entry : locals ) {
 
 						if ( entry.function == where && !entry.name.empty ( ) && base::same_text ( entry.name.get ( ), shown ) )
@@ -562,6 +569,19 @@ namespace ui {
 
 				if ( entry.function == where && !entry.name.empty ( ) && base::same_text ( entry.name.get ( ), key ) )
 					key = entry.key.get ( );
+
+			}
+
+			const decompiler::result* named = pseudocode_for ( where );
+
+			if ( named ) {
+
+				for ( const decompiler::name_alias& alias : named->aliases ) {
+
+					if ( base::same_text ( alias.shown, key ) )
+						key = alias.key;
+
+				}
 
 			}
 

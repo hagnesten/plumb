@@ -55,6 +55,17 @@ namespace ui {
 			for ( int32_t k = 0; k <= length; k++ )
 				key [ k ] = shown [ k ];
 
+			for ( const decompiler::name_alias& alias : code->aliases ) {
+
+				if ( base::same_text ( alias.shown, shown ) ) {
+
+					for ( int32_t k = 0; k < 64; k++ )
+						key [ k ] = alias.key [ k ];
+
+				}
+
+			}
+
 			for ( const local_entry& entry : locals ) {
 
 				if ( entry.function == now->function && !entry.name.empty ( ) && base::same_text ( entry.name.get ( ), shown ) ) {

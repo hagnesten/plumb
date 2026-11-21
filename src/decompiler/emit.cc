@@ -278,6 +278,33 @@ namespace decompiler {
 			if ( !user && item.kind == var_kind::PARAMETER && b.has_prototype && item.position >= 0 && item.position < b.prototype.count && b.prototype.names [ item.position ] [ 0 ] )
 				user = b.prototype.names [ item.position ];
 
+			if ( !user && index != result_var && index < b.call_names.count ( ) && !b.call_names [ static_cast < size_t > ( index ) ].empty ( ) ) {
+
+				user = b.call_names [ static_cast < size_t > ( index ) ].get ( );
+
+				if ( b.out ) {
+
+					bool known = false;
+
+					for ( const name_alias& alias : b.out->aliases )
+						known = known || base::same_text ( alias.key, text );
+
+					if ( !known ) {
+
+						name_alias& made = b.out->aliases.emplace ( );
+
+						for ( int32_t k = 0; user [ k ] && k < 63; k++ )
+							made.shown [ k ] = user [ k ];
+
+						for ( int32_t k = 0; text [ k ] && k < 63; k++ )
+							made.key [ k ] = text [ k ];
+
+					}
+
+				}
+
+			}
+
 			if ( user ) {
 
 				int32_t length = 0;
@@ -3153,6 +3180,122 @@ namespace decompiler {
 
 		delete shape;
 
+		for ( int32_t round = 0; round < 4; round++ ) {
+
+			bool moved = false;
+
+			for ( const statement& item : b.statements ) {
+
+				if ( item.kind != stmt::ASSIGN || item.left < 0 || item.right < 0 )
+					continue;
+
+				const expr& left = b.exprs [ static_cast < size_t > ( item.left ) ];
+				const expr& right = b.exprs [ static_cast < size_t > ( item.right ) ];
+
+				if ( left.kind != op::VAR || right.kind != op::VAR )
+					continue;
+
+				int32_t into = static_cast < int32_t > ( left.value );
+				int32_t from = static_cast < int32_t > ( right.value );
+
+				if ( into < 0 || from < 0 || into >= out.count ( ) || from >= out.count ( ) )
+					continue;
+
+				if ( out [ static_cast < size_t > ( into ) ].empty ( ) && !out [ static_cast < size_t > ( from ) ].empty ( ) && b.vars [ static_cast < size_t > ( into ) ].size == b.vars [ static_cast < size_t > ( from ) ].size ) {
+
+					out [ static_cast < size_t > ( into ) ].set ( out [ static_cast < size_t > ( from ) ].get ( ) );
+					moved = true;
+
+				} else if ( out [ static_cast < size_t > ( from ) ].empty ( ) && !out [ static_cast < size_t > ( into ) ].empty ( ) && b.vars [ static_cast < size_t > ( into ) ].size == b.vars [ static_cast < size_t > ( from ) ].size ) {
+
+					out [ static_cast < size_t > ( from ) ].set ( out [ static_cast < size_t > ( into ) ].get ( ) );
+					moved = true;
+
+				}
+
+			}
+
+			if ( !moved )
+				break;
+
+		}
+
+	}
+
+	static void name_from_calls ( builder& b, int32_t result_var ) {
+
+		b.call_names.clear ( );
+		b.call_names.resize ( b.vars.size ( ) );
+
+		if ( !b.names )
+			return;
+
+		static const wchar_t* const prefixes [ ] = { L"Get", L"get_", L"_get_", L"Create", L"Load" };
+		base::list < base::text > taken;
+
+		for ( const statement& item : b.statements ) {
+
+			if ( item.kind != stmt::ASSIGN || item.left < 0 || item.right < 0 )
+				continue;
+
+			const expr& left = b.exprs [ static_cast < size_t > ( item.left ) ];
+			const expr& right = b.exprs [ static_cast < size_t > ( item.right ) ];
+
+			if ( left.kind != op::VAR || right.kind != op::CALL || !right.value )
+				continue;
+
+			int32_t v = static_cast < int32_t > ( left.value );
+
+			if ( v < 0 || v >= b.vars.count ( ) || v == result_var || b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER || !b.call_names [ static_cast < size_t > ( v ) ].empty ( ) )
+				continue;
+
+			wchar_t callee [ 200 ];
+
+			if ( !b.names->name ( static_cast < uint64_t > ( right.value ), true, callee, 200 ) )
+				continue;
+
+			const wchar_t* rest = nullptr;
+
+			for ( const wchar_t* prefix : prefixes ) {
+
+				int32_t k = 0;
+
+				while ( prefix [ k ] && prefix [ k ] == callee [ k ] )
+					k++;
+
+				if ( prefix [ k ] )
+					continue;
+
+				wchar_t next = callee [ k ];
+				bool upper = next >= L'A' && next <= L'Z';
+				bool snake = prefix [ k - 1 ] == L'_' && ( ( next >= L'a' && next <= L'z' ) || upper );
+
+				if ( upper || snake ) {
+
+					rest = callee + k;
+
+					break;
+
+				}
+
+			}
+
+			if ( !rest || !base::is_identifier ( rest ) || !rest [ 1 ] )
+				continue;
+
+			bool clash = false;
+
+			for ( const base::text& other : taken )
+				clash = clash || base::same_text ( other.get ( ), rest );
+
+			if ( clash )
+				continue;
+
+			taken.push ( base::text ( rest ) );
+			b.call_names [ static_cast < size_t > ( v ) ].set ( rest );
+
+		}
+
 	}
 
 	bool emit ( builder& b ) {
@@ -3192,6 +3335,8 @@ namespace decompiler {
 			body_emitter.result_var = chosen >= 0 ? chosen : -1;
 
 		}
+
+		name_from_calls ( b, body_emitter.result_var );
 
 		body_emitter.out.r = &body;
 		body_emitter.dry = true;
@@ -3569,6 +3714,7 @@ namespace decompiler {
 		out.spans.clear ( );
 		out.lines.clear ( );
 		out.hints.clear ( );
+		out.aliases.clear ( );
 		out.function = function;
 		b->db = &db;
 		b->file = db.file;

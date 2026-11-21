@@ -56,10 +56,18 @@ namespace decompiler {
 
 	};
 
+	struct name_alias {
+
+		wchar_t shown [ 64 ] = { };
+		wchar_t key [ 64 ] = { };
+
+	};
+
 	struct result {
 
 		uint64_t function = 0;
 		base::list < field_hint > hints;
+		base::list < name_alias > aliases;
 		base::list < wchar_t > text;
 		base::list < span > spans;
 		base::list < line > lines;
