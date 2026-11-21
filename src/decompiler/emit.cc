@@ -268,6 +268,50 @@ namespace decompiler {
 
 		}
 
+		bool renumber ( ) {
+
+			base::list < int32_t > order;
+			bool changed = false;
+
+			for ( int32_t v = 0; v < b.vars.count ( ); v++ ) {
+
+				if ( var_number [ static_cast < size_t > ( v ) ] >= 0 && b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER )
+					order.push ( v );
+
+			}
+
+			base::sort ( order.data ( ), order.count ( ), [ & ] ( int32_t x, int32_t y ) {
+
+				const variable& left = b.vars [ static_cast < size_t > ( x ) ];
+				const variable& right = b.vars [ static_cast < size_t > ( y ) ];
+				bool left_stack = left.kind == var_kind::STACK;
+				bool right_stack = right.kind == var_kind::STACK;
+
+				if ( left_stack != right_stack )
+					return !left_stack;
+
+				if ( left_stack )
+					return left.offset < right.offset;
+
+				return var_number [ static_cast < size_t > ( x ) ] < var_number [ static_cast < size_t > ( y ) ];
+
+			} );
+
+			int32_t next = b.params;
+
+			for ( int32_t v : order ) {
+
+				changed = changed || var_number [ static_cast < size_t > ( v ) ] != next;
+				var_number [ static_cast < size_t > ( v ) ] = next++;
+
+			}
+
+			next_number = next;
+
+			return changed;
+
+		}
+
 		void var_name ( int32_t index, wchar_t* text ) {
 
 			default_name ( index, text );
@@ -3345,6 +3389,9 @@ namespace decompiler {
 		body_emitter.dry = false;
 		body_emitter.out.indent = 1;
 		body_emitter.run ( );
+
+		bool renumbered = body_emitter.renumber ( );
+
 		body_emitter.dry = true;
 		b.var_types.resize ( b.vars.size ( ) );
 		b.var_structs.resize ( b.vars.size ( ) );
@@ -3394,7 +3441,7 @@ namespace decompiler {
 
 		body_emitter.dry = false;
 
-		if ( typed ) {
+		if ( typed || renumbered ) {
 
 			int32_t gotos = body_emitter.gotos;
 
