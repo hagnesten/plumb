@@ -1214,6 +1214,8 @@ namespace decompiler {
 
 	}
 
+	static bool rescue_flags = true;
+
 	struct machine {
 
 		builder* b = nullptr;
@@ -1238,6 +1240,8 @@ namespace decompiler {
 
 			for ( int32_t i = 0; i < 32; i++ )
 				regs [ i ] = -1;
+
+			forget_kept ( );
 
 			for ( int32_t i = 0; i < 16; i++ ) {
 
@@ -1648,7 +1652,113 @@ namespace decompiler {
 
 		}
 
+		int32_t find_same ( int32_t e, int32_t target, int32_t depth ) const {
+
+			if ( e < 0 || target < 0 || depth > 24 )
+				return -1;
+
+			if ( b->same ( e, target ) )
+				return e;
+
+			const expr& node = b->exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind == op::CALL || node.kind == op::INTRINSIC )
+				return -1;
+
+			int32_t found = find_same ( node.a, target, depth + 1 );
+
+			if ( found < 0 )
+				found = find_same ( node.b, target, depth + 1 );
+
+			if ( found < 0 )
+				found = find_same ( node.c, target, depth + 1 );
+
+			return found;
+
+		}
+
+		int32_t swap_same ( int32_t e, int32_t target, int32_t var ) {
+
+			if ( e < 0 || target < 0 )
+				return e;
+
+			for ( int32_t round = 0; round < 4; round++ ) {
+
+				int32_t found = find_same ( e, target, 0 );
+
+				if ( found < 0 )
+					break;
+
+				int32_t with = b->var_expr ( var, b->exprs [ static_cast < size_t > ( found ) ].size );
+
+				if ( found == e )
+					return with;
+
+				int32_t next = b->replace ( e, found, with );
+
+				if ( next == e )
+					break;
+
+				e = next;
+
+			}
+
+			return e;
+
+		}
+
+		int32_t kept_source [ 32 ];
+		int32_t kept_var [ 32 ];
+
+		void forget_kept ( ) {
+
+			for ( int32_t slot = 0; slot < 32; slot++ ) {
+
+				kept_source [ slot ] = -1;
+				kept_var [ slot ] = -1;
+
+			}
+
+		}
+
+		int32_t recover ( int32_t e, int32_t var, int32_t skip ) {
+
+			if ( !rescue_flags || e < 0 || !b->references ( e, var, skip ) )
+				return e;
+
+			for ( int32_t slot = 0; slot < 32; slot++ ) {
+
+				if ( kept_source [ slot ] < 0 || kept_var [ slot ] == var || !b->references ( kept_source [ slot ], var, -1 ) )
+					continue;
+
+				int32_t swapped = swap_same ( e, kept_source [ slot ], kept_var [ slot ] );
+
+				if ( swapped != e ) {
+
+					e = swapped;
+
+					if ( !b->references ( e, var, skip ) )
+						return e;
+
+				}
+
+			}
+
+			return e;
+
+		}
+
 		void protect ( int32_t var, int32_t skip, uint64_t address ) {
+
+			if ( flag_kind ) {
+
+				flag_a = recover ( flag_a, var, skip );
+				flag_b = recover ( flag_b, var, skip );
+
+			}
+
+			guard_a = recover ( guard_a, var, skip );
+			guard_b = recover ( guard_b, var, skip );
 
 			if ( flag_kind && b->references ( flag_a, var, skip ) )
 				flag_a = spill ( flag_a, address );
@@ -1722,6 +1832,13 @@ namespace decompiler {
 
 				flag_a = b->replace ( flag_a, source, b->var_expr ( var, value.size ) );
 				flag_b = b->replace ( flag_b, source, b->var_expr ( var, value.size ) );
+
+			}
+
+			if ( rescue_flags && value.kind != op::CONST && value.kind != op::VAR ) {
+
+				kept_source [ slot ] = value.kind == op::CAST ? value.a : source;
+				kept_var [ slot ] = var;
 
 			}
 

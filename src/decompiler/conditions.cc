@@ -1049,6 +1049,46 @@ namespace decompiler {
 
 						if ( after.end == term::BRANCH && ( after.taken == joined || after.other == joined ) )
 							continue;
+
+						if ( exprs [ static_cast < size_t > ( line.right ) ].kind != op::CALL ) {
+
+							base::list < uint8_t > seen;
+							base::list < int32_t > queue;
+							bool reaches = false;
+
+							seen.fill ( static_cast < size_t > ( total ), 0 );
+							queue.push ( rest );
+							seen [ static_cast < size_t > ( rest ) ] = 1;
+
+							for ( int32_t q = 0; q < queue.count ( ) && !reaches; q++ ) {
+
+								const block_code& at = code [ static_cast < size_t > ( queue [ static_cast < size_t > ( q ) ] ) ];
+								int32_t next_blocks [ 2 ] = { at.taken, at.other };
+
+								for ( int32_t n : next_blocks ) {
+
+									if ( n < 0 || n >= total || seen [ static_cast < size_t > ( n ) ] || n == a )
+										continue;
+
+									if ( n == joined ) {
+
+										reaches = true;
+
+										break;
+
+									}
+
+									seen [ static_cast < size_t > ( n ) ] = 1;
+									queue.push ( n );
+
+								}
+
+							}
+
+							if ( reaches )
+								continue;
+
+						}
 						base::list < int32_t > seen;
 
 						seen.fill ( vars.size ( ), 0 );

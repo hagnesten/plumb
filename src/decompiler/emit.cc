@@ -471,6 +471,7 @@ namespace decompiler {
 		bool explicit_zero = false;
 		base::list < uint8_t > hidden;
 		base::list < uint8_t > element;
+		base::list < uint8_t > boolean;
 		bool inline_returns = true;
 		bool call_unused = false;
 		bool fall_returns = true;
@@ -936,7 +937,7 @@ namespace decompiler {
 
 			}
 
-			if ( item.flags || ( index == result_var && b.result_width == 2 && item.size == 1 ) ) {
+			if ( item.flags || ( index == result_var && b.result_width == 2 && item.size == 1 ) || ( index < boolean.count ( ) && boolean [ static_cast < size_t > ( index ) ] ) ) {
 
 				out.put ( L"bool", syntax::TYPE );
 
@@ -1368,6 +1369,19 @@ namespace decompiler {
 
 		}
 
+		void index_number ( int64_t amount ) {
+
+			if ( amount < 0 ) {
+
+				out.put ( L"-", syntax::NUMBER );
+				amount = -amount;
+
+			}
+
+			out.put ( base::writer ( ).number ( amount ).text ( ), syntax::NUMBER );
+
+		}
+
 		int32_t pointer_step ( int32_t e ) const {
 
 			if ( e < 0 )
@@ -1565,7 +1579,7 @@ namespace decompiler {
 
 					out.put ( name, syntax::LOCAL );
 					out.put ( L"[" );
-					out.put ( base::writer ( ).number ( static_cast < int32_t > ( offset ) ).text ( ), syntax::NUMBER );
+					index_number ( offset );
 					out.put ( L"]" );
 
 				}
@@ -1583,7 +1597,7 @@ namespace decompiler {
 				pointer_type ( );
 				out.put ( name, syntax::LOCAL );
 				out.put ( L" + ", syntax::OPERATOR );
-				out.put ( base::writer ( ).number ( static_cast < int32_t > ( offset / item.size ) ).text ( ), syntax::NUMBER );
+				index_number ( offset / item.size );
 				out.put ( L")" );
 
 				if ( parent > 14 )
@@ -1707,7 +1721,7 @@ namespace decompiler {
 
 					out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
 					out.put ( L"[" );
-					out.put ( base::writer ( ).number ( static_cast < int32_t > ( offset / item.size ) ).text ( ), syntax::NUMBER );
+					index_number ( offset / item.size );
 					out.put ( L"]" );
 
 				}
@@ -5530,6 +5544,138 @@ namespace decompiler {
 	static bool typed_locals = true;
 	static bool char_locals = true;
 
+	static bool detect_bools = true;
+
+	static void boolean_vars ( builder& b, base::list < uint8_t >& boolean ) {
+
+		int32_t total = b.vars.count ( );
+		base::list < uint8_t > state;
+
+		boolean.clear ( );
+		boolean.fill ( static_cast < size_t > ( total ), 0 );
+		state.fill ( static_cast < size_t > ( total ), 0 );
+
+		if ( !detect_bools )
+			return;
+
+		auto truth = [ & ] ( int32_t e, bool& compared ) -> int32_t {
+
+			if ( e < 0 )
+				return 0;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			switch ( node.kind ) {
+
+				case op::EQ:
+				case op::NE:
+				case op::LT:
+				case op::LE:
+				case op::GT:
+				case op::GE:
+				case op::LNOT:
+				case op::LAND:
+				case op::LOR:
+					compared = true;
+					return 1;
+
+				case op::CONST:
+					return node.value == 0 || node.value == 1 ? 1 : 0;
+
+				case op::VAR:
+					return node.value >= 0 && node.value < total ? 2 : 0;
+
+				default:
+					return 0;
+
+			}
+
+		};
+
+		base::list < int32_t > copy_from;
+		base::list < int32_t > copy_to;
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& item = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( item.kind != stmt::ASSIGN || item.left < 0 || b.exprs [ static_cast < size_t > ( item.left ) ].kind != op::VAR )
+					continue;
+
+				int64_t v = b.exprs [ static_cast < size_t > ( item.left ) ].value;
+
+				if ( v < 0 || v >= total )
+					continue;
+
+				bool compared = false;
+				int32_t kind = truth ( item.right, compared );
+
+				if ( kind == 0 )
+					state [ static_cast < size_t > ( v ) ] |= 4;
+				else if ( kind == 2 ) {
+
+					copy_from.push ( static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( item.right ) ].value ) );
+					copy_to.push ( static_cast < int32_t > ( v ) );
+
+				}
+
+				if ( compared )
+					state [ static_cast < size_t > ( v ) ] |= 1;
+
+			}
+
+		}
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			const variable& item = b.vars [ static_cast < size_t > ( v ) ];
+
+			if ( item.size != 1 || item.flags || item.kind == var_kind::PARAMETER || ( item.bits & FLOATING ) || ( v < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( v ) ].empty ( ) ) )
+				state [ static_cast < size_t > ( v ) ] |= 4;
+
+		}
+
+		for ( int32_t round = 0; round < 8; round++ ) {
+
+			bool changed = false;
+
+			for ( int32_t i = 0; i < copy_from.count ( ); i++ ) {
+
+				int32_t from = copy_from [ static_cast < size_t > ( i ) ];
+				int32_t to = copy_to [ static_cast < size_t > ( i ) ];
+				bool from_bool = !b.vars [ static_cast < size_t > ( from ) ].flags ? ( state [ static_cast < size_t > ( from ) ] & 4 ) == 0 : true;
+
+				if ( !from_bool && !( state [ static_cast < size_t > ( to ) ] & 4 ) ) {
+
+					state [ static_cast < size_t > ( to ) ] |= 4;
+					changed = true;
+
+				}
+
+				if ( from_bool && b.vars [ static_cast < size_t > ( from ) ].flags && !( state [ static_cast < size_t > ( to ) ] & 1 ) ) {
+
+					state [ static_cast < size_t > ( to ) ] |= 1;
+					changed = true;
+
+				}
+
+			}
+
+			if ( !changed )
+				break;
+
+		}
+
+		for ( int32_t v = 0; v < total; v++ )
+			boolean [ static_cast < size_t > ( v ) ] = state [ static_cast < size_t > ( v ) ] == 1 ? 1 : 0;
+
+	}
+
 	static bool flow_typing = true;
 	static bool flow_seeded_only = true;
 
@@ -6699,6 +6845,7 @@ namespace decompiler {
 
 		name_from_calls ( b, body_emitter.result_var );
 		typed_pointers ( b, body_emitter.element );
+		boolean_vars ( b, body_emitter.boolean );
 
 		if ( !body_emitter.indexing ) {
 
