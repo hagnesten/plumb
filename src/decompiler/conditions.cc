@@ -77,6 +77,7 @@ namespace decompiler {
 	}
 
 	static bool ghost_folds = false;
+	static bool ghost_sinks = false;
 	static bool copy_fixed = true;
 	static bool copy_into = true;
 	static bool calls_forward = true;
@@ -568,6 +569,13 @@ namespace decompiler {
 
 			slot = made;
 			line.kind = stmt::NOP;
+
+			if ( ghost_sinks && !owner.flags && exprs [ static_cast < size_t > ( line.right ) ].kind == op::CALL ) {
+
+				vars [ static_cast < size_t > ( v ) ].ghost = true;
+				vars [ static_cast < size_t > ( v ) ].born = line.address;
+
+			}
 
 		}
 
