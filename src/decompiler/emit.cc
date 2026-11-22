@@ -2938,9 +2938,16 @@ namespace decompiler {
 
 					number ( shown_value, narrow ? 4 : 8, !simple_constant ( shown_value ), false );
 
-				}
-				else
+				} else {
+
+					const expr& top = b.exprs [ static_cast < size_t > ( item.returned ) ];
+					bool keep = explicit_zero;
+
+					explicit_zero = ( b.result_width == 1 || b.result_width == 2 ) && ( top.kind == op::EQ || top.kind == op::NE );
 					value ( item.returned, 0 );
+					explicit_zero = keep;
+
+				}
 
 			}
 
