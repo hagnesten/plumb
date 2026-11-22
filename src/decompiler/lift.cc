@@ -3418,21 +3418,39 @@ namespace decompiler {
 
 			if ( value >= static_cast < int32_t > ( mnemonic::cmovo ) && value <= static_cast < int32_t > ( mnemonic::cmovg ) ) {
 
-				if ( ins.operands [ 0 ].type == x86::kind::REG && slot_of ( ins.operands [ 0 ].reg ) >= 0 ) {
+				int32_t slot = ins.operands [ 0 ].type == x86::kind::REG ? slot_of ( ins.operands [ 0 ].reg ) : -1;
 
-				int32_t slot = slot_of ( ins.operands [ 0 ].reg );
-				int32_t current = regs [ slot ];
+				for ( int32_t held = 0; held < 16; held++ ) {
 
-				if ( current >= 0 && k.exprs [ static_cast < size_t > ( current ) ].kind != op::VAR && k.exprs [ static_cast < size_t > ( current ) ].kind != op::CONST && k.exprs [ static_cast < size_t > ( current ) ].depth >= 3 )
-					materialize ( slot, ins.address );
+					int32_t value = regs [ held ];
 
-			}
+					if ( held == slot || value < 0 || ( value != flag_a && value != flag_b ) )
+						continue;
 
-			int32_t chosen = k.make ( op::TERNARY, size, condition ( ins.condition ), read ( ins, 1 ) );
+					op kind = k.exprs [ static_cast < size_t > ( value ) ].kind;
+
+					if ( kind != op::VAR && kind != op::CONST )
+						materialize ( held, ins.address );
+
+				}
+
+				if ( slot >= 0 ) {
+
+					int32_t current = regs [ slot ];
+
+					if ( current >= 0 && k.exprs [ static_cast < size_t > ( current ) ].kind != op::VAR )
+						materialize ( slot, ins.address );
+
+				}
+
+				int32_t chosen = k.make ( op::TERNARY, size, condition ( ins.condition ), read ( ins, 1 ) );
 
 				k.exprs [ static_cast < size_t > ( chosen ) ].c = read ( ins, 0 );
 				k.deepen ( chosen );
 				write ( ins, 0, chosen );
+
+				if ( slot >= 0 && slot < 16 )
+					materialize ( slot, ins.address );
 
 				return;
 

@@ -445,6 +445,7 @@ namespace decompiler {
 		}
 
 		coalesce_copies ( );
+		coalesce_selects ( );
 		substitute_known ( );
 		narrow_webs ( );
 		narrow_floats ( );
@@ -823,6 +824,94 @@ namespace decompiler {
 
 			if ( source.kind == op::CAST && source.a >= 0 && exprs [ static_cast < size_t > ( source.a ) ].size == left.size && !( source.bits & ( FLOATING | POINTER ) ) )
 				line.right = source.a;
+
+		}
+
+	}
+
+	void builder::coalesce_selects ( ) {
+
+		base::list < int32_t > reads;
+
+		reads.fill ( vars.size ( ), 0 );
+
+		auto count = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+			if ( e < 0 || depth > 96 )
+				return;
+
+			const expr& node = exprs [ static_cast < size_t > ( e ) ];
+
+			if ( ( node.kind == op::VAR || ( node.kind == op::ADDRESS && node.a < 0 ) ) && node.value >= 0 && node.value < reads.count ( ) )
+				reads [ static_cast < size_t > ( node.value ) ] += node.kind == op::ADDRESS ? 100 : 1;
+
+			self ( self, node.a, depth + 1 );
+			self ( self, node.b, depth + 1 );
+			self ( self, node.c, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				self ( self, args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+		};
+
+		for ( const statement& line : statements ) {
+
+			if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+				continue;
+
+			if ( !( line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR ) )
+				count ( count, line.left, 0 );
+
+			count ( count, line.right, 0 );
+
+		}
+
+		for ( const block_code& block : code ) {
+
+			count ( count, block.condition, 0 );
+			count ( count, block.selector, 0 );
+			count ( count, block.returned, 0 );
+
+		}
+
+		for ( const statement& line : statements ) {
+
+			if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+				continue;
+
+			const expr& select = exprs [ static_cast < size_t > ( line.right ) ];
+
+			if ( select.kind != op::TERNARY || select.c < 0 )
+				continue;
+
+			int32_t arm = select.c;
+
+			while ( arm >= 0 && exprs [ static_cast < size_t > ( arm ) ].kind == op::CAST )
+				arm = exprs [ static_cast < size_t > ( arm ) ].a;
+
+			if ( arm < 0 || exprs [ static_cast < size_t > ( arm ) ].kind != op::VAR )
+				continue;
+
+			int64_t into = exprs [ static_cast < size_t > ( line.left ) ].value;
+			int64_t from = exprs [ static_cast < size_t > ( arm ) ].value;
+
+			if ( into == from || into < 0 || from < 0 || into >= vars.count ( ) || from >= vars.count ( ) || reads [ static_cast < size_t > ( from ) ] != 1 )
+				continue;
+
+			const variable& a = vars [ static_cast < size_t > ( into ) ];
+			const variable& b = vars [ static_cast < size_t > ( from ) ];
+
+			if ( a.kind != var_kind::REGISTER || b.kind != var_kind::REGISTER || a.family != b.family || a.family < 0 || a.size != b.size || a.cookie || b.cookie )
+				continue;
+
+			for ( expr& node : exprs ) {
+
+				if ( node.kind == op::VAR && node.value == from )
+					node.value = into;
+
+			}
+
+			reads [ static_cast < size_t > ( from ) ] = 0;
 
 		}
 

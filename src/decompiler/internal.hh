@@ -258,6 +258,8 @@ namespace decompiler {
 
 		void coalesce_copies ( );
 
+		void coalesce_selects ( );
+
 		void narrow_webs ( );
 
 		void narrow_floats ( );
