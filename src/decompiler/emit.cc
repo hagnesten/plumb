@@ -471,6 +471,7 @@ namespace decompiler {
 		base::list < uint8_t > element;
 		bool inline_returns = true;
 		bool call_unused = false;
+		bool by_address = true;
 		wchar_t param_type [ 64 ] = { };
 		bool defer_joins = false;
 		bool rotate_guards = false;
@@ -613,7 +614,22 @@ namespace decompiler {
 		bool renumber ( ) {
 
 			base::list < int32_t > order;
+			base::list < uint64_t > first_def;
 			bool changed = false;
+
+			first_def.fill ( b.vars.size ( ), ~0ull );
+
+			for ( const statement& line : b.statements ) {
+
+				if ( line.kind != stmt::ASSIGN || line.left < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || !line.address )
+					continue;
+
+				int64_t v = b.exprs [ static_cast < size_t > ( line.left ) ].value;
+
+				if ( v >= 0 && v < first_def.count ( ) && line.address < first_def [ static_cast < size_t > ( v ) ] )
+					first_def [ static_cast < size_t > ( v ) ] = line.address;
+
+			}
 
 			for ( int32_t v = 0; v < b.vars.count ( ); v++ ) {
 
@@ -634,6 +650,9 @@ namespace decompiler {
 
 				if ( left_stack )
 					return left.offset < right.offset;
+
+				if ( by_address && first_def [ static_cast < size_t > ( x ) ] != first_def [ static_cast < size_t > ( y ) ] )
+					return first_def [ static_cast < size_t > ( x ) ] < first_def [ static_cast < size_t > ( y ) ];
 
 				return var_number [ static_cast < size_t > ( x ) ] < var_number [ static_cast < size_t > ( y ) ];
 
