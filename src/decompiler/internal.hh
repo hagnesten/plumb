@@ -209,6 +209,10 @@ namespace decompiler {
 
 		int32_t binary ( op kind, int32_t a, int32_t b, uint8_t size, uint8_t bits = 0 );
 
+		int32_t fold_arithmetic ( op kind, int32_t a, int32_t b, uint8_t size );
+
+		bool same ( int32_t x, int32_t y ) const;
+
 		int32_t cast ( int32_t a, uint8_t size, uint8_t bits );
 
 		int32_t negate ( int32_t condition );

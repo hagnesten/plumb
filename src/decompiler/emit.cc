@@ -2213,6 +2213,46 @@ namespace decompiler {
 
 					}
 
+					bool self_var = left.kind == op::VAR && right.a >= 0 && b.exprs [ static_cast < size_t > ( right.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( right.a ) ].value == left.value && b.exprs [ static_cast < size_t > ( right.a ) ].size == left.size;
+					bool self_load = left.kind == op::LOAD && right.a >= 0 && b.exprs [ static_cast < size_t > ( right.a ) ].kind == op::LOAD && b.exprs [ static_cast < size_t > ( right.a ) ].size == left.size && b.same ( right.a, item.left );
+
+					if ( ( self_var || self_load ) && right.b >= 0 && right.kind != op::CAST ) {
+
+						const wchar_t* compound = nullptr;
+
+						switch ( right.kind ) {
+
+							case op::SUB: compound = L" -= "; break;
+							case op::MUL: compound = L" *= "; break;
+							case op::DIV: compound = L" /= "; break;
+							case op::MOD: compound = L" %= "; break;
+							case op::AND: compound = L" &= "; break;
+							case op::OR: compound = L" |= "; break;
+							case op::XOR: compound = L" ^= "; break;
+							case op::SHL: compound = L" <<= "; break;
+							case op::SHR: compound = L" >>= "; break;
+							case op::ADD: compound = ( right.bits & FLOATING ) || b.exprs [ static_cast < size_t > ( right.b ) ].kind != op::CONST ? L" += " : nullptr; break;
+							default: break;
+
+						}
+
+						if ( compound ) {
+
+							if ( left.kind == op::LOAD )
+								lvalue_or_load ( left, 0 );
+							else
+								value ( item.left, 0 );
+
+							out.put ( compound, syntax::OPERATOR );
+							value ( right.b, 2 );
+							semicolon ( );
+
+							break;
+
+						}
+
+					}
+
 					if ( left.kind == op::VAR && right.kind == op::CAST && ( right.bits & POINTER ) && ( right.bits & FLOATING ) && right.a >= 0 && b.exprs [ static_cast < size_t > ( right.a ) ].size <= 8 ) {
 
 						uint8_t width = b.exprs [ static_cast < size_t > ( right.a ) ].size;

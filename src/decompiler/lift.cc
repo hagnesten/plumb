@@ -198,6 +198,134 @@ namespace decompiler {
 
 	}
 
+	static bool same_tree ( const builder& k, int32_t x, int32_t y, int32_t depth ) {
+
+		if ( x == y )
+			return true;
+
+		if ( x < 0 || y < 0 || depth > 24 )
+			return false;
+
+		const expr& p = k.exprs [ static_cast < size_t > ( x ) ];
+		const expr& q = k.exprs [ static_cast < size_t > ( y ) ];
+
+		if ( p.kind != q.kind || p.size != q.size || p.value != q.value || p.arg_count != q.arg_count || p.kind == op::CALL || p.kind == op::INTRINSIC )
+			return false;
+
+		return same_tree ( k, p.a, q.a, depth + 1 ) && same_tree ( k, p.b, q.b, depth + 1 ) && same_tree ( k, p.c, q.c, depth + 1 );
+
+	}
+
+	bool builder::same ( int32_t x, int32_t y ) const {
+
+		return same_tree ( *this, x, y, 0 );
+
+	}
+
+	static uint64_t high_product ( uint64_t x, uint64_t y ) {
+
+		uint64_t xl = x & 0xFFFFFFFFull;
+		uint64_t xh = x >> 32;
+		uint64_t yl = y & 0xFFFFFFFFull;
+		uint64_t yh = y >> 32;
+		uint64_t low = xl * yl;
+		uint64_t mid1 = xh * yl + ( low >> 32 );
+		uint64_t mid2 = xl * yh + ( mid1 & 0xFFFFFFFFull );
+
+		return xh * yh + ( mid1 >> 32 ) + ( mid2 >> 32 );
+
+	}
+
+	static uint64_t magic_divisor ( uint64_t magic, int32_t shift ) {
+
+		if ( !magic || shift < 0 || shift > 63 )
+			return 0;
+
+		double scale = 18446744073709551616.0;
+
+		for ( int32_t i = 0; i < shift; i++ )
+			scale *= 2.0;
+
+		double estimate = scale / static_cast < double > ( magic );
+
+		if ( estimate < 2.0 || estimate > 4294967296.0 )
+			return 0;
+
+		uint64_t divisor = static_cast < uint64_t > ( estimate + 0.5 );
+		const uint64_t probes [ ] = { 1, 7, 99, 12345, divisor - 1, divisor, divisor + 1, divisor * 2 - 1, divisor * 2, divisor * 1000 + 999, 0xFFFFFFFFull, 0x7FFFFFFFFFFFFFFFull, 0xFFFFFFFFFFFFFFFFull, 0x123456789ABCDEFull };
+
+		for ( uint64_t x : probes ) {
+
+			if ( ( high_product ( x, magic ) >> shift ) != x / divisor )
+				return 0;
+
+		}
+
+		return divisor;
+
+	}
+
+	int32_t builder::fold_arithmetic ( op kind, int32_t a, int32_t b, uint8_t size ) {
+
+		const expr left = exprs [ static_cast < size_t > ( a ) ];
+		const expr right = exprs [ static_cast < size_t > ( b ) ];
+
+		if ( ( kind == op::SHR || kind == op::INTRINSIC ) && right.kind == op::CONST && left.kind == op::INTRINSIC && left.value == I_UMULH && left.arg_count == 2 ) {
+
+			int32_t first = args [ static_cast < size_t > ( left.first_arg ) ];
+			int32_t second = args [ static_cast < size_t > ( left.first_arg + 1 ) ];
+			int32_t magic = exprs [ static_cast < size_t > ( first ) ].kind == op::CONST ? first : second;
+			int32_t subject = magic == first ? second : first;
+
+			if ( exprs [ static_cast < size_t > ( magic ) ].kind == op::CONST ) {
+
+				uint64_t divisor = magic_divisor ( static_cast < uint64_t > ( exprs [ static_cast < size_t > ( magic ) ].value ), static_cast < int32_t > ( right.value ) );
+
+				if ( divisor )
+					return make ( op::DIV, exprs [ static_cast < size_t > ( subject ) ].size, subject, constant ( static_cast < int64_t > ( divisor ), exprs [ static_cast < size_t > ( subject ) ].size ), 0, UNSIGNED );
+
+			}
+
+		}
+
+		if ( kind == op::ADD && same_tree ( *this, a, b, 0 ) )
+			return binary ( op::MUL, a, constant ( 2, size ), size );
+
+		if ( kind == op::ADD ) {
+
+			const int32_t sides [ 2 ] = { a, b };
+
+			for ( int32_t s = 0; s < 2; s++ ) {
+
+				const expr& scaled = exprs [ static_cast < size_t > ( sides [ s ] ) ];
+				int32_t plain = sides [ 1 - s ];
+
+				if ( scaled.kind == op::MUL && scaled.b >= 0 && exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && same_tree ( *this, scaled.a, plain, 0 ) )
+					return binary ( op::MUL, plain, constant ( exprs [ static_cast < size_t > ( scaled.b ) ].value + 1, size ), size );
+
+			}
+
+			if ( left.kind == op::MUL && right.kind == op::MUL && left.b >= 0 && right.b >= 0 && exprs [ static_cast < size_t > ( left.b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( right.b ) ].kind == op::CONST && same_tree ( *this, left.a, right.a, 0 ) )
+				return binary ( op::MUL, left.a, constant ( exprs [ static_cast < size_t > ( left.b ) ].value + exprs [ static_cast < size_t > ( right.b ) ].value, size ), size );
+
+		}
+
+		if ( kind == op::MUL && right.kind == op::CONST && left.kind == op::MUL && left.b >= 0 && exprs [ static_cast < size_t > ( left.b ) ].kind == op::CONST )
+			return binary ( op::MUL, left.a, constant ( exprs [ static_cast < size_t > ( left.b ) ].value * right.value, size ), size );
+
+		if ( kind == op::SUB && right.kind == op::MUL && right.b >= 0 && exprs [ static_cast < size_t > ( right.b ) ].kind == op::CONST && right.a >= 0 ) {
+
+			const expr& quotient = exprs [ static_cast < size_t > ( right.a ) ];
+
+			if ( quotient.kind == op::DIV && quotient.b >= 0 && exprs [ static_cast < size_t > ( quotient.b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( quotient.b ) ].value == exprs [ static_cast < size_t > ( right.b ) ].value && same_tree ( *this, quotient.a, a, 0 ) )
+				return make ( op::MOD, size, a, quotient.b, 0, quotient.bits );
+
+		}
+
+		return -1;
+
+	}
+
 	int32_t builder::binary ( op kind, int32_t a, int32_t b, uint8_t size, uint8_t bits ) {
 
 		if ( a < 0 || b < 0 )
@@ -274,6 +402,15 @@ namespace decompiler {
 
 		if ( !floating && left.kind == op::CONST && ( kind == op::ADD || kind == op::MUL || kind == op::AND || kind == op::OR || kind == op::XOR ) )
 			return binary ( kind, b, a, size, bits );
+
+		if ( !floating ) {
+
+			int32_t folded = fold_arithmetic ( kind, a, b, size );
+
+			if ( folded >= 0 )
+				return folded;
+
+		}
 
 		uint8_t result_size = size;
 
