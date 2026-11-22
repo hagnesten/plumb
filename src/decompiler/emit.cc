@@ -1314,6 +1314,39 @@ namespace decompiler {
 
 			}
 
+			{
+
+				int32_t base = item.a;
+				int64_t field = 0;
+
+				if ( where.kind == op::ADD && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST ) {
+
+					base = where.a;
+					field = b.exprs [ static_cast < size_t > ( where.b ) ].value;
+
+				}
+
+				const expr& root = b.exprs [ static_cast < size_t > ( base ) ];
+
+				if ( root.kind == op::INTRINSIC && root.arg_count == 0 && base::same_text ( intrinsic_name ( static_cast < int32_t > ( root.value ) ), L"NtCurrentTeb" ) ) {
+
+					static const wchar_t* const fields [ 14 ] = { L"NtTib.ExceptionList", L"NtTib.StackBase", L"NtTib.StackLimit", L"NtTib.SubSystemTib", L"NtTib.FiberData", L"NtTib.ArbitraryUserPointer", L"NtTib.Self", L"EnvironmentPointer", L"ClientId.UniqueProcess", L"ClientId.UniqueThread", L"ActiveRpcHandle", L"ThreadLocalStoragePointer", L"ProcessEnvironmentBlock", L"LastErrorValue" };
+					int64_t slot = field / 8;
+
+					if ( field >= 0 && field % 8 == 0 && slot < 14 && ( item.size == 8 || slot == 13 ) ) {
+
+						out.put ( L"NtCurrentTeb", syntax::FUNCTION );
+						out.put ( L"()->" );
+						out.put ( fields [ slot ], syntax::GLOBAL );
+
+						return;
+
+					}
+
+				}
+
+			}
+
 			int32_t var = -1;
 			int64_t offset = 0;
 
@@ -1658,9 +1691,12 @@ namespace decompiler {
 
 				}
 
-				case op::INTRINSIC:
+				case op::INTRINSIC: {
 
-					out.put ( intrinsic_name ( static_cast < int32_t > ( item.value ) ), syntax::FUNCTION );
+					const wchar_t* called = intrinsic_name ( static_cast < int32_t > ( item.value ) );
+					bool wide = item.size == 8 && called [ 0 ] == L'_' && called [ 1 ] == L'I' && called [ 2 ] == L'n' && called [ 3 ] == L't';
+
+					out.put ( wide ? base::writer ( ).add ( called ).add ( L"64" ).text ( ) : called, syntax::FUNCTION );
 					out.put ( L"(" );
 					operand = false;
 
@@ -1676,6 +1712,8 @@ namespace decompiler {
 					out.put ( L")" );
 
 					break;
+
+				}
 
 				case op::CAST: {
 
@@ -4935,6 +4973,36 @@ namespace decompiler {
 			wchar_t chosen [ 80 ];
 
 			if ( !unique_name ( taken, rest, chosen ) )
+				continue;
+
+			taken.push ( base::text ( chosen ) );
+			b.call_names [ static_cast < size_t > ( v ) ].set ( chosen );
+
+		}
+
+		for ( const statement& item : b.statements ) {
+
+			if ( item.kind != stmt::ASSIGN || item.left < 0 || item.right < 0 || b.exprs [ static_cast < size_t > ( item.left ) ].kind != op::VAR )
+				continue;
+
+			const expr& right = b.exprs [ static_cast < size_t > ( item.right ) ];
+			int32_t v = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( item.left ) ].value );
+
+			if ( right.kind != op::LOAD || right.a < 0 || v < 0 || v >= b.vars.count ( ) || v == result_var || !b.call_names [ static_cast < size_t > ( v ) ].empty ( ) )
+				continue;
+
+			const expr& where = b.exprs [ static_cast < size_t > ( right.a ) ];
+			int32_t base = where.kind == op::ADD ? where.a : right.a;
+			int64_t field = where.kind == op::ADD && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST ? b.exprs [ static_cast < size_t > ( where.b ) ].value : 0;
+			const expr& root = b.exprs [ static_cast < size_t > ( base ) ];
+
+			if ( root.kind != op::INTRINSIC || root.arg_count != 0 || !base::same_text ( intrinsic_name ( static_cast < int32_t > ( root.value ) ), L"NtCurrentTeb" ) || field < 0 || field % 8 || field / 8 >= 14 )
+				continue;
+
+			static const wchar_t* const short_fields [ 14 ] = { L"ExceptionList", L"StackBase", L"StackLimit", L"SubSystemTib", L"FiberData", L"ArbitraryUserPointer", L"Self", L"EnvironmentPointer", L"UniqueProcess", L"UniqueThread", L"ActiveRpcHandle", L"ThreadLocalStoragePointer", L"ProcessEnvironmentBlock", L"LastErrorValue" };
+			wchar_t chosen [ 80 ];
+
+			if ( !unique_name ( taken, short_fields [ field / 8 ], chosen ) )
 				continue;
 
 			taken.push ( base::text ( chosen ) );

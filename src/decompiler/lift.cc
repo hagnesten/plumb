@@ -8,7 +8,8 @@ namespace decompiler {
 		L"__debugbreak", L"memset", L"memcpy", L"_tzcnt", L"_lzcnt", L"__popcnt", L"_byteswap", L"_rotl", L"_rotr", L"__umulh", L"__mulh",
 		L"sqrtf", L"sqrt", L"fminf", L"fmaxf", L"fmin", L"fmax", L"__rdtsc", L"__cpuid", L"_InterlockedExchangeAdd", L"_InterlockedCompareExchange",
 		L"_InterlockedExchange", L"__overflow", L"__parity", L"__unordered", L"__readfsqword", L"__readgsqword", L"__fastfail", L"_bittest", L"__halt",
-		L"_mm_and", L"_mm_or", L"_mm_xor", L"_mm_andnot", L"__shiftleft128", L"__shiftright128", L"__readeflags", L"_xgetbv", L"__syscall"
+		L"_mm_and", L"_mm_or", L"_mm_xor", L"_mm_andnot", L"__shiftleft128", L"__shiftright128", L"__readeflags", L"_xgetbv", L"__syscall",
+		L"NtCurrentTeb", L"__readgsbyte", L"__readgsword", L"__readgsdword", L"__readfsbyte", L"__readfsword", L"__readfsdword"
 	};
 
 	enum intrinsic_id : int32_t {
@@ -17,6 +18,7 @@ namespace decompiler {
 		I_SQRTF, I_SQRT, I_FMINF, I_FMAXF, I_FMIN, I_FMAX, I_RDTSC, I_CPUID, I_XADD, I_CMPXCHG,
 		I_XCHG, I_OVERFLOW, I_PARITY, I_UNORDERED, I_FS, I_GS, I_FASTFAIL, I_BITTEST, I_HALT,
 		I_AND, I_OR, I_XOR, I_ANDNOT, I_SHLD, I_SHRD, I_FLAGS, I_XGETBV, I_SYSCALL,
+		I_TEB, I_GSBYTE, I_GSWORD, I_GSDWORD, I_FSBYTE, I_FSWORD, I_FSDWORD,
 
 	};
 
@@ -1437,6 +1439,20 @@ namespace decompiler {
 				item.bits |= bits;
 
 				return b->var_expr ( index, size );
+
+			}
+
+			if ( ( m.segment == x86::GS || m.segment == x86::FS ) && m.base == x86::NONE && m.index == x86::NONE && !m.rip_relative ( ) ) {
+
+				bool gs = m.segment == x86::GS;
+				uint64_t offset = static_cast < uint64_t > ( m.value );
+
+				if ( ( gs && b->long_mode && offset == 0x30 && size == 8 ) || ( !gs && !b->long_mode && offset == 0x18 && size == 4 ) )
+					return b->make ( op::INTRINSIC, size, -1, -1, I_TEB, POINTER );
+
+				int32_t id = size == 1 ? ( gs ? I_GSBYTE : I_FSBYTE ) : ( size == 2 ? ( gs ? I_GSWORD : I_FSWORD ) : ( size == 4 ? ( gs ? I_GSDWORD : I_FSDWORD ) : ( gs ? I_GS : I_FS ) ) );
+
+				return intrinsic ( id, size, b->constant ( static_cast < int64_t > ( offset ), 4 ) );
 
 			}
 
@@ -2991,12 +3007,18 @@ namespace decompiler {
 
 				case mnemonic::cmpxchg: {
 
-					int32_t value = intrinsic ( I_CMPXCHG, size, ins.operands [ 0 ].type == x86::kind::MEM ? address_of ( ins, ins.operands [ 0 ] ) : read ( ins, 0 ), read ( ins, 1 ), k.cast ( family_value ( 0 ), size, 0 ) );
+					int32_t expected = k.cast ( family_value ( 0 ), size, 0 );
+					int32_t value = intrinsic ( I_CMPXCHG, size, ins.operands [ 0 ].type == x86::kind::MEM ? address_of ( ins, ins.operands [ 0 ] ) : read ( ins, 0 ), read ( ins, 1 ), expected );
+					const expr& seed = k.exprs [ static_cast < size_t > ( expected ) ];
+					int32_t compared = seed.kind == op::CONST ? k.constant ( seed.value, size ) : -1;
+
+					if ( compared < 0 )
+						compared = spill ( expected, ins.address );
 
 					flush ( 0xFFFFFFFFu );
 					regs [ 0 ] = value;
 					materialize ( 0, ins.address );
-					set_flags ( 1, family_value ( 0 ), family_value ( 0 ), size );
+					set_flags ( 1, family_value ( 0 ), compared, size );
 
 					return;
 
