@@ -4477,6 +4477,36 @@ namespace decompiler {
 
 	}
 
+	static bool unsigned_result ( const builder& b ) {
+
+		int32_t seen = 0;
+
+		for ( const block_code& item : b.code ) {
+
+			if ( !item.reachable || item.end != term::RETURN || item.returned < 0 )
+				continue;
+
+			const expr& back = b.exprs [ static_cast < size_t > ( item.returned ) ];
+			bool wide_constant = back.kind == op::CONST && back.size == 8 && back.value < 0 && back.value < -0x100000000ll;
+			bool marked = back.kind != op::CONST && ( back.bits & UNSIGNED ) && !( back.bits & SIGNED ) && back.size == 8;
+
+			if ( back.kind == op::VAR && back.value >= 0 && back.value < b.vars.count ( ) )
+				marked = ( b.vars [ static_cast < size_t > ( back.value ) ].bits & UNSIGNED ) && b.vars [ static_cast < size_t > ( back.value ) ].size == 8;
+
+			if ( back.kind == op::CONST && !wide_constant && back.value >= 0 && back.value < 0x100000000ll )
+				continue;
+
+			if ( !marked && !wide_constant )
+				return false;
+
+			seen++;
+
+		}
+
+		return seen > 0;
+
+	}
+
 	static void typed_pointers ( builder& b, base::list < uint8_t >& element ) {
 
 		int32_t total = b.vars.count ( );
@@ -5044,6 +5074,8 @@ namespace decompiler {
 
 			if ( b.returns_float )
 				head.type_name ( b.return_size ? b.return_size : 4, FLOATING, false );
+			else if ( b.result_width == 0 && b.long_mode && unsigned_result ( b ) )
+				head.out.put ( L"unsigned __int64", syntax::TYPE );
 			else if ( b.result_width == 2 )
 				head.out.put ( L"bool", syntax::TYPE );
 			else if ( b.result_width == 3 )
