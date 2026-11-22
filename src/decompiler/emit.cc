@@ -1778,7 +1778,7 @@ namespace decompiler {
 							out.put ( L"(unsigned int)" );
 							value ( argument, 14 );
 
-						} else if ( b.long_mode && !no_casts && target && passed.size == 8 && !( passed.bits & ( FLOATING | POINTER ) ) && ( passed.kind == op::LOAD || passed.kind == op::GLOBAL || passed.kind == op::ADD || ( passed.kind == op::VAR && passed.value >= 0 && passed.value < b.vars.count ( ) && ( passed.value >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( passed.value ) ].empty ( ) ) && ( passed.value >= element.count ( ) || !element [ static_cast < size_t > ( passed.value ) ] ) ) ) && ( callee_unsigned ( target, i ), !shape_ok ) && callee_parameter_type ( *b.db, *b.file, b.names, target, i, param_type, 64 ) ) {
+						} else if ( b.long_mode && !no_casts && target && passed.size == 8 && !( passed.bits & ( FLOATING | POINTER ) ) && ( passed.kind == op::LOAD || passed.kind == op::GLOBAL || passed.kind == op::ADD ) && ( callee_unsigned ( target, i ), !shape_ok ) && callee_parameter_type ( *b.db, *b.file, b.names, target, i, param_type, 64 ) ) {
 
 							if ( passed.kind == op::LOAD ) {
 
