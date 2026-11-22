@@ -2766,7 +2766,7 @@ namespace decompiler {
 
 			const block_code& target = b.code [ static_cast < size_t > ( block ) ];
 
-			if ( inline_returns && target.end == term::RETURN && empty_block ( block ) && ( target.returned < 0 || b.exprs [ static_cast < size_t > ( target.returned ) ].kind == op::CONST ) ) {
+			if ( inline_returns && target.end == term::RETURN && empty_block ( block ) && ( target.returned < 0 || b.exprs [ static_cast < size_t > ( target.returned ) ].kind == op::CONST || b.exprs [ static_cast < size_t > ( target.returned ) ].kind == op::VAR ) ) {
 
 				return_line ( target );
 
