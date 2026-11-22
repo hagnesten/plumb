@@ -702,7 +702,7 @@ namespace decompiler {
 
 			const variable& item = vars [ static_cast < size_t > ( v ) ];
 
-			if ( item.kind != var_kind::REGISTER || item.family < 0 || !nonvolatile ( item.family, long_mode ) )
+			if ( item.kind != var_kind::REGISTER || item.family < 0 || ( !nonvolatile ( item.family, long_mode ) && item.family < 16 ) )
 				continue;
 
 			int32_t count = 0;

@@ -2566,7 +2566,14 @@ namespace decompiler {
 
 					}
 
-					if ( left.kind == op::LOAD )
+					if ( left.kind == op::LOAD && ( left.bits & FLOATING ) && right.kind == op::CONST && left.size == 16 ) {
+
+						expr plain_left = left;
+
+						plain_left.bits = static_cast < uint8_t > ( plain_left.bits & ~FLOATING );
+						lvalue_or_load ( plain_left, 0 );
+
+					} else if ( left.kind == op::LOAD )
 						lvalue_or_load ( left, 0 );
 					else
 						value ( item.left, 0 );

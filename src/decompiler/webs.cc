@@ -873,6 +873,22 @@ namespace decompiler {
 			if ( from.kind != var_kind::PARAMETER || writes [ static_cast < size_t > ( source ) ] != 0 || into.size != from.size || ( into.bits & FLOATING ) != ( from.bits & FLOATING ) )
 				continue;
 
+			if ( into.family == 0 ) {
+
+				bool returned = false;
+
+				for ( const block_code& block : code ) {
+
+					if ( block.end == term::RETURN && block.returned >= 0 && exprs [ static_cast < size_t > ( block.returned ) ].kind == op::VAR && exprs [ static_cast < size_t > ( block.returned ) ].value == copy )
+						returned = true;
+
+				}
+
+				if ( returned )
+					continue;
+
+			}
+
 			line.kind = stmt::NOP;
 
 			for ( expr& node : exprs ) {
