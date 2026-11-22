@@ -266,6 +266,17 @@ namespace decompiler {
 
 	}
 
+	bool stack_probe ( const analysis::database& db, const x86::instruction& ins ) {
+
+		x86::instruction after;
+
+		if ( ins.name != mnemonic::call || !db.decode ( ins.next ( ), after ) )
+			return false;
+
+		return after.name == mnemonic::sub && after.count == 2 && after.operands [ 0 ].type == x86::kind::REG && x86::register_family ( after.operands [ 0 ].reg ) == 4 && after.operands [ 1 ].type == x86::kind::REG && x86::register_family ( after.operands [ 1 ].reg ) == 0;
+
+	}
+
 	uint8_t callee_pointer_shape ( const analysis::database& db, namer* names, uint64_t function, int32_t index, int32_t depth ) {
 
 		int32_t callee = db.function_starting ( function );
@@ -554,6 +565,14 @@ namespace decompiler {
 
 				if ( zeroing )
 					u = 0;
+
+				if ( ins.name == mnemonic::call && stack_probe ( db, ins ) ) {
+
+					at = ins.next ( );
+
+					continue;
+
+				}
 
 				if ( ins.name == mnemonic::call || ( ins.control == x86::flow::JUMP && item.out_count == 0 && ins.next ( ) >= item.end ) )
 					u |= passed ( ins );

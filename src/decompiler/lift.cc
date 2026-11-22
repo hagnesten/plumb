@@ -1228,6 +1228,7 @@ namespace decompiler {
 		int64_t delta = 0;
 		bool frame = false;
 		int64_t frame_delta = 0;
+		int64_t probe_size = 0;
 		uint32_t arg_written = 0;
 		int32_t stack_args [ 16 ];
 		int32_t stack_stmt [ 16 ];
@@ -2808,6 +2809,9 @@ namespace decompiler {
 
 					}
 
+					if ( ins.operands [ 0 ].type == x86::kind::REG && x86::register_family ( ins.operands [ 0 ].reg ) == 0 && ins.operands [ 1 ].type == x86::kind::IMM && ins.operands [ 1 ].value >= 0x1000 && ins.operands [ 1 ].value < 0x1000000 )
+						probe_size = ins.operands [ 1 ].value;
+
 					write ( ins, 0, read ( ins, 1 ) );
 
 					if ( ins.operands [ 0 ].type == x86::kind::REG && ( ins.operands [ 0 ].reg == x86::RBP ) )
@@ -2910,6 +2914,8 @@ namespace decompiler {
 
 						if ( ins.operands [ 1 ].type == x86::kind::IMM )
 							delta += ins.name == mnemonic::add ? ins.operands [ 1 ].value : -ins.operands [ 1 ].value;
+						else if ( ins.operands [ 1 ].type == x86::kind::REG && x86::register_family ( ins.operands [ 1 ].reg ) == 0 && probe_size > 0 && ins.name == mnemonic::sub )
+							delta -= probe_size;
 
 						if ( !k.long_mode && ins.name == mnemonic::add ) {
 
@@ -3904,6 +3910,35 @@ namespace decompiler {
 
 				list.push ( ins );
 				at = ins.next ( );
+
+			}
+
+			for ( int32_t k = 1; k + 1 < list.count ( ); k++ ) {
+
+				const x86::instruction& probe = list [ static_cast < size_t > ( k ) ];
+				const x86::instruction& after = list [ static_cast < size_t > ( k + 1 ) ];
+
+				if ( probe.name != mnemonic::call || after.name != mnemonic::sub || after.count != 2 || after.operands [ 0 ].type != x86::kind::REG || x86::register_family ( after.operands [ 0 ].reg ) != 4 || after.operands [ 1 ].type != x86::kind::REG || x86::register_family ( after.operands [ 1 ].reg ) != 0 )
+					continue;
+
+				bool sized = false;
+
+				for ( int32_t back = k - 1; back >= 0 && back >= k - 8; back-- ) {
+
+					const x86::instruction& before = list [ static_cast < size_t > ( back ) ];
+
+					if ( before.name == mnemonic::mov && before.count == 2 && before.operands [ 0 ].type == x86::kind::REG && x86::register_family ( before.operands [ 0 ].reg ) == 0 && before.operands [ 1 ].type == x86::kind::IMM ) {
+
+						sized = true;
+
+						break;
+
+					}
+
+				}
+
+				if ( sized )
+					list.remove_at ( static_cast < size_t > ( k ) );
 
 			}
 
