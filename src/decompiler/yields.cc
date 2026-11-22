@@ -266,6 +266,235 @@ namespace decompiler {
 
 	}
 
+	uint8_t callee_pointer_shape ( const analysis::database& db, namer* names, uint64_t function, int32_t index, int32_t depth ) {
+
+		int32_t callee = db.function_starting ( function );
+
+		if ( callee < 0 || ( db.functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK ) || index < 0 || index > 3 || depth > 2 )
+			return 0;
+
+		if ( names && names->prototype ( function ) )
+			return 0;
+
+		analysis::function_graph graph;
+
+		if ( !analysis::build_graph ( db, function, graph ) || graph.blocks.count ( ) == 0 || graph.blocks.count ( ) > 400 )
+			return 0;
+
+		static const int32_t gpr [ 4 ] = { 1, 2, 8, 9 };
+		const uint32_t volatile_mask = ( 1u << 0 ) | ( 1u << 1 ) | ( 1u << 2 ) | ( 1u << 8 ) | ( 1u << 9 ) | ( 1u << 10 ) | ( 1u << 11 );
+		uint32_t outside = 0;
+
+		for ( int32_t i = 1; i < graph.blocks.count ( ); i++ ) {
+
+			const analysis::block& item = graph.blocks [ static_cast < size_t > ( i ) ];
+			uint64_t at = item.start;
+
+			while ( at < item.end ) {
+
+				x86::instruction ins;
+
+				if ( !db.decode ( at, ins ) )
+					return 0;
+
+				at = ins.next ( );
+
+				if ( ins.name == mnemonic::pop )
+					continue;
+
+				uint32_t use = 0;
+				uint32_t def = 0;
+
+				effects ( ins, true, use, def, false );
+				outside |= def;
+
+			}
+
+		}
+
+		uint8_t slot = 0;
+		bool direct = false;
+		bool bad = false;
+		uint32_t stable = 0;
+
+		auto note = [ & ] ( int64_t offset, uint8_t shape ) {
+
+			uint8_t size = shape & 0x1F;
+
+			if ( size != 1 && size != 2 && size != 4 && size != 8 ) {
+
+				bad = true;
+
+				return;
+
+			}
+
+			if ( offset < 0 || offset % size != 0 || ( slot && ( slot & 0x9F ) != ( shape & 0x9F ) ) ) {
+
+				bad = true;
+
+				return;
+
+			}
+
+			slot = static_cast < uint8_t > ( slot | shape );
+
+			if ( offset == 0 )
+				direct = true;
+
+		};
+
+		auto family = [ ] ( uint8_t reg ) -> int32_t {
+
+			int32_t f = x86::register_family ( reg );
+
+			return f >= 0 && f < 16 ? f : -1;
+
+		};
+
+		for ( int32_t i = 0; i < graph.blocks.count ( ) && !bad; i++ ) {
+
+			const analysis::block& item = graph.blocks [ static_cast < size_t > ( i ) ];
+			uint32_t mask = i == 0 ? ( 1u << gpr [ index ] ) : stable;
+			uint64_t at = item.start;
+
+			while ( at < item.end && !bad ) {
+
+				x86::instruction ins;
+
+				if ( !db.decode ( at, ins ) )
+					return 0;
+
+				at = ins.next ( );
+
+				if ( ins.name == mnemonic::call ) {
+
+					uint64_t target = call_target ( ins );
+
+					for ( int32_t j = 0; j < 4; j++ ) {
+
+						if ( !( mask & ( 1u << gpr [ j ] ) ) )
+							continue;
+
+						wchar_t name [ 200 ];
+
+						if ( !target || ( names && names->name ( target, true, name, 200 ) && api_prototype ( name ) ) ) {
+
+							bad = true;
+
+							break;
+
+						}
+
+						uint8_t inner = callee_pointer_shape ( db, names, target, j, depth + 1 );
+
+						if ( inner )
+							note ( 0, inner );
+
+					}
+
+					mask &= ~volatile_mask;
+
+					continue;
+
+				}
+
+				if ( ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::REG && x86::register_size ( ins.operands [ 0 ].reg ) == 8 && x86::register_size ( ins.operands [ 1 ].reg ) == 8 ) {
+
+					int32_t to = family ( ins.operands [ 0 ].reg );
+					int32_t from = family ( ins.operands [ 1 ].reg );
+
+					if ( to >= 0 && from >= 0 ) {
+
+						if ( mask & ( 1u << from ) )
+							mask |= 1u << to;
+						else
+							mask &= ~( 1u << to );
+
+						continue;
+
+					}
+
+				}
+
+				bool xmm = false;
+
+				for ( int32_t k = 0; k < ins.count; k++ ) {
+
+					const x86::operand& o = ins.operands [ k ];
+
+					if ( o.type == x86::kind::REG && o.reg >= x86::XMM0 && o.reg < x86::YMM0 )
+						xmm = true;
+
+				}
+
+				uint32_t use = 0;
+				uint32_t def = 0;
+
+				effects ( ins, true, use, def, false );
+
+				for ( int32_t k = 0; k < ins.count && !bad; k++ ) {
+
+					const x86::operand& o = ins.operands [ k ];
+
+					if ( o.type == x86::kind::MEM ) {
+
+						int32_t base = o.base ? family ( o.base ) : -1;
+						int32_t index_reg = o.index ? family ( o.index ) : -1;
+
+						if ( index_reg >= 0 && ( mask & ( 1u << index_reg ) ) )
+							bad = true;
+
+						if ( base < 0 || !( mask & ( 1u << base ) ) )
+							continue;
+
+						if ( o.index || ins.name == mnemonic::lea ) {
+
+							bad = true;
+
+							continue;
+
+						}
+
+						note ( o.value, static_cast < uint8_t > ( o.size | ( xmm ? 0x80 : 0 ) | ( ins.name == mnemonic::movzx ? 0x40 : 0 ) ) );
+
+						continue;
+
+					}
+
+					if ( o.type != x86::kind::REG )
+						continue;
+
+					int32_t f = family ( o.reg );
+
+					if ( f < 0 || !( mask & ( 1u << f ) ) )
+						continue;
+
+					bool killed = k == 0 && !( use & ( 1u << f ) );
+
+					if ( killed )
+						continue;
+
+					bool zero_test = ( ins.name == mnemonic::test && ins.count == 2 && ins.operands [ 1 ].type == x86::kind::REG && ins.operands [ 1 ].reg == ins.operands [ 0 ].reg ) || ( ins.name == mnemonic::cmp && ins.count == 2 && ins.operands [ 1 ].type == x86::kind::IMM && ins.operands [ 1 ].value == 0 );
+
+					if ( !zero_test )
+						bad = true;
+
+				}
+
+				mask &= ~def;
+
+			}
+
+			if ( i == 0 )
+				stable = mask & ~volatile_mask & ~outside;
+
+		}
+
+		return !bad && direct ? slot : 0;
+
+	}
+
 	int32_t internal_arguments ( const analysis::database& db, uint64_t function, bool long_mode, int32_t depth ) {
 
 		int32_t callee = db.function_starting ( function );

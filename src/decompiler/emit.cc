@@ -946,7 +946,21 @@ namespace decompiler {
 
 				uint8_t shape = element [ static_cast < size_t > ( index ) ];
 
-				type_name ( shape & 0x1F, ( shape & 0x80 ) ? FLOATING : 0, false, !( shape & 0x80 ) );
+				if ( ( shape & 0x9F ) == 8 && ( shape & 0x40 ) ) {
+
+					out.put ( L"void", syntax::TYPE );
+					out.put ( L" **" );
+
+					return;
+
+				}
+
+				if ( ( shape & 0x9F ) == 8 && ( shape & 0x20 ) )
+					type_name ( 8, SIGNED, false );
+				else if ( ( shape & 0x40 ) && !( shape & 0x80 ) )
+					type_name ( shape & 0x1F, UNSIGNED, false );
+				else
+					type_name ( shape & 0x1F, ( shape & 0x80 ) ? FLOATING : 0, false, !( shape & 0x80 ) );
 				out.put ( L" *" );
 
 				return;
@@ -1814,7 +1828,7 @@ namespace decompiler {
 							out.put ( L")" );
 							value ( argument, 14 );
 
-						} else if ( b.long_mode && !no_casts && target && passed.kind == op::VAR && passed.value >= 0 && passed.value < element.count ( ) && element [ static_cast < size_t > ( passed.value ) ] && ( callee_unsigned ( target, i ), !shape_ok ) ) {
+						} else if ( b.long_mode && !no_casts && target && passed.kind == op::VAR && passed.value >= 0 && passed.value < element.count ( ) && element [ static_cast < size_t > ( passed.value ) ] && ( callee_unsigned ( target, i ), !shape_ok ) && !( i < 4 && b.db && ( callee_pointer_shape ( *b.db, b.names, target, i, 0 ) & 0x9F ) == ( element [ static_cast < size_t > ( passed.value ) ] & 0x9F ) ) ) {
 
 							out.put ( L"(__int64)" );
 							value ( argument, 14 );
@@ -5221,6 +5235,159 @@ namespace decompiler {
 	}
 
 	static bool pass_typed = true;
+	static bool callee_shapes = true;
+	static bool element_flavors = true;
+
+	static void flavor_elements ( builder& b, base::list < uint8_t >& element ) {
+
+		int32_t total = b.vars.count ( );
+		base::list < int32_t > source;
+
+		source.fill ( static_cast < size_t > ( total ), -1 );
+
+		auto owner = [ & ] ( int32_t e ) -> int32_t {
+
+			if ( e < 0 )
+				return -1;
+
+			const expr& load = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( load.kind != op::LOAD || load.size != 8 || ( load.bits & FLOATING ) || load.a < 0 )
+				return -1;
+
+			const expr& where = b.exprs [ static_cast < size_t > ( load.a ) ];
+			int32_t base_expr = where.kind == op::ADD && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST ? where.a : load.a;
+
+			if ( base_expr < 0 || b.exprs [ static_cast < size_t > ( base_expr ) ].kind != op::VAR )
+				return -1;
+
+			int32_t v = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( base_expr ) ].value );
+
+			if ( v < 0 || v >= total || ( element [ static_cast < size_t > ( v ) ] & 0x9F ) != 8 )
+				return -1;
+
+			return v;
+
+		};
+
+		auto loaded_from = [ & ] ( int32_t e ) -> int32_t {
+
+			int32_t v = owner ( e );
+
+			if ( v >= 0 )
+				return v;
+
+			if ( e >= 0 && b.exprs [ static_cast < size_t > ( e ) ].kind == op::VAR ) {
+
+				int64_t x = b.exprs [ static_cast < size_t > ( e ) ].value;
+
+				if ( x >= 0 && x < total )
+					return source [ static_cast < size_t > ( x ) ];
+
+			}
+
+			return -1;
+
+		};
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& item = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( item.kind == stmt::ASSIGN && item.left >= 0 && b.exprs [ static_cast < size_t > ( item.left ) ].kind == op::VAR ) {
+
+					int64_t x = b.exprs [ static_cast < size_t > ( item.left ) ].value;
+					int32_t v = owner ( item.right );
+
+					if ( x >= 0 && x < total && v >= 0 )
+						source [ static_cast < size_t > ( x ) ] = v;
+
+				}
+
+			}
+
+		}
+
+		auto mark = [ & ] ( int32_t v, uint8_t flag ) {
+
+			if ( v >= 0 && v < total && element [ static_cast < size_t > ( v ) ] )
+				element [ static_cast < size_t > ( v ) ] |= flag;
+
+		};
+
+		auto walk = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+			if ( e < 0 || depth > 96 )
+				return;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( ( node.kind == op::ADD || node.kind == op::SUB || node.kind == op::MUL ) && !( node.bits & FLOATING ) ) {
+
+				mark ( loaded_from ( node.a ), 0x20 );
+				mark ( loaded_from ( node.b ), 0x20 );
+
+			}
+
+			if ( node.kind == op::CALL && node.value ) {
+
+				for ( int32_t i = 0; i < node.arg_count && i < 4; i++ ) {
+
+					int32_t passed = b.args [ static_cast < size_t > ( node.first_arg + i ) ];
+					int32_t v = loaded_from ( passed );
+
+					if ( v < 0 )
+						continue;
+
+					wchar_t type [ 64 ];
+
+					if ( callee_parameter_type ( *b.db, *b.file, b.names, static_cast < uint64_t > ( node.value ), i, type, 64 ) && ( base::same_text ( type, L"void *" ) || base::same_text ( type, L"const void *" ) ) )
+						mark ( v, 0x40 );
+
+				}
+
+			}
+
+			self ( self, node.a, depth + 1 );
+			self ( self, node.b, depth + 1 );
+			self ( self, node.c, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+		};
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& item = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( item.kind == stmt::NOP || item.kind == stmt::ASM )
+					continue;
+
+				walk ( walk, item.left, 0 );
+				walk ( walk, item.right, 0 );
+
+			}
+
+			walk ( walk, block.condition, 0 );
+			walk ( walk, block.selector, 0 );
+
+			if ( b.returns_value || block.end == term::TAIL )
+				walk ( walk, block.returned, 0 );
+
+		}
+
+	}
 
 	static void typed_pointers ( builder& b, base::list < uint8_t >& element ) {
 
@@ -5265,7 +5432,7 @@ namespace decompiler {
 			uint8_t shape = static_cast < uint8_t > ( size | ( ( load.bits & FLOATING ) ? 0x80 : 0 ) );
 			uint8_t& slot = element [ static_cast < size_t > ( v ) ];
 
-			if ( offset % size != 0 || offset < 0 || ( slot && slot != shape ) ) {
+			if ( offset % size != 0 || offset < 0 || ( slot && ( slot & 0x9F ) != ( shape & 0x9F ) ) ) {
 
 				bad [ static_cast < size_t > ( v ) ] = 1;
 
@@ -5273,7 +5440,7 @@ namespace decompiler {
 
 			}
 
-			slot = shape;
+			slot = static_cast < uint8_t > ( slot | shape );
 
 		};
 
@@ -5338,6 +5505,24 @@ namespace decompiler {
 
 						if ( var_of ( passed ) < 0 )
 							self ( self, passed, depth + 1 );
+						else if ( callee_shapes && i < 4 && b.long_mode && b.db ) {
+
+							uint8_t shape = callee_pointer_shape ( *b.db, b.names, static_cast < uint64_t > ( node.value ), i, 0 );
+
+							if ( shape ) {
+
+								expr probe;
+
+								probe.size = shape & 0x1F;
+								probe.bits = ( shape & 0x80 ) ? FLOATING : 0;
+								record ( var_of ( passed ), probe, 0 );
+
+								if ( ( shape & 0x40 ) && var_of ( passed ) < total && element [ static_cast < size_t > ( var_of ( passed ) ) ] )
+									element [ static_cast < size_t > ( var_of ( passed ) ) ] |= 0x40;
+
+							}
+
+						}
 
 					}
 
@@ -5387,6 +5572,9 @@ namespace decompiler {
 				element [ static_cast < size_t > ( v ) ] = 0;
 
 		}
+
+		if ( element_flavors )
+			flavor_elements ( b, element );
 
 	}
 
