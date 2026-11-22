@@ -204,6 +204,9 @@ namespace decompiler {
 		uint8_t result_width = 0;
 		int32_t locals = 0;
 		int64_t pushed = 0;
+		int64_t deepest = 0;
+		bool has_frame = false;
+		int64_t frame_at = 0;
 
 		int32_t make ( op kind, uint8_t size, int32_t a = -1, int32_t b = -1, int64_t value = 0, uint8_t bits = 0 );
 

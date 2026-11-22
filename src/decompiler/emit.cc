@@ -416,6 +416,7 @@ namespace decompiler {
 	static bool flow_casts = true;
 	static bool ghost_numbers = false;
 	static bool exits_inline = true;
+	static bool frame_deepest = true;
 	static bool guarded_loops = true;
 
 	struct emitter {
@@ -7322,6 +7323,9 @@ namespace decompiler {
 
 		}
 
+		if ( frame_deepest )
+			lowest = base::min ( lowest, b.deepest );
+
 		for ( int32_t v = 0; v < b.vars.count ( ); v++ ) {
 
 			const variable& item = b.vars [ static_cast < size_t > ( v ) ];
@@ -7389,7 +7393,7 @@ namespace decompiler {
 			} else if ( item.kind == var_kind::STACK ) {
 
 				int64_t from_rsp = item.offset - lowest;
-				int64_t from_rbp = item.offset + saved_size;
+				int64_t from_rbp = frame_deepest ? ( b.has_frame ? item.offset - b.frame_at : item.offset ) : item.offset + saved_size;
 				bool by_reference = false;
 
 				for ( const expr& use : b.exprs ) {

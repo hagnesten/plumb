@@ -1229,6 +1229,17 @@ namespace decompiler {
 		int64_t delta = 0;
 		bool frame = false;
 		int64_t frame_delta = 0;
+
+		void note_frame ( ) {
+
+			if ( !b->has_frame ) {
+
+				b->has_frame = true;
+				b->frame_at = frame_delta;
+
+			}
+
+		}
 		int64_t probe_size = 0;
 		uint32_t arg_written = 0;
 		int32_t stack_args [ 16 ];
@@ -2796,6 +2807,7 @@ namespace decompiler {
 
 						frame = true;
 						frame_delta = delta;
+						note_frame ( );
 
 						return;
 
@@ -2846,6 +2858,7 @@ namespace decompiler {
 
 						frame = true;
 						frame_delta = delta + ins.operands [ 1 ].value;
+						note_frame ( );
 
 						return;
 
@@ -4254,6 +4267,9 @@ namespace decompiler {
 					pushing = false;
 
 				state.step ( ins, after [ static_cast < size_t > ( i ) ], def_list [ static_cast < size_t > ( i ) ] );
+
+				if ( state.delta < deepest )
+					deepest = state.delta;
 
 				if ( ins.name == mnemonic::call || ( ins.count && ins.operands [ 0 ].type == x86::kind::MEM && ins.name != mnemonic::push ) )
 					state.prologue = false;
