@@ -556,6 +556,97 @@ namespace decompiler {
 
 	}
 
+	static bool merge_slots = true;
+
+	void builder::merge_stack_slots ( ) {
+
+		if ( !merge_slots )
+			return;
+
+		int32_t total = vars.count ( );
+		base::list < int32_t > owner;
+
+		owner.fill ( static_cast < size_t > ( total ), -1 );
+
+		for ( int32_t w = 0; w < total; w++ ) {
+
+			const variable& part = vars [ static_cast < size_t > ( w ) ];
+
+			if ( part.kind != var_kind::STACK || part.size == 0 || part.size > 8 )
+				continue;
+
+			for ( int32_t v = 0; v < total; v++ ) {
+
+				const variable& whole = vars [ static_cast < size_t > ( v ) ];
+
+				if ( v == w || whole.kind != var_kind::STACK || whole.size != 16 )
+					continue;
+
+				int64_t k = part.offset - whole.offset;
+
+				if ( k > 0 && k + part.size <= 16 && k % part.size == 0 ) {
+
+					owner [ static_cast < size_t > ( w ) ] = v;
+
+					break;
+
+				}
+
+			}
+
+		}
+
+		int32_t count = exprs.count ( );
+
+		for ( int32_t i = 0; i < count; i++ ) {
+
+			const expr node = exprs [ static_cast < size_t > ( i ) ];
+
+			if ( ( node.kind != op::VAR && !( node.kind == op::ADDRESS && node.a < 0 ) ) || node.value < 0 || node.value >= total )
+				continue;
+
+			int32_t v = owner [ static_cast < size_t > ( node.value ) ];
+
+			if ( v < 0 )
+				continue;
+
+			int64_t k = vars [ static_cast < size_t > ( node.value ) ].offset - vars [ static_cast < size_t > ( v ) ].offset;
+			int32_t base = make ( op::ADDRESS, 8, -1, -1, v, POINTER );
+			int32_t step = make ( op::CONST, 8, -1, -1, k, 0 );
+
+			if ( node.kind == op::VAR ) {
+
+				int32_t where = make ( op::ADD, 8, base, step, 0, POINTER );
+				expr& target = exprs [ static_cast < size_t > ( i ) ];
+
+				target.kind = op::LOAD;
+				target.a = where;
+				target.b = -1;
+				target.value = 0;
+
+			} else {
+
+				expr& target = exprs [ static_cast < size_t > ( i ) ];
+
+				target.kind = op::ADD;
+				target.a = base;
+				target.b = step;
+				target.value = 0;
+				target.bits = POINTER;
+
+			}
+
+		}
+
+		for ( statement& line : statements ) {
+
+			if ( line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::LOAD )
+				line.kind = stmt::STORE;
+
+		}
+
+	}
+
 	int32_t builder::stack_var ( int64_t offset, uint8_t size ) {
 
 		for ( int32_t i = 0; i < vars.count ( ); i++ ) {
@@ -4486,6 +4577,7 @@ namespace decompiler {
 
 		}
 
+		merge_stack_slots ( );
 		propagate ( );
 
 		uint32_t result_mask = returns_float ? ( 1u << 16 ) : 1u;

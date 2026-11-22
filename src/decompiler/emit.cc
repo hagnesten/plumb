@@ -1328,6 +1328,23 @@ namespace decompiler {
 
 		}
 
+		bool slot_part ( int32_t e ) const {
+
+			if ( e < 0 )
+				return false;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind != op::ADD || node.a < 0 || node.b < 0 )
+				return false;
+
+			const expr& base = b.exprs [ static_cast < size_t > ( node.a ) ];
+			const expr& step = b.exprs [ static_cast < size_t > ( node.b ) ];
+
+			return base.kind == op::ADDRESS && base.a < 0 && base.value >= 0 && base.value < b.vars.count ( ) && b.vars [ static_cast < size_t > ( base.value ) ].kind == var_kind::STACK && step.kind == op::CONST && step.value > 0 && step.value < 16 && !( step.bits & POINTER );
+
+		}
+
 		void index_number ( int64_t amount ) {
 
 			if ( amount < 0 ) {
@@ -1584,6 +1601,45 @@ namespace decompiler {
 
 				var_name ( static_cast < int32_t > ( where.value ), name );
 				out.put ( name, syntax::LOCAL );
+
+				return;
+
+			}
+
+			if ( slot_part ( item.a ) ) {
+
+				const expr& base = b.exprs [ static_cast < size_t > ( where.a ) ];
+				int64_t k = b.exprs [ static_cast < size_t > ( where.b ) ].value;
+
+				var_name ( static_cast < int32_t > ( base.value ), name );
+
+				if ( parent > 14 )
+					out.put ( L"(" );
+
+				if ( item.size && k % item.size == 0 ) {
+
+					out.put ( L"*((", syntax::OPERATOR );
+					type_name ( item.size, item.bits, false, true );
+					out.put ( L" *)&" );
+					out.put ( name, syntax::LOCAL );
+					out.put ( L" + ", syntax::OPERATOR );
+					index_number ( k / item.size );
+					out.put ( L")" );
+
+				} else {
+
+					out.put ( L"*(", syntax::OPERATOR );
+					type_name ( item.size, item.bits, false, true );
+					out.put ( L" *)((char *)&" );
+					out.put ( name, syntax::LOCAL );
+					out.put ( L" + ", syntax::OPERATOR );
+					index_number ( k );
+					out.put ( L")" );
+
+				}
+
+				if ( parent > 14 )
+					out.put ( L")" );
 
 				return;
 
@@ -2206,6 +2262,20 @@ namespace decompiler {
 				}
 
 				default: {
+
+					if ( slot_part ( index ) ) {
+
+						wchar_t slot_name [ 64 ];
+
+						var_name ( static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( item.a ) ].value ), slot_name );
+						out.put ( L"(char *)&" );
+						out.put ( slot_name, syntax::LOCAL );
+						out.put ( L" + ", syntax::OPERATOR );
+						index_number ( b.exprs [ static_cast < size_t > ( item.b ) ].value );
+
+						break;
+
+					}
 
 					if ( item.kind == op::ADD && item.a >= 0 && item.b >= 0 && pointer_step ( item.a ) > 1 && b.exprs [ static_cast < size_t > ( item.b ) ].kind == op::MUL ) {
 

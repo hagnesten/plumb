@@ -276,6 +276,8 @@ namespace decompiler {
 
 		void inline_temps ( );
 
+		void merge_stack_slots ( );
+
 		base::list < base::text > call_names;
 
 		bool lift ( );
