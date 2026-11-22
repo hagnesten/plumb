@@ -2546,8 +2546,31 @@ namespace decompiler {
 							case op::XOR: compound = L" ^= "; break;
 							case op::SHL: compound = L" <<= "; break;
 							case op::SHR: compound = L" >>= "; break;
-							case op::ADD: compound = ( right.bits & FLOATING ) || b.exprs [ static_cast < size_t > ( right.b ) ].kind != op::CONST ? L" += " : nullptr; break;
+							case op::ADD: compound = ( right.bits & FLOATING ) || b.exprs [ static_cast < size_t > ( right.b ) ].kind != op::CONST || self_load ? L" += " : nullptr; break;
 							default: break;
+
+						}
+
+						const expr& amount = b.exprs [ static_cast < size_t > ( right.b ) ];
+
+						if ( compound && self_load && right.kind == op::ADD && amount.kind == op::CONST && !( right.bits & FLOATING ) && ( amount.value == 1 || amount.value == -1 ) ) {
+
+							out.put ( amount.value == 1 ? L"++" : L"--", syntax::OPERATOR );
+							lvalue_or_load ( left, 14 );
+							semicolon ( );
+
+							break;
+
+						}
+
+						if ( compound && self_load && right.kind == op::ADD && amount.kind == op::CONST && amount.value < 0 && !( right.bits & FLOATING ) ) {
+
+							lvalue_or_load ( left, 0 );
+							out.put ( L" -= ", syntax::OPERATOR );
+							number ( -amount.value, left.size, !simple_constant ( -amount.value ), false );
+							semicolon ( );
+
+							break;
 
 						}
 
