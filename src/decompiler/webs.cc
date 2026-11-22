@@ -447,6 +447,144 @@ namespace decompiler {
 		coalesce_copies ( );
 		substitute_known ( );
 		narrow_webs ( );
+		narrow_floats ( );
+
+	}
+
+	void builder::narrow_floats ( ) {
+
+		int32_t total = vars.count ( );
+		base::list < uint8_t > blocked;
+		base::list < uint8_t > seen;
+
+		blocked.fill ( static_cast < size_t > ( total ), 0 );
+		seen.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			const variable& item = vars [ static_cast < size_t > ( v ) ];
+
+			if ( item.family < 16 || item.family >= 32 || !( item.bits & FLOATING ) || item.size < 8 || ( item.kind != var_kind::REGISTER && item.kind != var_kind::PARAMETER ) )
+				blocked [ static_cast < size_t > ( v ) ] = 1;
+
+		}
+
+		auto var_of = [ & ] ( int32_t e ) -> int32_t {
+
+			if ( e < 0 || exprs [ static_cast < size_t > ( e ) ].kind != op::VAR )
+				return -1;
+
+			int64_t v = exprs [ static_cast < size_t > ( e ) ].value;
+
+			return v >= 0 && v < total ? static_cast < int32_t > ( v ) : -1;
+
+		};
+
+		auto walk = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+			if ( e < 0 || depth > 96 )
+				return;
+
+			const expr& node = exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind == op::VAR ) {
+
+				int32_t v = var_of ( e );
+
+				if ( v >= 0 ) {
+
+					seen [ static_cast < size_t > ( v ) ] = 1;
+
+					if ( node.size != 4 )
+						blocked [ static_cast < size_t > ( v ) ] = 1;
+
+				}
+
+				return;
+
+			}
+
+			if ( node.kind == op::CAST && node.size == 4 && ( node.bits & FLOATING ) && var_of ( node.a ) >= 0 ) {
+
+				seen [ static_cast < size_t > ( var_of ( node.a ) ) ] = 1;
+
+				return;
+
+			}
+
+			self ( self, node.a, depth + 1 );
+			self ( self, node.b, depth + 1 );
+			self ( self, node.c, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				self ( self, args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+		};
+
+		for ( const statement& line : statements ) {
+
+			if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+				continue;
+
+			int32_t target = line.kind == stmt::ASSIGN ? var_of ( line.left ) : -1;
+
+			if ( target >= 0 ) {
+
+				const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
+
+				if ( source.size != 4 || !( source.bits & FLOATING ) )
+					blocked [ static_cast < size_t > ( target ) ] = 1;
+
+			} else
+				walk ( walk, line.left, 0 );
+
+			walk ( walk, line.right, 0 );
+
+		}
+
+		for ( const block_code& block : code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			walk ( walk, block.condition, 0 );
+			walk ( walk, block.selector, 0 );
+			walk ( walk, block.returned, 0 );
+
+		}
+
+		base::list < uint8_t > chosen;
+
+		chosen.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			if ( blocked [ static_cast < size_t > ( v ) ] || !seen [ static_cast < size_t > ( v ) ] )
+				continue;
+
+			chosen [ static_cast < size_t > ( v ) ] = 1;
+			vars [ static_cast < size_t > ( v ) ].size = 4;
+
+		}
+
+		for ( expr& node : exprs ) {
+
+			if ( node.kind == op::VAR && node.value >= 0 && node.value < total && chosen [ static_cast < size_t > ( node.value ) ] )
+				node.size = 4;
+
+		}
+
+		for ( expr& node : exprs ) {
+
+			if ( node.kind != op::CAST || node.size != 4 || !( node.bits & FLOATING ) || node.a < 0 )
+				continue;
+
+			const expr inner = exprs [ static_cast < size_t > ( node.a ) ];
+
+			if ( inner.kind == op::VAR && inner.value >= 0 && inner.value < total && chosen [ static_cast < size_t > ( inner.value ) ] )
+				node = inner;
+
+		}
 
 	}
 

@@ -260,6 +260,8 @@ namespace decompiler {
 
 		void narrow_webs ( );
 
+		void narrow_floats ( );
+
 		void substitute_known ( );
 
 		base::list < base::text > call_names;
