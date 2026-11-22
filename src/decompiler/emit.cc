@@ -5558,6 +5558,25 @@ namespace decompiler {
 		if ( !detect_bools )
 			return;
 
+		auto self_truth = [ & ] ( int32_t e, bool& compared ) -> int32_t {
+
+			if ( e < 0 )
+				return 0;
+
+			op kind = b.exprs [ static_cast < size_t > ( e ) ].kind;
+
+			if ( ( kind >= op::EQ && kind <= op::LOR ) || kind == op::LNOT ) {
+
+				compared = true;
+
+				return 1;
+
+			}
+
+			return 0;
+
+		};
+
 		auto truth = [ & ] ( int32_t e, bool& compared ) -> int32_t {
 
 			if ( e < 0 )
@@ -5584,6 +5603,30 @@ namespace decompiler {
 
 				case op::VAR:
 					return node.value >= 0 && node.value < total ? 2 : 0;
+
+				case op::AND:
+				case op::OR:
+				case op::XOR: {
+
+					bool left = false;
+					bool right = false;
+					int32_t x = self_truth ( node.a, left );
+					int32_t y = self_truth ( node.b, right );
+
+					if ( x == 1 && y == 1 && left && right ) {
+
+						compared = true;
+
+						return 1;
+
+					}
+
+					return 0;
+
+				}
+
+				case op::CAST:
+					return node.a >= 0 && b.exprs [ static_cast < size_t > ( node.a ) ].kind >= op::EQ && b.exprs [ static_cast < size_t > ( node.a ) ].kind <= op::LOR ? ( compared = true, 1 ) : 0;
 
 				default:
 					return 0;
@@ -5635,7 +5678,7 @@ namespace decompiler {
 
 			const variable& item = b.vars [ static_cast < size_t > ( v ) ];
 
-			if ( item.size != 1 || item.flags || item.kind == var_kind::PARAMETER || ( item.bits & FLOATING ) || ( v < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( v ) ].empty ( ) ) )
+			if ( item.flags || item.kind != var_kind::REGISTER || ( item.bits & FLOATING ) || ( v < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( v ) ].empty ( ) ) || item.cookie || item.family < 0 )
 				state [ static_cast < size_t > ( v ) ] |= 4;
 
 		}
@@ -5671,8 +5714,14 @@ namespace decompiler {
 
 		}
 
-		for ( int32_t v = 0; v < total; v++ )
+		for ( int32_t v = 0; v < total; v++ ) {
+
 			boolean [ static_cast < size_t > ( v ) ] = state [ static_cast < size_t > ( v ) ] == 1 ? 1 : 0;
+
+			if ( boolean [ static_cast < size_t > ( v ) ] )
+				b.vars [ static_cast < size_t > ( v ) ].size = 1;
+
+		}
 
 	}
 
@@ -6934,6 +6983,7 @@ namespace decompiler {
 		head.next_number = body_emitter.next_number;
 		head.result_var = body_emitter.result_var;
 		head.element = body_emitter.element;
+		head.boolean = body_emitter.boolean;
 		head.loop_letter = body_emitter.loop_letter;
 		head.out.r = &out;
 
