@@ -418,6 +418,8 @@ namespace decompiler {
 	static bool exits_inline = true;
 	static bool frame_deepest = true;
 	static bool implicit_narrow = true;
+	static bool split_selects = true;
+	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
 
 	struct emitter {
@@ -1333,6 +1335,18 @@ namespace decompiler {
 			};
 
 			return item.size == 1 && !( item.bits & FLOATING ) && logical ( item.a ) && logical ( item.b );
+
+		}
+
+		void select_arm ( int32_t left, int32_t arm ) {
+
+			const expr& target = b.exprs [ static_cast < size_t > ( left ) ];
+			const expr& picked = b.exprs [ static_cast < size_t > ( arm ) ];
+
+			if ( picked.kind == op::CONST && !( picked.bits & POINTER ) && target.size == 8 && b.long_mode )
+				number ( picked.value, 8, !simple_constant ( picked.value ), false );
+			else
+				value ( arm, 2 );
 
 		}
 
@@ -3045,6 +3059,30 @@ namespace decompiler {
 						bool keep_no = no_arm.kind == op::VAR && no_arm.value == left.value;
 						bool keep_yes = yes_arm.kind == op::VAR && yes_arm.value == left.value;
 
+						if ( split_selects && !keep_no && !keep_yes && !b.same ( right.b, right.c ) ) {
+
+							value ( item.left, 0 );
+							out.put ( L" = ", syntax::OPERATOR );
+							select_arm ( item.left, right.c );
+							semicolon ( );
+							out.begin ( item.address );
+							out.put ( L"if", syntax::CONTROL );
+							paren_open ( );
+							value ( right.a, 0 );
+							paren_close ( );
+							out.finish ( );
+							out.indent++;
+							out.begin ( item.address );
+							out.indent--;
+							value ( item.left, 0 );
+							out.put ( L" = ", syntax::OPERATOR );
+							select_arm ( item.left, right.b );
+							semicolon ( );
+
+							break;
+
+						}
+
 						if ( keep_no != keep_yes ) {
 
 							out.put ( L"if", syntax::CONTROL );
@@ -4349,7 +4387,7 @@ namespace decompiler {
 
 			}
 
-			if ( !no_ternary && follow >= 0 && then_part >= 0 && else_part >= 0 && then_part != follow && else_part != follow ) {
+			if ( diamond_ternary && !no_ternary && follow >= 0 && then_part >= 0 && else_part >= 0 && then_part != follow && else_part != follow ) {
 
 				int32_t then_line = single_assign ( then_part, follow );
 				int32_t else_line = single_assign ( else_part, follow );
