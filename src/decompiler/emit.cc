@@ -414,6 +414,7 @@ namespace decompiler {
 	}
 
 	static bool flow_casts = true;
+	static bool guarded_loops = true;
 
 	struct emitter {
 
@@ -3744,7 +3745,117 @@ namespace decompiler {
 
 		}
 
-		bool entry_true ( int32_t test, int32_t step ) {
+		int32_t strip ( int32_t e ) const {
+
+			while ( e >= 0 && b.exprs [ static_cast < size_t > ( e ) ].kind == op::CAST )
+				e = b.exprs [ static_cast < size_t > ( e ) ].a;
+
+			return e;
+
+		}
+
+		bool guarded_entry ( int32_t start, int64_t init, op kind, int32_t bound ) {
+
+			if ( !guarded_loops || start < 0 )
+				return false;
+
+			int32_t pre = -1;
+
+			for ( int32_t p : pred [ static_cast < size_t > ( start ) ] ) {
+
+				if ( loop_body [ static_cast < size_t > ( start ) ] [ static_cast < size_t > ( p ) ] )
+					continue;
+
+				pre = pre < 0 ? p : -2;
+
+			}
+
+			if ( pre < 0 )
+				return false;
+
+			int32_t gate = pre;
+			int32_t into = start;
+
+			if ( b.code [ static_cast < size_t > ( pre ) ].end != term::BRANCH ) {
+
+				if ( pred [ static_cast < size_t > ( pre ) ].count ( ) != 1 )
+					return false;
+
+				gate = pred [ static_cast < size_t > ( pre ) ] [ 0 ];
+				into = pre;
+
+			}
+
+			const block_code& g = b.code [ static_cast < size_t > ( gate ) ];
+
+			if ( g.end != term::BRANCH || g.condition < 0 || ( g.taken != into && g.other != into ) || g.taken == g.other )
+				return false;
+
+			int32_t condition = g.taken == into ? g.condition : b.negate ( g.condition );
+			const expr& c = b.exprs [ static_cast < size_t > ( condition ) ];
+
+			if ( c.a < 0 || c.b < 0 )
+				return false;
+
+			int32_t target = strip ( bound );
+
+			if ( target < 0 || b.exprs [ static_cast < size_t > ( target ) ].kind != op::VAR )
+				return false;
+
+			for ( int32_t s = b.code [ static_cast < size_t > ( pre ) ].first; s < b.code [ static_cast < size_t > ( pre ) ].first + b.code [ static_cast < size_t > ( pre ) ].count && pre != gate; s++ ) {
+
+				const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( line.kind == stmt::ASSIGN && line.left >= 0 && line.right >= 0 && target >= 0 && b.exprs [ static_cast < size_t > ( target ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( line.left ) ].value == b.exprs [ static_cast < size_t > ( target ) ].value && b.exprs [ static_cast < size_t > ( strip ( line.right ) ) ].kind == op::VAR )
+					target = strip ( line.right );
+
+			}
+
+			int32_t left = strip ( c.a );
+			int32_t right = strip ( c.b );
+			op relation = c.kind;
+			int64_t k = 0;
+
+			if ( right >= 0 && b.exprs [ static_cast < size_t > ( right ) ].kind == op::CONST && left >= 0 && ( b.same ( left, target ) || b.same ( left, strip ( bound ) ) ) )
+				k = b.exprs [ static_cast < size_t > ( right ) ].value;
+			else if ( left >= 0 && b.exprs [ static_cast < size_t > ( left ) ].kind == op::CONST && right >= 0 && ( b.same ( right, target ) || b.same ( right, strip ( bound ) ) ) ) {
+
+				k = b.exprs [ static_cast < size_t > ( left ) ].value;
+
+				switch ( relation ) {
+
+					case op::LT: relation = op::GT; break;
+					case op::LE: relation = op::GE; break;
+					case op::GT: relation = op::LT; break;
+					case op::GE: relation = op::LE; break;
+					default: break;
+
+				}
+
+			} else
+				return false;
+
+			bool above = ( relation == op::GT && k >= init ) || ( relation == op::GE && k > init );
+
+			switch ( kind ) {
+
+				case op::NE:
+					return above || ( relation == op::NE && k == init ) || ( relation == op::LT && k <= init );
+
+				case op::LT:
+					return above;
+
+				case op::LE:
+					return above || ( relation == op::GE && k >= init );
+
+				default:
+					return false;
+
+			}
+
+		}
+
+		bool entry_true ( int32_t test, int32_t step, int32_t start = -1 ) {
 
 			const statement& grow = b.statements [ static_cast < size_t > ( step ) ];
 			int32_t found = -1;
@@ -3763,12 +3874,36 @@ namespace decompiler {
 			if ( t.a < 0 || t.b < 0 )
 				return false;
 
-			int32_t subject = t.a;
+			int32_t subject = strip ( t.a );
+			int32_t other_side = t.b;
+			op test_kind = t.kind;
 
-			while ( b.exprs [ static_cast < size_t > ( subject ) ].kind == op::CAST )
-				subject = b.exprs [ static_cast < size_t > ( subject ) ].a;
+			if ( b.exprs [ static_cast < size_t > ( subject ) ].kind != op::VAR || b.exprs [ static_cast < size_t > ( subject ) ].value != b.exprs [ static_cast < size_t > ( seed.left ) ].value ) {
 
-			if ( b.exprs [ static_cast < size_t > ( subject ) ].kind != op::VAR || b.exprs [ static_cast < size_t > ( subject ) ].value != b.exprs [ static_cast < size_t > ( seed.left ) ].value || b.exprs [ static_cast < size_t > ( t.b ) ].kind != op::CONST )
+				int32_t flipped = strip ( t.b );
+
+				if ( flipped < 0 || b.exprs [ static_cast < size_t > ( flipped ) ].kind != op::VAR || b.exprs [ static_cast < size_t > ( flipped ) ].value != b.exprs [ static_cast < size_t > ( seed.left ) ].value )
+					return false;
+
+				subject = flipped;
+				other_side = t.a;
+
+				switch ( test_kind ) {
+
+					case op::LT: test_kind = op::GT; break;
+					case op::LE: test_kind = op::GE; break;
+					case op::GT: test_kind = op::LT; break;
+					case op::GE: test_kind = op::LE; break;
+					default: break;
+
+				}
+
+			}
+
+			if ( b.exprs [ static_cast < size_t > ( other_side ) ].kind != op::CONST )
+				return guarded_entry ( start, b.exprs [ static_cast < size_t > ( seed.right ) ].value, test_kind, other_side );
+
+			if ( other_side != t.b )
 				return false;
 
 			int64_t x = b.exprs [ static_cast < size_t > ( seed.right ) ].value;
@@ -4325,7 +4460,29 @@ namespace decompiler {
 
 			if ( condition >= 0 ) {
 
-				value ( negated ? b.negate ( condition ) : condition, 0 );
+				int32_t shown = negated ? b.negate ( condition ) : condition;
+				const expr test = b.exprs [ static_cast < size_t > ( shown ) ];
+				bool relation = test.kind >= op::EQ && test.kind <= op::GE;
+
+				if ( relation && test.a >= 0 && test.b >= 0 && strip ( test.b ) >= 0 && b.exprs [ static_cast < size_t > ( strip ( test.b ) ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( strip ( test.b ) ) ].value == var && !( strip ( test.a ) >= 0 && b.exprs [ static_cast < size_t > ( strip ( test.a ) ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( strip ( test.a ) ) ].value == var ) ) {
+
+					op turned = test.kind;
+
+					switch ( test.kind ) {
+
+						case op::LT: turned = op::GT; break;
+						case op::LE: turned = op::GE; break;
+						case op::GT: turned = op::LT; break;
+						case op::GE: turned = op::LE; break;
+						default: break;
+
+					}
+
+					shown = b.make ( turned, 1, test.b, test.a, 0, test.bits );
+
+				}
+
+				value ( shown, 0 );
 				out.put ( L";" );
 
 			}
@@ -4384,7 +4541,7 @@ namespace decompiler {
 				int32_t test = back_taken ? item.condition : b.negate ( item.condition );
 				int32_t step = counted_step ( start, test );
 
-				if ( step >= 0 && entry_true ( test, step ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
+				if ( step >= 0 && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
 
 					hidden [ static_cast < size_t > ( step ) ] = 1;
 					body ( start );
@@ -4437,7 +4594,7 @@ namespace decompiler {
 					int32_t test = back_taken ? tail.condition : b.negate ( tail.condition );
 					int32_t step = counted_step ( latch, test );
 
-					if ( step >= 0 && entry_true ( test, step ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
+					if ( step >= 0 && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
 
 						hidden [ static_cast < size_t > ( step ) ] = 1;
 						emitted [ static_cast < size_t > ( latch ) ] = 1;
