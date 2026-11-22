@@ -415,6 +415,7 @@ namespace decompiler {
 
 	static bool flow_casts = true;
 	static bool ghost_numbers = false;
+	static bool exits_inline = true;
 	static bool guarded_loops = true;
 
 	struct emitter {
@@ -3572,7 +3573,7 @@ namespace decompiler {
 				follow = -1;
 
 			if ( context.loop >= 0 && follow >= 0 && !in_loop ( context.loop, follow ) )
-				follow = context.exit;
+				follow = exits_inline && stop == context.loop ? context.loop : context.exit;
 
 			if ( follow < 0 )
 				follow = stop;
