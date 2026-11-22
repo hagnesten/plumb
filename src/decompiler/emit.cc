@@ -2430,6 +2430,22 @@ namespace decompiler {
 
 					}
 
+					if ( left.kind == op::LOAD && right.kind == op::LOAD && left.size == right.size && ( left.bits & FLOATING ) && ( right.bits & FLOATING ) && ( left.size == 4 || left.size == 8 ) ) {
+
+						expr plain_left = left;
+						expr plain_right = right;
+
+						plain_left.bits = static_cast < uint8_t > ( plain_left.bits & ~FLOATING );
+						plain_right.bits = static_cast < uint8_t > ( plain_right.bits & ~FLOATING );
+						lvalue_or_load ( plain_left, 0 );
+						out.put ( L" = ", syntax::OPERATOR );
+						lvalue_or_load ( plain_right, 2 );
+						semicolon ( );
+
+						break;
+
+					}
+
 					bool self_var = left.kind == op::VAR && right.a >= 0 && b.exprs [ static_cast < size_t > ( right.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( right.a ) ].value == left.value && b.exprs [ static_cast < size_t > ( right.a ) ].size == left.size;
 					bool self_load = left.kind == op::LOAD && right.a >= 0 && b.exprs [ static_cast < size_t > ( right.a ) ].kind == op::LOAD && b.exprs [ static_cast < size_t > ( right.a ) ].size == left.size && b.same ( right.a, item.left );
 
