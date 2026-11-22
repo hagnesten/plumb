@@ -443,6 +443,8 @@ namespace decompiler {
 
 	}
 
+	static bool flow_casts = true;
+
 	struct emitter {
 
 		builder& b;
@@ -1366,6 +1368,91 @@ namespace decompiler {
 
 		}
 
+		int32_t pointer_step ( int32_t e ) const {
+
+			if ( e < 0 )
+				return 0;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind != op::VAR || node.value < 0 || node.value >= element.count ( ) )
+				return 0;
+
+			uint8_t shape = element [ static_cast < size_t > ( node.value ) ];
+
+			if ( !shape )
+				return 0;
+
+			if ( shape == 0x10 )
+				return 1;
+
+			if ( ( shape & 0x9F ) == 8 && ( shape & 0x40 ) )
+				return 8;
+
+			return shape & 0x0F;
+
+		}
+
+		bool void_element_load ( int32_t e ) const {
+
+			if ( e < 0 || b.exprs [ static_cast < size_t > ( e ) ].kind != op::LOAD || b.exprs [ static_cast < size_t > ( e ) ].size != 8 )
+				return false;
+
+			int32_t at = b.exprs [ static_cast < size_t > ( e ) ].a;
+
+			if ( at >= 0 && b.exprs [ static_cast < size_t > ( at ) ].kind == op::ADD && b.exprs [ static_cast < size_t > ( at ) ].b >= 0 && b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( at ) ].b ) ].kind == op::CONST ) {
+
+				if ( b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( at ) ].b ) ].value % 8 != 0 )
+					return false;
+
+				at = b.exprs [ static_cast < size_t > ( at ) ].a;
+
+			}
+
+			if ( at < 0 || b.exprs [ static_cast < size_t > ( at ) ].kind != op::VAR )
+				return false;
+
+			int64_t v = b.exprs [ static_cast < size_t > ( at ) ].value;
+
+			return v >= 0 && v < element.count ( ) && ( element [ static_cast < size_t > ( v ) ] & 0x9F ) == 8 && ( element [ static_cast < size_t > ( v ) ] & 0x40 );
+
+		}
+
+		bool typed_value ( int32_t e ) const {
+
+			if ( e < 0 )
+				return false;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( pointer_step ( e ) > 0 )
+				return true;
+
+			return node.kind == op::ADD && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && pointer_step ( node.a ) > 0 && b.exprs [ static_cast < size_t > ( node.b ) ].value % pointer_step ( node.a ) == 0;
+
+		}
+
+		void pointer_cast ( int32_t v ) {
+
+			uint8_t shape = element [ static_cast < size_t > ( v ) ];
+
+			out.put ( L"(" );
+
+			if ( shape == 0x10 )
+				out.put ( L"char", syntax::TYPE );
+			else if ( ( shape & 0x9F ) == 8 && ( shape & 0x40 ) )
+				out.put ( L"void *", syntax::TYPE );
+			else if ( ( shape & 0x9F ) == 8 && ( shape & 0x20 ) )
+				type_name ( 8, SIGNED, false );
+			else if ( ( shape & 0x40 ) && !( shape & 0x80 ) )
+				type_name ( shape & 0x1F, UNSIGNED, false );
+			else
+				type_name ( shape & 0x1F, ( shape & 0x80 ) ? FLOATING : 0, false, !( shape & 0x80 ) );
+
+			out.put ( L" *)" );
+
+		}
+
 		int32_t char_var ( int32_t e ) const {
 
 			if ( e < 0 )
@@ -1959,7 +2046,7 @@ namespace decompiler {
 							out.put ( L"(unsigned int)" );
 							value ( argument, 14 );
 
-						} else if ( b.long_mode && !no_casts && target && passed.size == 8 && !( passed.bits & ( FLOATING | POINTER ) ) && ( passed.kind == op::LOAD || passed.kind == op::GLOBAL || passed.kind == op::ADD ) && ( callee_unsigned ( target, i ), !shape_ok ) && callee_parameter_type ( *b.db, *b.file, b.names, target, i, param_type, 64 ) ) {
+						} else if ( b.long_mode && !no_casts && target && passed.size == 8 && !( passed.bits & ( FLOATING | POINTER ) ) && ( passed.kind == op::LOAD || passed.kind == op::GLOBAL || passed.kind == op::ADD ) && ( callee_unsigned ( target, i ), !shape_ok ) && !void_element_load ( argument ) && callee_parameter_type ( *b.db, *b.file, b.names, target, i, param_type, 64 ) ) {
 
 							if ( passed.kind == op::LOAD ) {
 
@@ -2153,6 +2240,23 @@ namespace decompiler {
 				}
 
 				default: {
+
+					if ( item.kind == op::ADD && item.b >= 0 && b.exprs [ static_cast < size_t > ( item.b ) ].kind == op::CONST && !( b.exprs [ static_cast < size_t > ( item.b ) ].bits & POINTER ) ) {
+
+						int32_t step = pointer_step ( item.a );
+						int64_t amount = b.exprs [ static_cast < size_t > ( item.b ) ].value;
+
+						if ( step > 0 && amount % step == 0 ) {
+
+							value ( item.a, mine );
+							out.put ( amount < 0 ? L" - " : L" + ", syntax::OPERATOR );
+							out.put ( base::writer ( ).number ( static_cast < int64_t > ( amount < 0 ? -amount : amount ) / step ).text ( ), syntax::NUMBER );
+
+							break;
+
+						}
+
+					}
 
 					const wchar_t* symbol = L"?";
 					bool bitwise = false;
@@ -2715,6 +2819,24 @@ namespace decompiler {
 					if ( right.kind == op::ADD && right.a >= 0 && left.kind == op::VAR && b.exprs [ static_cast < size_t > ( right.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( right.a ) ].value == left.value && b.exprs [ static_cast < size_t > ( right.b ) ].kind == op::CONST && !( right.bits & FLOATING ) ) {
 
 						int64_t step_value = b.exprs [ static_cast < size_t > ( right.b ) ].value;
+						int32_t scale = pointer_step ( item.left );
+
+						if ( scale > 1 && step_value % scale == 0 ) {
+
+							step_value /= scale;
+
+							if ( step_value != 1 && step_value != -1 ) {
+
+								value ( item.left, 0 );
+								out.put ( step_value < 0 ? L" -= " : L" += ", syntax::OPERATOR );
+								out.put ( base::writer ( ).number ( step_value < 0 ? -step_value : step_value ).text ( ), syntax::NUMBER );
+								semicolon ( );
+
+								break;
+
+							}
+
+						}
 
 						if ( step_value == 1 || step_value == -1 ) {
 
@@ -2921,7 +3043,19 @@ namespace decompiler {
 						number ( shown_value, 8, !simple_constant ( shown_value ), false );
 
 					}
-					else
+					else if ( flow_casts && left.kind == op::VAR && pointer_step ( item.left ) > 0 && !typed_value ( item.right ) && right.kind != op::CAST ) {
+
+						pointer_cast ( static_cast < int32_t > ( left.value ) );
+						value ( item.right, 14 );
+
+					} else if ( flow_casts && left.size == 8 && pointer_step ( item.left ) == 0 && typed_value ( item.right ) && !( left.bits & FLOATING ) ) {
+
+						bool unsigned_target = left.kind == op::VAR && left.value >= 0 && left.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( left.value ) ].bits & UNSIGNED );
+
+						out.put ( unsigned_target ? L"(unsigned __int64)" : L"(__int64)", syntax::TYPE );
+						value ( item.right, 14 );
+
+					} else
 						value ( item.right, 2 );
 
 					semicolon ( );
@@ -5396,6 +5530,421 @@ namespace decompiler {
 	static bool typed_locals = true;
 	static bool char_locals = true;
 
+	static bool flow_typing = true;
+	static bool flow_seeded_only = true;
+
+	static void flow_pointers ( builder& b, base::list < uint8_t >& element ) {
+
+		int32_t total = b.vars.count ( );
+		base::list < uint8_t > bad;
+		base::list < int32_t > parent;
+		base::list < uint8_t > shape;
+		base::list < uint8_t > conflict;
+		base::list < uint8_t > direct;
+		base::list < uint8_t > seeded;
+		base::list < int64_t > steps;
+		base::list < int32_t > edge_from;
+		base::list < int32_t > edge_to;
+
+		bad.fill ( static_cast < size_t > ( total ), 0 );
+		parent.fill ( static_cast < size_t > ( total ), 0 );
+		shape.fill ( static_cast < size_t > ( total ), 0 );
+		conflict.fill ( static_cast < size_t > ( total ), 0 );
+		direct.fill ( static_cast < size_t > ( total ), 0 );
+		seeded.fill ( static_cast < size_t > ( total ), 0 );
+
+		base::list < uint8_t > stepped;
+		base::list < uint8_t > params_in;
+
+		stepped.fill ( static_cast < size_t > ( total ), 0 );
+		params_in.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			const variable& item = b.vars [ static_cast < size_t > ( v ) ];
+
+			parent [ static_cast < size_t > ( v ) ] = v;
+
+			if ( item.size != 8 || ( item.bits & FLOATING ) || item.flags || item.cookie || item.kind == var_kind::STACK || ( v < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( v ) ].empty ( ) ) || ( v < b.var_structs.count ( ) && !b.var_structs [ static_cast < size_t > ( v ) ].empty ( ) ) )
+				bad [ static_cast < size_t > ( v ) ] = 1;
+
+		}
+
+		auto var_of = [ & ] ( int32_t e ) -> int32_t {
+
+			if ( e < 0 || b.exprs [ static_cast < size_t > ( e ) ].kind != op::VAR )
+				return -1;
+
+			int64_t v = b.exprs [ static_cast < size_t > ( e ) ].value;
+
+			return v >= 0 && v < total && b.exprs [ static_cast < size_t > ( e ) ].size == 8 ? static_cast < int32_t > ( v ) : -1;
+
+		};
+
+		auto constant_of = [ & ] ( int32_t e, int64_t& out ) {
+
+			if ( e < 0 || b.exprs [ static_cast < size_t > ( e ) ].kind != op::CONST || ( b.exprs [ static_cast < size_t > ( e ) ].bits & POINTER ) )
+				return false;
+
+			out = b.exprs [ static_cast < size_t > ( e ) ].value;
+
+			return true;
+
+		};
+
+		struct access {
+
+			int32_t var;
+			int64_t offset;
+			uint8_t form;
+			bool indexed;
+
+		};
+
+		base::list < access > accesses;
+
+		auto deref = [ & ] ( int32_t v, int64_t offset, uint8_t form, bool indexed ) {
+
+			access a;
+
+			a.var = v;
+			a.offset = offset;
+			a.form = form;
+			a.indexed = indexed;
+			accesses.push ( a );
+
+		};
+
+		auto walk = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+			if ( e < 0 || depth > 96 )
+				return;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+			int64_t k = 0;
+
+			if ( node.kind == op::VAR ) {
+
+				if ( node.value >= 0 && node.value < total )
+					bad [ static_cast < size_t > ( node.value ) ] = 1;
+
+				return;
+
+			}
+
+			if ( node.kind == op::LOAD && node.a >= 0 ) {
+
+				const expr& where = b.exprs [ static_cast < size_t > ( node.a ) ];
+				uint8_t form = static_cast < uint8_t > ( node.size | ( ( node.bits & FLOATING ) ? 0x80 : 0 ) );
+
+				if ( var_of ( node.a ) >= 0 ) {
+
+					deref ( var_of ( node.a ), 0, form, false );
+
+					return;
+
+				}
+
+				if ( where.kind == op::ADD && var_of ( where.a ) >= 0 && constant_of ( where.b, k ) ) {
+
+					deref ( var_of ( where.a ), k, form, false );
+
+					return;
+
+				}
+
+				if ( where.kind == op::ADD && var_of ( where.a ) >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::MUL && constant_of ( b.exprs [ static_cast < size_t > ( where.b ) ].b, k ) && k == node.size ) {
+
+					deref ( var_of ( where.a ), 0, form, true );
+					self ( self, b.exprs [ static_cast < size_t > ( where.b ) ].a, depth + 1 );
+
+					return;
+
+				}
+
+			}
+
+			if ( node.kind == op::ADD && var_of ( node.a ) >= 0 && constant_of ( node.b, k ) ) {
+
+				steps.push ( k );
+				edge_from.push ( var_of ( node.a ) );
+				edge_to.push ( -1 );
+
+				return;
+
+			}
+
+			if ( ( node.kind == op::EQ || node.kind == op::NE || node.kind == op::LT || node.kind == op::LE || node.kind == op::GT || node.kind == op::GE ) && ( var_of ( node.a ) >= 0 || var_of ( node.b ) >= 0 ) ) {
+
+				bool left_ok = var_of ( node.a ) >= 0;
+				bool right_ok = var_of ( node.b ) >= 0 || ( constant_of ( node.b, k ) && k == 0 );
+
+				if ( left_ok && right_ok )
+					return;
+
+			}
+
+			if ( node.kind == op::LNOT && var_of ( node.a ) >= 0 )
+				return;
+
+			if ( node.kind == op::CALL ) {
+
+				uint64_t target = static_cast < uint64_t > ( node.value );
+				bool api = false;
+				wchar_t callee [ 200 ];
+
+				if ( target && b.names && b.names->name ( target, true, callee, 200 ) && api_prototype ( callee ) )
+					api = true;
+
+				if ( !node.value || ( target && b.names && b.names->prototype ( target ) ) )
+					api = true;
+
+				if ( !node.value )
+					self ( self, node.a, depth + 1 );
+
+				for ( int32_t i = 0; i < node.arg_count; i++ ) {
+
+					int32_t passed = b.args [ static_cast < size_t > ( node.first_arg + i ) ];
+					int32_t v = var_of ( passed );
+
+					if ( v < 0 || api ) {
+
+						self ( self, passed, depth + 1 );
+
+						continue;
+
+					}
+
+					if ( i < 4 && b.db && b.long_mode ) {
+
+						uint8_t inner = callee_pointer_shape ( *b.db, b.names, target, i, 0 );
+
+						if ( inner )
+							deref ( v, 0, static_cast < uint8_t > ( inner & 0x9F ), false );
+
+					}
+
+				}
+
+				return;
+
+			}
+
+			self ( self, node.a, depth + 1 );
+			self ( self, node.b, depth + 1 );
+			self ( self, node.c, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+		};
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& item = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( item.kind == stmt::NOP || item.kind == stmt::ASM )
+					continue;
+
+				int32_t x = item.kind == stmt::ASSIGN ? var_of ( item.left ) : -1;
+
+				if ( item.kind == stmt::ASSIGN && item.left >= 0 && b.exprs [ static_cast < size_t > ( item.left ) ].kind == op::VAR ) {
+
+					int32_t y = var_of ( item.right );
+					const expr& right = b.exprs [ static_cast < size_t > ( item.right ) ];
+					int64_t k = 0;
+
+					if ( x >= 0 && y >= 0 ) {
+
+						steps.push ( 0 );
+						edge_from.push ( y );
+						edge_to.push ( x );
+
+						continue;
+
+					}
+
+					if ( x >= 0 && right.kind == op::ADD && var_of ( right.a ) >= 0 && constant_of ( right.b, k ) ) {
+
+						steps.push ( k );
+						edge_from.push ( var_of ( right.a ) );
+						edge_to.push ( x );
+
+						continue;
+
+					}
+
+					if ( y >= 0 )
+						continue;
+
+					if ( right.kind == op::ADD && var_of ( right.a ) >= 0 && constant_of ( right.b, k ) ) {
+
+						steps.push ( k );
+						edge_from.push ( var_of ( right.a ) );
+						edge_to.push ( -1 );
+
+						continue;
+
+					}
+
+					walk ( walk, item.right, 0 );
+
+					continue;
+
+				}
+
+				if ( item.kind == stmt::STORE || item.kind == stmt::ASSIGN ) {
+
+					if ( item.left >= 0 && b.exprs [ static_cast < size_t > ( item.left ) ].kind == op::LOAD )
+						walk ( walk, item.left, 0 );
+					else if ( item.left >= 0 && b.exprs [ static_cast < size_t > ( item.left ) ].kind != op::GLOBAL )
+						walk ( walk, item.left, 0 );
+
+					int64_t k = 0;
+					const expr& right = b.exprs [ static_cast < size_t > ( item.right ) ];
+
+					if ( var_of ( item.right ) >= 0 )
+						continue;
+
+					if ( right.kind == op::ADD && var_of ( right.a ) >= 0 && constant_of ( right.b, k ) ) {
+
+						steps.push ( k );
+						edge_from.push ( var_of ( right.a ) );
+						edge_to.push ( -1 );
+
+						continue;
+
+					}
+
+					walk ( walk, item.right, 0 );
+
+					continue;
+
+				}
+
+				walk ( walk, item.left, 0 );
+				walk ( walk, item.right, 0 );
+
+			}
+
+			walk ( walk, block.condition, 0 );
+			walk ( walk, block.selector, 0 );
+
+			if ( block.end == term::TAIL )
+				walk ( walk, block.returned, 0 );
+			else if ( b.returns_value && block.returned >= 0 && var_of ( block.returned ) < 0 )
+				walk ( walk, block.returned, 0 );
+
+		}
+
+		auto find = [ & ] ( int32_t v ) {
+
+			while ( parent [ static_cast < size_t > ( v ) ] != v ) {
+
+				parent [ static_cast < size_t > ( v ) ] = parent [ static_cast < size_t > ( parent [ static_cast < size_t > ( v ) ] ) ];
+				v = parent [ static_cast < size_t > ( v ) ];
+
+			}
+
+			return v;
+
+		};
+
+		for ( int32_t i = 0; i < edge_from.count ( ); i++ ) {
+
+			int32_t from = edge_from [ static_cast < size_t > ( i ) ];
+			int32_t to = edge_to [ static_cast < size_t > ( i ) ];
+
+			if ( to < 0 || bad [ static_cast < size_t > ( from ) ] || bad [ static_cast < size_t > ( to ) ] )
+				continue;
+
+			int32_t x = find ( from );
+			int32_t y = find ( to );
+
+			if ( x != y )
+				parent [ static_cast < size_t > ( y ) ] = x;
+
+		}
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			if ( !bad [ static_cast < size_t > ( v ) ] && b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER && ( !flow_seeded_only || element [ static_cast < size_t > ( v ) ] ) )
+				seeded [ static_cast < size_t > ( find ( v ) ) ] = 1;
+
+			if ( !bad [ static_cast < size_t > ( v ) ] && b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER )
+				params_in [ static_cast < size_t > ( find ( v ) ) ] = 1;
+
+		}
+
+		for ( const access& a : accesses ) {
+
+			if ( bad [ static_cast < size_t > ( a.var ) ] )
+				continue;
+
+			int32_t root = find ( a.var );
+			uint8_t size = a.form & 0x1F;
+			uint8_t& slot = shape [ static_cast < size_t > ( root ) ];
+
+			if ( ( size != 1 && size != 2 && size != 4 && size != 8 ) || a.offset % size != 0 || ( slot && slot != a.form ) ) {
+
+				conflict [ static_cast < size_t > ( root ) ] = 1;
+
+				continue;
+
+			}
+
+			slot = a.form;
+
+			if ( a.offset == 0 || a.indexed )
+				direct [ static_cast < size_t > ( root ) ] = 1;
+
+		}
+
+		for ( int32_t i = 0; i < edge_from.count ( ); i++ ) {
+
+			int32_t from = edge_from [ static_cast < size_t > ( i ) ];
+
+			if ( bad [ static_cast < size_t > ( from ) ] )
+				continue;
+
+			int32_t root = find ( from );
+			uint8_t size = shape [ static_cast < size_t > ( root ) ] & 0x1F;
+
+			if ( size && steps [ static_cast < size_t > ( i ) ] % size != 0 )
+				conflict [ static_cast < size_t > ( root ) ] = 1;
+
+			if ( steps [ static_cast < size_t > ( i ) ] != 0 )
+				stepped [ static_cast < size_t > ( root ) ] = 1;
+
+		}
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			if ( bad [ static_cast < size_t > ( v ) ] )
+				continue;
+
+			int32_t root = find ( v );
+			uint8_t form = shape [ static_cast < size_t > ( root ) ];
+
+			if ( !form || conflict [ static_cast < size_t > ( root ) ] || !direct [ static_cast < size_t > ( root ) ] || !( seeded [ static_cast < size_t > ( root ) ] || ( stepped [ static_cast < size_t > ( root ) ] && params_in [ static_cast < size_t > ( root ) ] && ( form & 0x1F ) < 8 ) ) )
+				continue;
+
+			uint8_t& slot = element [ static_cast < size_t > ( v ) ];
+
+			if ( !slot )
+				slot = form;
+			else if ( ( slot & 0x9F ) != form )
+				continue;
+
+		}
+
+	}
+
 	static void flavor_elements ( builder& b, base::list < uint8_t >& element ) {
 
 		int32_t total = b.vars.count ( );
@@ -5821,6 +6370,9 @@ namespace decompiler {
 			}
 
 		}
+
+		if ( flow_typing )
+			flow_pointers ( b, element );
 
 		if ( element_flavors )
 			flavor_elements ( b, element );
