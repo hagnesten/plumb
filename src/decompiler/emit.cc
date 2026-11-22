@@ -1553,7 +1553,10 @@ namespace decompiler {
 						bool imported = callee < 0 || ( b.db->functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK );
 
 						short_symbol ( name );
-						out.put ( name, imported ? syntax::IMPORT : syntax::FUNCTION, target );
+
+						bool trimmed = imported && name [ 0 ] == L'_' && name [ 1 ] == L'_' && name [ 2 ] >= L'a' && name [ 2 ] <= L'z';
+
+						out.put ( trimmed ? name + 1 : name, imported ? syntax::IMPORT : syntax::FUNCTION, target );
 
 					} else if ( target )
 						number ( static_cast < int64_t > ( target ), 8, true, false );
@@ -1628,7 +1631,7 @@ namespace decompiler {
 
 					if ( ( item.bits & POINTER ) && ( item.bits & FLOATING ) ) {
 
-						out.put ( L"__bitcast", syntax::FUNCTION );
+						out.put ( inner.size == 8 ? L"COERCE_DOUBLE" : L"COERCE_FLOAT", syntax::FUNCTION );
 						out.put ( L"(" );
 						value ( item.a, 0 );
 						out.put ( L")" );
@@ -2204,6 +2207,24 @@ namespace decompiler {
 
 						}
 
+						semicolon ( );
+
+						break;
+
+					}
+
+					if ( left.kind == op::VAR && right.kind == op::CAST && ( right.bits & POINTER ) && ( right.bits & FLOATING ) && right.a >= 0 && b.exprs [ static_cast < size_t > ( right.a ) ].size <= 8 ) {
+
+						uint8_t width = b.exprs [ static_cast < size_t > ( right.a ) ].size;
+
+						out.put ( width == 8 ? L"*(_QWORD *)&" : L"LODWORD(", width == 8 ? syntax::OPERATOR : syntax::FUNCTION );
+						value ( item.left, 0 );
+
+						if ( width != 8 )
+							out.put ( L")" );
+
+						out.put ( L" = ", syntax::OPERATOR );
+						value ( right.a, 2 );
 						semicolon ( );
 
 						break;
