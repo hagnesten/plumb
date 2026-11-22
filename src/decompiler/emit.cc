@@ -1983,7 +1983,7 @@ namespace decompiler {
 
 						bare_unsigned = unsigned_slot;
 
-						if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && passed.value > 0 && callee_unsigned ( target, i ) )
+						if ( passed.kind == op::CONST && ( !( passed.bits & POINTER ) || passed.value < 0x10000 ) && passed.value > 0 && callee_unsigned ( target, i ) )
 							number ( passed.value, callee_wide ( target, i ) && b.long_mode ? 8 : 4, passed.value > 9, true );
 						else if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && b.long_mode && callee_wide ( target, i ) )
 							number ( passed.value, 8, !simple_constant ( passed.value ), false );
@@ -6567,6 +6567,8 @@ namespace decompiler {
 
 	}
 
+	static bool last_call_names = true;
+
 	static void name_from_calls ( builder& b, int32_t result_var ) {
 
 		b.call_names.clear ( );
@@ -6714,8 +6716,14 @@ namespace decompiler {
 
 		}
 
-		for ( int32_t call : calls ) {
+		for ( int32_t order = 0; order < calls.count ( ) * 2; order++ ) {
 
+			bool backward = order < calls.count ( );
+
+			if ( backward && !last_call_names )
+				continue;
+
+			int32_t call = calls [ static_cast < size_t > ( backward ? calls.count ( ) - 1 - order : order - calls.count ( ) ) ];
 			const expr node = b.exprs [ static_cast < size_t > ( call ) ];
 
 			if ( !node.value || !node.arg_count )
@@ -6760,6 +6768,9 @@ namespace decompiler {
 				}
 
 				if ( v < 0 || v >= b.vars.count ( ) || v == result_var || !b.call_names [ static_cast < size_t > ( v ) ].empty ( ) )
+					continue;
+
+				if ( backward && address )
 					continue;
 
 				bool only_constants = b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER;
