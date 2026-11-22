@@ -2033,8 +2033,19 @@ namespace decompiler {
 					bool compare = item.kind >= op::EQ && item.kind <= op::GE;
 					bool unsigned_compare = compare && ( item.bits & UNSIGNED ) && item.kind != op::EQ && item.kind != op::NE;
 					bool float_compare = compare && ( item.bits & FLOATING );
+					const expr& lhs = b.exprs [ static_cast < size_t > ( item.a ) ];
+					bool lhs_unsigned = lhs.kind == op::LOAD || ( lhs.bits & UNSIGNED ) || ( lhs.kind == op::VAR && lhs.value >= 0 && lhs.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( lhs.value ) ].bits & UNSIGNED ) ) || lhs.kind == op::CAST;
+					bool cast_lhs = unsigned_compare && !lhs_unsigned && !no_casts && right.kind == op::CONST && lhs.size <= 8;
 
-					value ( item.a, item.kind == op::SHL || item.kind == op::SHR ? mine + 1 : mine, bitwise );
+					if ( cast_lhs ) {
+
+						out.put ( lhs.size == 1 ? L"(unsigned __int8)" : ( lhs.size == 2 ? L"(unsigned __int16)" : ( lhs.size == 4 ? L"(unsigned int)" : L"(unsigned __int64)" ) ), syntax::TYPE );
+						value ( item.a, 14, bitwise );
+						unsigned_compare = false;
+
+					} else
+						value ( item.a, item.kind == op::SHL || item.kind == op::SHR ? mine + 1 : mine, bitwise );
+
 					out.put ( symbol, syntax::OPERATOR );
 
 					if ( right.kind == op::CONST && !( right.bits & POINTER ) && compare ) {
