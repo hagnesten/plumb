@@ -354,6 +354,7 @@ namespace decompiler {
 	}
 
 	static bool fold_pointers = true;
+	static bool keep_returned_constants = false;
 
 	void builder::fold_constants ( ) {
 
@@ -411,6 +412,9 @@ namespace decompiler {
 			const variable& item = vars [ static_cast < size_t > ( v ) ];
 
 			if ( item.kind != var_kind::REGISTER || item.flags || item.cookie || item.saved || ( item.bits & FLOATING ) || defs [ static_cast < size_t > ( v ) ] != 1 || uses [ static_cast < size_t > ( v ) ] == 0 || uses [ static_cast < size_t > ( v ) ] >= 100 )
+				continue;
+
+			if ( keep_returned_constants && returned [ static_cast < size_t > ( v ) ] && uses [ static_cast < size_t > ( v ) ] > returned [ static_cast < size_t > ( v ) ] - 0 && item.family == 0 )
 				continue;
 
 			statement& line = statements [ static_cast < size_t > ( single [ static_cast < size_t > ( v ) ] ) ];

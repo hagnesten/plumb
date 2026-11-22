@@ -1426,6 +1426,15 @@ namespace decompiler {
 			if ( pointer_step ( e ) > 0 )
 				return true;
 
+			if ( node.kind == op::ADD && node.b >= 0 && pointer_step ( node.a ) > 1 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::MUL ) {
+
+				const expr& scaled = b.exprs [ static_cast < size_t > ( node.b ) ];
+
+				if ( scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value == pointer_step ( node.a ) )
+					return true;
+
+			}
+
 			return node.kind == op::ADD && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && pointer_step ( node.a ) > 0 && b.exprs [ static_cast < size_t > ( node.b ) ].value % pointer_step ( node.a ) == 0;
 
 		}
@@ -1611,6 +1620,23 @@ namespace decompiler {
 				out.put ( name, syntax::LOCAL );
 
 				return;
+
+			}
+
+			if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && pointer_step ( where.a ) == item.size && item.size > 1 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::MUL && !( item.bits & FLOATING ) == !( element [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( where.a ) ].value ) ] & 0x80 ) ) {
+
+				const expr& scaled = b.exprs [ static_cast < size_t > ( where.b ) ];
+
+				if ( scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value == item.size ) {
+
+					value ( where.a, 15 );
+					out.put ( L"[" );
+					value ( scaled.a, 0 );
+					out.put ( L"]" );
+
+					return;
+
+				}
 
 			}
 
@@ -3119,7 +3145,7 @@ namespace decompiler {
 						number ( shown_value, 8, !simple_constant ( shown_value ), false );
 
 					}
-					else if ( flow_casts && left.kind == op::VAR && pointer_step ( item.left ) > 0 && !typed_value ( item.right ) && right.kind != op::CAST ) {
+					else if ( flow_casts && left.kind == op::VAR && pointer_step ( item.left ) > 0 && !typed_value ( item.right ) && right.kind != op::CAST && right.kind != op::CALL ) {
 
 						if ( right.kind == op::LOAD && right.size == 8 && !void_element_load ( item.right ) && element [ static_cast < size_t > ( left.value ) ] != 0x10 && !( ( element [ static_cast < size_t > ( left.value ) ] & 0x9F ) == 8 && ( element [ static_cast < size_t > ( left.value ) ] & 0x40 ) ) ) {
 
@@ -3141,7 +3167,7 @@ namespace decompiler {
 						out.put ( unsigned_target ? L"(unsigned __int64)" : L"(__int64)", syntax::TYPE );
 						value ( item.right, 14 );
 
-					} else if ( flow_casts && left.size == 8 && pointer_step ( item.left ) == 0 && typed_value ( item.right ) && !( left.bits & FLOATING ) ) {
+					} else if ( flow_casts && ( left.kind == op::VAR || left.kind == op::GLOBAL ) && left.size == 8 && pointer_step ( item.left ) == 0 && typed_value ( item.right ) && !( left.bits & FLOATING ) ) {
 
 						bool unsigned_target = left.kind == op::VAR && left.value >= 0 && left.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( left.value ) ].bits & UNSIGNED );
 
