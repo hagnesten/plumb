@@ -910,7 +910,7 @@ namespace decompiler {
 
 			}
 
-			if ( item.flags ) {
+			if ( item.flags || ( index == result_var && b.result_width == 2 && item.size == 1 ) ) {
 
 				out.put ( L"bool", syntax::TYPE );
 

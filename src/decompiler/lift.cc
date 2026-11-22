@@ -1600,17 +1600,36 @@ namespace decompiler {
 
 		int32_t spill ( int32_t value, uint64_t address ) {
 
+			op kind = b->exprs [ static_cast < size_t > ( value ) ].kind;
+			bool test = kind >= op::EQ && kind <= op::GE && !( b->exprs [ static_cast < size_t > ( value ) ].bits & FLOATING );
+			bool flipped = test && kind == op::NE;
+
+			if ( flipped )
+				value = b->negate ( value );
+
 			variable& made = b->vars.emplace ( );
 			int32_t index = b->vars.count ( ) - 1;
 
 			made.kind = var_kind::REGISTER;
 			made.family = -1;
 			made.size = b->exprs [ static_cast < size_t > ( value ) ].size;
-			made.bits = b->exprs [ static_cast < size_t > ( value ) ].bits & ( FLOATING | SIGNED | UNSIGNED );
+			made.bits = test ? 0 : b->exprs [ static_cast < size_t > ( value ) ].bits & ( FLOATING | SIGNED | UNSIGNED );
 			made.assigned = true;
+
+			if ( test ) {
+
+				uint8_t compare_bits = b->exprs [ static_cast < size_t > ( value ) ].bits;
+
+				made.flags = true;
+				made.offset = kind == op::EQ || kind == op::NE ? 4 : ( ( compare_bits & UNSIGNED ) ? 2 : 12 );
+
+			}
+
 			emit ( stmt::ASSIGN, b->make ( op::VAR, made.size, -1, -1, index ), value, address );
 
-			return b->var_expr ( index, 0 );
+			int32_t held = b->var_expr ( index, 0 );
+
+			return flipped ? b->make ( op::LNOT, 1, held ) : held;
 
 		}
 
@@ -4322,8 +4341,14 @@ namespace decompiler {
 
 			}
 
-		} else if ( width >= 1 && width <= 3 )
+		} else if ( width >= 1 && width <= 3 ) {
+
 			result_width = static_cast < uint8_t > ( width );
+
+			if ( width <= 2 )
+				return_size = 1;
+
+		}
 
 		prune ( );
 		fold_returns ( );
