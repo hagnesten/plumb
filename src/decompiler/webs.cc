@@ -517,8 +517,33 @@ namespace decompiler {
 				note_use ( node.b, 0 );
 				note_use ( node.c, 0 );
 
-				for ( int32_t i = 0; i < node.arg_count; i++ )
-					note_use ( args [ static_cast < size_t > ( node.first_arg + i ) ], 0 );
+				c_prototype shape;
+				bool shaped = false;
+
+				if ( node.kind == op::CALL && node.value && names ) {
+
+					wchar_t callee [ 200 ];
+					const wchar_t* api = names->prototype ( static_cast < uint64_t > ( node.value ) );
+
+					if ( !api && names->name ( static_cast < uint64_t > ( node.value ), true, callee, 200 ) )
+						api = api_prototype ( callee );
+
+					base::writer problem;
+
+					shaped = api && parse_prototype ( api, long_mode, shape, problem );
+
+				}
+
+				for ( int32_t i = 0; i < node.arg_count; i++ ) {
+
+					int32_t width = 0;
+
+					if ( shaped && i < shape.count && !shape.params [ i ].pointer && !( shape.params [ i ].bits & FLOATING ) && shape.params [ i ].size > 0 && shape.params [ i ].size <= 4 )
+						width = shape.params [ i ].size;
+
+					note_use ( args [ static_cast < size_t > ( node.first_arg + i ) ], width );
+
+				}
 
 			}
 
