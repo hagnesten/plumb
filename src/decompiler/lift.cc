@@ -308,8 +308,34 @@ namespace decompiler {
 
 			}
 
-			if ( left.kind == op::MUL && right.kind == op::MUL && left.b >= 0 && right.b >= 0 && exprs [ static_cast < size_t > ( left.b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( right.b ) ].kind == op::CONST && same_tree ( *this, left.a, right.a, 0 ) )
-				return binary ( op::MUL, left.a, constant ( exprs [ static_cast < size_t > ( left.b ) ].value + exprs [ static_cast < size_t > ( right.b ) ].value, size ), size );
+			auto scale_of = [ & ] ( const expr& node, int32_t self, int32_t& base_out ) -> int64_t {
+
+				if ( ( node.kind == op::MUL || node.kind == op::SHL ) && node.b >= 0 && exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST ) {
+
+					int64_t k = exprs [ static_cast < size_t > ( node.b ) ].value;
+
+					if ( node.kind == op::SHL && ( k < 0 || k > 31 ) )
+						return 0;
+
+					base_out = node.a;
+
+					return node.kind == op::MUL ? k : ( 1ll << k );
+
+				}
+
+				base_out = self;
+
+				return 1;
+
+			};
+
+			int32_t left_base = -1;
+			int32_t right_base = -1;
+			int64_t left_scale = scale_of ( left, a, left_base );
+			int64_t right_scale = scale_of ( right, b, right_base );
+
+			if ( left_scale && right_scale && ( left_scale != 1 || right_scale != 1 ) && left_base >= 0 && right_base >= 0 && same_tree ( *this, left_base, right_base, 0 ) )
+				return binary ( op::MUL, left_base, constant ( left_scale + right_scale, size ), size );
 
 		}
 

@@ -1867,6 +1867,40 @@ namespace decompiler {
 
 					}
 
+					if ( item.kind == op::ADD && right.kind != op::CONST && item.a >= 0 && !( item.bits & FLOATING ) ) {
+
+						const expr& inner = b.exprs [ static_cast < size_t > ( item.a ) ];
+
+						if ( inner.kind == op::ADD && inner.b >= 0 && inner.size == item.size && !( inner.bits & FLOATING ) ) {
+
+							const expr& offset = b.exprs [ static_cast < size_t > ( inner.b ) ];
+
+							if ( offset.kind == op::CONST && !( offset.bits & POINTER ) ) {
+
+								value ( inner.a, mine, bitwise );
+								out.put ( L" + ", syntax::OPERATOR );
+								value ( item.b, mine + 1, bitwise );
+								out.put ( offset.value < 0 ? L" - " : L" + ", syntax::OPERATOR );
+								number ( offset.value < 0 ? -offset.value : offset.value, offset.size, !simple_constant ( offset.value ), false );
+
+								break;
+
+							}
+
+						}
+
+					}
+
+					if ( item.kind == op::MUL && right.kind == op::CONST && !( right.bits & POINTER ) && !( item.bits & FLOATING ) ) {
+
+						number ( right.value, item.size == 8 ? 8 : right.size, !simple_constant ( right.value ), false );
+						out.put ( symbol, syntax::OPERATOR );
+						value ( item.a, mine + 1, bitwise );
+
+						break;
+
+					}
+
 					bool compare = item.kind >= op::EQ && item.kind <= op::GE;
 					bool unsigned_compare = compare && ( item.bits & UNSIGNED ) && item.kind != op::EQ && item.kind != op::NE;
 					bool float_compare = compare && ( item.bits & FLOATING );
