@@ -270,7 +270,7 @@ namespace decompiler {
 
 	bool emit ( builder& b );
 
-	void effects ( const x86::instruction& ins, bool long_mode, uint32_t& use, uint32_t& def );
+	void effects ( const x86::instruction& ins, bool long_mode, uint32_t& use, uint32_t& def, bool partial = true );
 
 	int32_t internal_arguments ( const analysis::database& db, uint64_t function, bool long_mode, int32_t depth );
 

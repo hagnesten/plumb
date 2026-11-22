@@ -1059,7 +1059,7 @@ namespace decompiler {
 
 	}
 
-	void effects ( const x86::instruction& ins, bool long_mode, uint32_t& use, uint32_t& def ) {
+	void effects ( const x86::instruction& ins, bool long_mode, uint32_t& use, uint32_t& def, bool partial ) {
 
 		use = 0;
 		def = 0;
@@ -1078,7 +1078,7 @@ namespace decompiler {
 				if ( item.access & x86::WRITE )
 					def |= 1u << slot;
 
-				if ( ( item.access & x86::READ ) || ( i == 0 && item.size < 4 && slot < 16 ) )
+				if ( ( item.access & x86::READ ) || ( partial && i == 0 && item.size < 4 && slot < 16 ) )
 					use |= 1u << slot;
 
 			} else if ( item.type == x86::kind::MEM ) {
@@ -3817,6 +3817,18 @@ namespace decompiler {
 		if ( long_mode ) {
 
 			static const int32_t gpr [ 4 ] = { 1, 2, 8, 9 };
+			int32_t strict = internal_arguments ( *db, function, long_mode, 0 );
+
+			if ( strict >= 0 ) {
+
+				for ( int32_t i = strict; i < 4; i++ ) {
+
+					if ( !( entry_live & ( 1u << ( 16 + i ) ) ) )
+						entry_live &= ~( 1u << gpr [ i ] );
+
+				}
+
+			}
 
 			for ( int32_t i = 0; i < 4; i++ ) {
 
