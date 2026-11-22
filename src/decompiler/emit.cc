@@ -471,6 +471,7 @@ namespace decompiler {
 		base::list < uint8_t > element;
 		bool inline_returns = true;
 		bool call_unused = false;
+		wchar_t param_type [ 64 ] = { };
 		bool defer_joins = false;
 		bool rotate_guards = false;
 		base::list < int8_t > loop_letter;
@@ -1748,6 +1749,24 @@ namespace decompiler {
 
 							out.put ( L"(unsigned int)" );
 							value ( argument, 14 );
+
+						} else if ( b.long_mode && !no_casts && target && passed.size == 8 && !( passed.bits & ( FLOATING | POINTER ) ) && ( passed.kind == op::LOAD || passed.kind == op::GLOBAL || ( passed.kind == op::VAR && passed.value >= 0 && passed.value < b.vars.count ( ) && ( passed.value >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( passed.value ) ].empty ( ) ) && ( passed.value >= element.count ( ) || !element [ static_cast < size_t > ( passed.value ) ] ) ) ) && ( callee_unsigned ( target, i ), !shape_ok ) && callee_parameter_type ( *b.db, *b.file, b.names, target, i, param_type, 64 ) ) {
+
+							if ( passed.kind == op::LOAD ) {
+
+								out.put ( L"*(" );
+								out.put ( param_type, syntax::TYPE );
+								out.put ( param_type [ 0 ] && param_type [ base::text_length ( param_type ) - 1 ] == L'*' ? L"*)" : L" *)" );
+								value ( passed.a, 14 );
+
+							} else {
+
+								out.put ( L"(" );
+								out.put ( param_type, syntax::TYPE );
+								out.put ( L")" );
+								value ( argument, 14 );
+
+							}
 
 						} else if ( b.long_mode && !no_casts && target && passed.kind == op::VAR && passed.value >= 0 && passed.value < b.vars.count ( ) && passed.size == 8 && !( passed.bits & FLOATING ) && b.vars [ static_cast < size_t > ( passed.value ) ].kind != var_kind::PARAMETER && ( passed.value >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( passed.value ) ].empty ( ) ) && ( passed.value >= element.count ( ) || !element [ static_cast < size_t > ( passed.value ) ] ) && ( callee_unsigned ( target, i ), shape_ok ) && i < shape->count && shape->params [ i ].pointer && shape->types [ i ] [ 0 ] ) {
 

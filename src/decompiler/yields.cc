@@ -140,6 +140,132 @@ namespace decompiler {
 
 	}
 
+	bool callee_parameter_type ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, int32_t index, wchar_t* out, int32_t room ) {
+
+		int32_t callee = db.function_starting ( function );
+
+		if ( callee < 0 || ( db.functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK ) || index < 0 || index > 3 || !names )
+			return false;
+
+		analysis::function_graph graph;
+
+		if ( !analysis::build_graph ( db, function, graph ) )
+			return false;
+
+		static const int32_t gpr [ 4 ] = { 1, 2, 8, 9 };
+		int32_t holds [ 16 ];
+
+		for ( int32_t& slot : holds )
+			slot = -1;
+
+		for ( int32_t i = 0; i < 4; i++ )
+			holds [ gpr [ i ] ] = i;
+
+		for ( int32_t b = 0; b < graph.blocks.count ( ) && b < 6; b++ ) {
+
+			const analysis::block& item = graph.blocks [ static_cast < size_t > ( b ) ];
+			uint64_t at = item.start;
+
+			while ( at < item.end ) {
+
+				x86::instruction ins;
+
+				if ( !db.decode ( at, ins ) )
+					return false;
+
+				at = ins.next ( );
+
+				if ( ins.name == mnemonic::call || ( ins.control == x86::flow::JUMP && item.out_count == 0 ) ) {
+
+					uint64_t target = call_target ( ins );
+					wchar_t name [ 200 ];
+					const wchar_t* api = nullptr;
+
+					if ( target && names->name ( target, true, name, 200 ) )
+						api = api_prototype ( name );
+
+					if ( api ) {
+
+						c_prototype shape;
+						base::writer problem;
+
+						if ( parse_prototype ( api, true, shape, problem ) ) {
+
+							for ( int32_t j = 0; j < 4 && j < shape.count; j++ ) {
+
+								if ( holds [ gpr [ j ] ] != index || !shape.params [ j ].pointer )
+									continue;
+
+								const wchar_t* text = shape.types [ j ];
+
+								if ( base::same_text ( text, L"LPVOID" ) || base::same_text ( text, L"PVOID" ) )
+									text = L"void *";
+								else if ( base::same_text ( text, L"LPCVOID" ) )
+									text = L"const void *";
+
+								int32_t length = 0;
+
+								while ( text [ length ] && length < room - 1 ) {
+
+									out [ length ] = text [ length ];
+									length++;
+
+								}
+
+								out [ length ] = 0;
+
+								return length > 0;
+
+							}
+
+						}
+
+					}
+
+					static const int32_t volatile_regs [ ] = { 0, 1, 2, 8, 9, 10, 11 };
+
+					for ( int32_t slot : volatile_regs )
+						holds [ slot ] = -1;
+
+					continue;
+
+				}
+
+				uint32_t use = 0;
+				uint32_t def = 0;
+
+				effects ( ins, true, use, def, false );
+
+				if ( ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::REG && x86::register_size ( ins.operands [ 0 ].reg ) == 8 ) {
+
+					int32_t to = x86::register_family ( ins.operands [ 0 ].reg );
+					int32_t from = x86::register_family ( ins.operands [ 1 ].reg );
+
+					if ( to >= 0 && to < 16 && from >= 0 && from < 16 ) {
+
+						holds [ to ] = holds [ from ];
+
+						continue;
+
+					}
+
+				}
+
+				for ( int32_t slot = 0; slot < 16; slot++ ) {
+
+					if ( def & ( 1u << slot ) )
+						holds [ slot ] = -1;
+
+				}
+
+			}
+
+		}
+
+		return false;
+
+	}
+
 	int32_t internal_arguments ( const analysis::database& db, uint64_t function, bool long_mode, int32_t depth ) {
 
 		int32_t callee = db.function_starting ( function );
