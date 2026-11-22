@@ -471,10 +471,47 @@ namespace decompiler {
 		base::list < uint8_t > element;
 		bool inline_returns = true;
 		bool defer_joins = false;
+		bool rotate_guards = false;
 		base::list < int8_t > loop_letter;
 		int32_t next_letter = 0;
 		int32_t last_assign = -1;
 		int32_t last_assign_line = -1;
+		base::list < int32_t > recent_assign;
+		base::list < int32_t > recent_line;
+
+		bool find_init ( int64_t var, int32_t& found, int32_t& line ) {
+
+			if ( dry )
+				return false;
+
+			int32_t expected = out.r->lines.count ( ) - 1;
+
+			for ( int32_t i = recent_line.count ( ) - 1; i >= 0 && expected >= 0 && recent_line.count ( ) - i <= 3; i-- ) {
+
+				if ( recent_line [ static_cast < size_t > ( i ) ] != expected )
+					return false;
+
+				const statement& item = b.statements [ static_cast < size_t > ( recent_assign [ static_cast < size_t > ( i ) ] ) ];
+
+				if ( b.exprs [ static_cast < size_t > ( item.left ) ].value == var ) {
+
+					found = recent_assign [ static_cast < size_t > ( i ) ];
+					line = expected;
+
+					return true;
+
+				}
+
+				if ( b.references ( item.right, static_cast < int32_t > ( var ), -1 ) )
+					return false;
+
+				expected--;
+
+			}
+
+			return false;
+
+		}
 		bool operand = false;
 		bool no_casts = false;
 		bool virtual_notes = false;
@@ -2347,6 +2384,8 @@ namespace decompiler {
 
 				last_assign = index;
 				last_assign_line = out.r->lines.count ( ) - 1;
+				recent_assign.push ( index );
+				recent_line.push ( last_assign_line );
 
 			}
 
@@ -2770,6 +2809,278 @@ namespace decompiler {
 
 		}
 
+		static op swapped ( op kind ) {
+
+			switch ( kind ) {
+
+				case op::LT: return op::GT;
+				case op::GT: return op::LT;
+				case op::LE: return op::GE;
+				case op::GE: return op::LE;
+				default: return kind;
+
+			}
+
+		}
+
+		bool equivalent ( int32_t guard, int32_t test, int32_t var, int32_t seed, int32_t depth ) {
+
+			if ( guard < 0 || test < 0 || depth > 24 )
+				return guard == test;
+
+			while ( b.exprs [ static_cast < size_t > ( guard ) ].kind == op::CAST && b.exprs [ static_cast < size_t > ( test ) ].kind != op::CAST )
+				guard = b.exprs [ static_cast < size_t > ( guard ) ].a;
+
+			const expr& g = b.exprs [ static_cast < size_t > ( guard ) ];
+			const expr& t = b.exprs [ static_cast < size_t > ( test ) ];
+
+			if ( var >= 0 && t.kind == op::VAR && t.value == var ) {
+
+				if ( b.same ( guard, seed ) )
+					return true;
+
+				const expr& s = b.exprs [ static_cast < size_t > ( seed ) ];
+
+				return g.kind == op::CONST && s.kind == op::CONST && g.value == s.value;
+
+			}
+
+			if ( b.same ( guard, test ) )
+				return true;
+
+			bool compare = t.kind == op::LT || t.kind == op::LE || t.kind == op::GT || t.kind == op::GE || t.kind == op::EQ || t.kind == op::NE;
+
+			if ( g.kind == t.kind && g.value == t.value && g.arg_count == 0 && t.arg_count == 0 && g.kind != op::CALL && g.kind != op::INTRINSIC && g.kind != op::CONST && g.kind != op::VAR ) {
+
+				if ( equivalent ( g.a, t.a, var, seed, depth + 1 ) && equivalent ( g.b, t.b, var, seed, depth + 1 ) && ( g.c < 0 && t.c < 0 ) )
+					return true;
+
+			}
+
+			if ( compare && g.kind == swapped ( t.kind ) && ( g.bits & ( SIGNED | UNSIGNED ) ) == ( t.bits & ( SIGNED | UNSIGNED ) ) )
+				return equivalent ( g.a, t.b, var, seed, depth + 1 ) && equivalent ( g.b, t.a, var, seed, depth + 1 );
+
+			return false;
+
+		}
+
+		int32_t counted_step ( int32_t latch, int32_t test ) {
+
+			const block_code& tail = b.code [ static_cast < size_t > ( latch ) ];
+
+			for ( int32_t s = tail.first + tail.count - 1; s >= tail.first; s-- ) {
+
+				const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( line.kind == stmt::NOP )
+					continue;
+
+				if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+					return -1;
+
+				const expr& grow = b.exprs [ static_cast < size_t > ( line.right ) ];
+				int64_t var = b.exprs [ static_cast < size_t > ( line.left ) ].value;
+
+				if ( ( grow.kind == op::ADD || grow.kind == op::SUB ) && grow.a >= 0 && b.exprs [ static_cast < size_t > ( grow.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( grow.a ) ].value == var && grow.b >= 0 && b.exprs [ static_cast < size_t > ( grow.b ) ].kind == op::CONST && b.references ( test, static_cast < int32_t > ( var ), -1 ) )
+					return s;
+
+				return -1;
+
+			}
+
+			return -1;
+
+		}
+
+		bool entry_true ( int32_t test, int32_t step ) {
+
+			const statement& grow = b.statements [ static_cast < size_t > ( step ) ];
+			int32_t found = -1;
+			int32_t line = -1;
+
+			if ( !find_init ( b.exprs [ static_cast < size_t > ( grow.left ) ].value, found, line ) )
+				return false;
+
+			const statement& seed = b.statements [ static_cast < size_t > ( found ) ];
+
+			if ( seed.left < 0 || seed.right < 0 || b.exprs [ static_cast < size_t > ( seed.left ) ].value != b.exprs [ static_cast < size_t > ( grow.left ) ].value || b.exprs [ static_cast < size_t > ( seed.right ) ].kind != op::CONST )
+				return false;
+
+			const expr& t = b.exprs [ static_cast < size_t > ( test ) ];
+
+			if ( t.a < 0 || t.b < 0 )
+				return false;
+
+			int32_t subject = t.a;
+
+			while ( b.exprs [ static_cast < size_t > ( subject ) ].kind == op::CAST )
+				subject = b.exprs [ static_cast < size_t > ( subject ) ].a;
+
+			if ( b.exprs [ static_cast < size_t > ( subject ) ].kind != op::VAR || b.exprs [ static_cast < size_t > ( subject ) ].value != b.exprs [ static_cast < size_t > ( seed.left ) ].value || b.exprs [ static_cast < size_t > ( t.b ) ].kind != op::CONST )
+				return false;
+
+			int64_t x = b.exprs [ static_cast < size_t > ( seed.right ) ].value;
+			int64_t y = b.exprs [ static_cast < size_t > ( t.b ) ].value;
+			bool is_unsigned = ( t.bits & UNSIGNED ) != 0;
+			uint64_t ux = static_cast < uint64_t > ( x );
+			uint64_t uy = static_cast < uint64_t > ( y );
+
+			switch ( t.kind ) {
+
+				case op::EQ: return x == y;
+				case op::NE: return x != y;
+				case op::LT: return is_unsigned ? ux < uy : x < y;
+				case op::LE: return is_unsigned ? ux <= uy : x <= y;
+				case op::GT: return is_unsigned ? ux > uy : x > y;
+				case op::GE: return is_unsigned ? ux >= uy : x >= y;
+				default: return false;
+
+			}
+
+		}
+
+		int32_t rotate ( int32_t block, int32_t entry, int32_t leave, int32_t guard_test, const frame& context ) {
+
+			int32_t pre = -1;
+			int32_t head = entry;
+
+			if ( !header [ static_cast < size_t > ( head ) ] ) {
+
+				const block_code& passage = b.code [ static_cast < size_t > ( entry ) ];
+
+				if ( passage.end != term::FALL || pred [ static_cast < size_t > ( entry ) ].count ( ) != 1 || passage.taken < 0 || !header [ static_cast < size_t > ( passage.taken ) ] )
+					return -2;
+
+				pre = entry;
+				head = passage.taken;
+
+			}
+
+			if ( emitted [ static_cast < size_t > ( head ) ] )
+				return -2;
+
+			const base::list < uint8_t >& members = loop_body [ static_cast < size_t > ( head ) ];
+			int32_t latch = -1;
+
+			for ( int32_t p : pred [ static_cast < size_t > ( head ) ] ) {
+
+				if ( !members.empty ( ) && members [ static_cast < size_t > ( p ) ] )
+					latch = latch < 0 ? p : -2;
+				else if ( p != ( pre >= 0 ? pre : block ) )
+					return -2;
+
+			}
+
+			if ( latch < 0 )
+				return -2;
+
+			const block_code& tail = b.code [ static_cast < size_t > ( latch ) ];
+
+			if ( tail.end != term::BRANCH || tail.condition < 0 )
+				return -2;
+
+			bool back_taken = tail.taken == head;
+
+			if ( ( back_taken ? tail.other : tail.taken ) != leave || ( back_taken ? tail.taken : tail.other ) != head )
+				return -2;
+
+			int32_t test = back_taken ? tail.condition : b.negate ( tail.condition );
+			bool matched = equivalent ( guard_test, test, -1, -1, 0 );
+			int32_t seed_statement = -1;
+
+			const int32_t sources [ 2 ] = { pre, block };
+
+			for ( int32_t source : sources ) {
+
+				if ( matched || source < 0 )
+					continue;
+
+				const block_code& owner = b.code [ static_cast < size_t > ( source ) ];
+
+				for ( int32_t s = owner.first + owner.count - 1; s >= owner.first && !matched; s-- ) {
+
+					const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+					if ( line.kind != stmt::ASSIGN || line.left < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+						continue;
+
+					int32_t var = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( line.left ) ].value );
+
+					if ( equivalent ( guard_test, test, var, line.right, 0 ) ) {
+
+						matched = true;
+						seed_statement = s;
+
+					}
+
+				}
+
+			}
+
+			if ( !matched )
+				return -2;
+
+			( void ) seed_statement;
+
+			if ( pre >= 0 )
+				body ( pre );
+
+			int32_t step = -1;
+
+			for ( int32_t s = tail.first + tail.count - 1; s >= tail.first; s-- ) {
+
+				const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( line.kind == stmt::NOP )
+					continue;
+
+				if ( line.kind == stmt::ASSIGN && line.left >= 0 && line.right >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR ) {
+
+					const expr& grow = b.exprs [ static_cast < size_t > ( line.right ) ];
+
+					if ( ( grow.kind == op::ADD || grow.kind == op::SUB ) && grow.a >= 0 && b.exprs [ static_cast < size_t > ( grow.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( grow.a ) ].value == b.exprs [ static_cast < size_t > ( line.left ) ].value && grow.b >= 0 && b.exprs [ static_cast < size_t > ( grow.b ) ].kind == op::CONST && b.references ( test, static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( line.left ) ].value ), -1 ) )
+						step = s;
+
+				}
+
+				break;
+
+			}
+
+			frame inner;
+
+			inner.loop = head;
+			inner.exit = leave;
+
+			label ( head );
+
+			if ( step >= 0 && open_for ( tail.last, test, false, step, false ) )
+				hidden [ static_cast < size_t > ( step ) ] = 1;
+			else
+				open_brace ( tail.last, L"while", test, false );
+
+			emitted [ static_cast < size_t > ( latch ) ] = 1;
+
+			if ( latch != head ) {
+
+				region ( head, latch, inner );
+
+				if ( !empty_block ( latch ) )
+					body ( latch );
+
+			} else
+				body ( head );
+
+			emitted [ static_cast < size_t > ( latch ) ] = 1;
+			close_brace ( );
+			ended = false;
+
+			( void ) context;
+
+			return leave;
+
+		}
+
 		bool deferred ( int32_t target, int32_t from ) {
 
 			if ( target < 0 || target >= count || emitted [ static_cast < size_t > ( target ) ] || pred [ static_cast < size_t > ( target ) ].count ( ) < 2 || header [ static_cast < size_t > ( target ) ] )
@@ -2853,6 +3164,15 @@ namespace decompiler {
 				then_part = other;
 				else_part = taken;
 				negated = true;
+
+			}
+
+			if ( rotate_guards && !chained && then_part >= 0 && else_part >= 0 && then_part != follow && else_part != context.loop && else_part != context.exit ) {
+
+				int32_t after = rotate ( block, then_part, else_part, negated ? b.negate ( item.condition ) : item.condition, context );
+
+				if ( after != -2 )
+					return after;
 
 			}
 
@@ -3020,15 +3340,10 @@ namespace decompiler {
 
 			int32_t var = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( b.statements [ static_cast < size_t > ( step ) ].left ) ].value );
 			int32_t init = -1;
+			int32_t init_line = -1;
 
-			if ( !dry && last_assign >= 0 && last_assign_line >= 0 && last_assign_line == out.r->lines.count ( ) - 1 ) {
-
-				const statement& seed = b.statements [ static_cast < size_t > ( last_assign ) ];
-
-				if ( b.exprs [ static_cast < size_t > ( seed.left ) ].value == var )
-					init = last_assign;
-
-			}
+			if ( !find_init ( var, init, init_line ) )
+				init = -1;
 
 			if ( need_init && ( dry || init < 0 ) )
 				return false;
@@ -3045,13 +3360,21 @@ namespace decompiler {
 
 			if ( init >= 0 ) {
 
-				const line held = out.r->lines.back ( );
+				if ( init_line == out.r->lines.count ( ) - 1 ) {
 
-				out.r->lines.pop ( );
-				out.r->text.resize ( static_cast < size_t > ( held.text ) );
-				out.r->spans.resize ( static_cast < size_t > ( held.first_span ) );
+					const line held = out.r->lines.back ( );
+
+					out.r->lines.pop ( );
+					out.r->text.resize ( static_cast < size_t > ( held.text ) );
+					out.r->spans.resize ( static_cast < size_t > ( held.first_span ) );
+
+				} else
+					out.r->lines.remove_at ( static_cast < size_t > ( init_line ) );
+
 				last_assign = -1;
 				last_assign_line = -1;
+				recent_assign.clear ( );
+				recent_line.clear ( );
 
 			}
 
@@ -3124,11 +3447,23 @@ namespace decompiler {
 
 				bool back_taken = item.taken == start;
 				int32_t leaving = back_taken ? item.other : item.taken;
+				int32_t test = back_taken ? item.condition : b.negate ( item.condition );
+				int32_t step = counted_step ( start, test );
+
+				if ( step >= 0 && entry_true ( test, step ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
+
+					hidden [ static_cast < size_t > ( step ) ] = 1;
+					body ( start );
+					close_brace ( );
+
+					return leaving;
+
+				}
 
 				open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
 				body ( start );
 				close_brace ( );
-				while_tail ( item.last, back_taken ? item.condition : b.negate ( item.condition ) );
+				while_tail ( item.last, test );
 
 				return leaving;
 
@@ -3150,6 +3485,25 @@ namespace decompiler {
 				int32_t leaving = back_taken ? tail.other : tail.taken;
 
 				if ( leaving == exit ) {
+
+					int32_t test = back_taken ? tail.condition : b.negate ( tail.condition );
+					int32_t step = counted_step ( latch, test );
+
+					if ( step >= 0 && entry_true ( test, step ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
+
+						hidden [ static_cast < size_t > ( step ) ] = 1;
+						emitted [ static_cast < size_t > ( latch ) ] = 1;
+						region ( start, latch, inner );
+
+						if ( !empty_block ( latch ) )
+							body ( latch );
+
+						emitted [ static_cast < size_t > ( latch ) ] = 1;
+						close_brace ( );
+
+						return exit;
+
+					}
 
 					bool plain = empty_block ( latch );
 
