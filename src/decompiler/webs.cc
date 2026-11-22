@@ -917,6 +917,8 @@ namespace decompiler {
 
 	}
 
+	static bool ghost_param_copies = true;
+
 	void builder::coalesce_copies ( ) {
 
 		base::list < int32_t > writes;
@@ -979,6 +981,13 @@ namespace decompiler {
 			}
 
 			line.kind = stmt::NOP;
+
+			if ( ghost_param_copies ) {
+
+				vars [ static_cast < size_t > ( copy ) ].ghost = true;
+				vars [ static_cast < size_t > ( copy ) ].born = line.address;
+
+			}
 
 			for ( expr& node : exprs ) {
 
