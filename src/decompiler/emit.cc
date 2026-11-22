@@ -417,6 +417,7 @@ namespace decompiler {
 	static bool ghost_numbers = false;
 	static bool exits_inline = true;
 	static bool frame_deepest = true;
+	static bool implicit_narrow = true;
 	static bool guarded_loops = true;
 
 	struct emitter {
@@ -3065,6 +3066,35 @@ namespace decompiler {
 
 						out.put ( unsigned_target ? L"(unsigned __int64)" : L"(__int64)", syntax::TYPE );
 						value ( item.right, 14 );
+
+					} else if ( implicit_narrow && left.kind == op::VAR && left.size <= 4 && !( left.bits & FLOATING ) && ( right.kind == op::AND || right.kind == op::OR || right.kind == op::XOR || right.kind == op::ADD || right.kind == op::SUB ) && !( right.bits & FLOATING ) && right.size == left.size ) {
+
+						auto loose = [ & ] ( int32_t e ) {
+
+							if ( e < 0 )
+								return e;
+
+							const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+							if ( node.kind == op::CAST && node.a >= 0 && node.size < b.exprs [ static_cast < size_t > ( node.a ) ].size && !( node.bits & ( FLOATING | POINTER ) ) && !( b.exprs [ static_cast < size_t > ( node.a ) ].bits & FLOATING ) && b.exprs [ static_cast < size_t > ( node.a ) ].kind == op::VAR )
+								return node.a;
+
+							return e;
+
+						};
+
+						expr copy = right;
+
+						copy.a = loose ( right.a );
+						copy.b = loose ( right.b );
+
+						if ( copy.a != right.a || copy.b != right.b ) {
+
+							b.exprs.push ( copy );
+							value ( b.exprs.count ( ) - 1, 2 );
+
+						} else
+							value ( item.right, 2 );
 
 					} else
 						value ( item.right, 2 );
