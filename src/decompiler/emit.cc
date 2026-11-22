@@ -2919,6 +2919,61 @@ namespace decompiler {
 
 		}
 
+		int32_t sinkable_step ( int32_t latch, int32_t test ) {
+
+			const block_code& tail = b.code [ static_cast < size_t > ( latch ) ];
+			int32_t last = -1;
+
+			for ( int32_t s = tail.first; s < tail.first + tail.count; s++ ) {
+
+				if ( b.statements [ static_cast < size_t > ( s ) ].kind != stmt::NOP )
+					last = s;
+
+			}
+
+			for ( int32_t s = tail.first; s < tail.first + tail.count; s++ ) {
+
+				const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || s == last )
+					continue;
+
+				const expr& grow = b.exprs [ static_cast < size_t > ( line.right ) ];
+				int32_t var = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( line.left ) ].value );
+
+				if ( !( ( grow.kind == op::ADD || grow.kind == op::SUB ) && grow.a >= 0 && b.exprs [ static_cast < size_t > ( grow.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( grow.a ) ].value == var && grow.b >= 0 && b.exprs [ static_cast < size_t > ( grow.b ) ].kind == op::CONST ) )
+					continue;
+
+				if ( !b.references ( test, var, -1 ) )
+					continue;
+
+				bool used = false;
+
+				for ( int32_t k = s + 1; k < tail.first + tail.count && !used; k++ ) {
+
+					const statement& later = b.statements [ static_cast < size_t > ( k ) ];
+
+					if ( later.kind == stmt::NOP || later.kind == stmt::ASM ) {
+
+						used = used || later.kind == stmt::ASM;
+
+						continue;
+
+					}
+
+					used = b.references ( later.right, var, -1 ) || ( later.left >= 0 && b.references ( later.left, var, -1 ) );
+
+				}
+
+				if ( !used )
+					return s;
+
+			}
+
+			return -1;
+
+		}
+
 		int32_t counted_step ( int32_t latch, int32_t test ) {
 
 			const block_code& tail = b.code [ static_cast < size_t > ( latch ) ];
@@ -3544,8 +3599,22 @@ namespace decompiler {
 
 				}
 
+				int32_t moved = sinkable_step ( start, test );
+
 				open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
+
+				if ( moved >= 0 )
+					hidden [ static_cast < size_t > ( moved ) ] = 1;
+
 				body ( start );
+
+				if ( moved >= 0 ) {
+
+					hidden [ static_cast < size_t > ( moved ) ] = 0;
+					statement_line ( b.statements [ static_cast < size_t > ( moved ) ] );
+
+				}
+
 				close_brace ( );
 				while_tail ( item.last, test );
 
@@ -3596,12 +3665,27 @@ namespace decompiler {
 					emitted [ static_cast < size_t > ( latch ) ] = 1;
 					region ( start, latch, inner );
 
-					if ( !plain )
+					if ( !plain ) {
+
+						int32_t moved = sinkable_step ( latch, test );
+
+						if ( moved >= 0 )
+							hidden [ static_cast < size_t > ( moved ) ] = 1;
+
 						body ( latch );
+
+						if ( moved >= 0 ) {
+
+							hidden [ static_cast < size_t > ( moved ) ] = 0;
+							statement_line ( b.statements [ static_cast < size_t > ( moved ) ] );
+
+						}
+
+					}
 
 					emitted [ static_cast < size_t > ( latch ) ] = 1;
 					close_brace ( );
-					while_tail ( tail.last, back_taken ? tail.condition : b.negate ( tail.condition ) );
+					while_tail ( tail.last, test );
 
 					return exit;
 
