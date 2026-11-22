@@ -470,6 +470,7 @@ namespace decompiler {
 		base::list < uint8_t > hidden;
 		base::list < uint8_t > element;
 		bool inline_returns = true;
+		bool call_unused = false;
 		bool defer_joins = false;
 		bool rotate_guards = false;
 		base::list < int8_t > loop_letter;
@@ -1647,9 +1648,54 @@ namespace decompiler {
 						if ( virtual_notes && !dry )
 							note_slot ( item.a );
 
-						out.put ( L"(" );
-						value ( item.a, 14 );
-						out.put ( L")" );
+						const expr& callee_node = b.exprs [ static_cast < size_t > ( item.a ) ];
+
+						if ( callee_node.kind == op::LOAD && callee_node.size == 8 && callee_node.a >= 0 && b.long_mode ) {
+
+							out.put ( L"(*(" );
+							out.put ( call_unused ? L"void" : L"__int64", syntax::TYPE );
+							out.put ( L" (__fastcall **)(" );
+
+							for ( int32_t i = 0; i < item.arg_count; i++ ) {
+
+								const expr& passed = b.exprs [ static_cast < size_t > ( b.args [ static_cast < size_t > ( item.first_arg + i ) ] ) ];
+
+								if ( i )
+									out.put ( L", " );
+
+								if ( passed.bits & FLOATING )
+									out.put ( passed.size == 4 ? L"float" : L"double", syntax::TYPE );
+								else
+									out.put ( passed.size == 1 ? L"char" : ( passed.size == 2 ? L"__int16" : ( passed.size == 4 ? L"int" : L"__int64" ) ), syntax::TYPE );
+
+							}
+
+							out.put ( L"))" );
+
+							const expr& slot = b.exprs [ static_cast < size_t > ( callee_node.a ) ];
+
+							if ( slot.kind == op::ADD && slot.b >= 0 && b.exprs [ static_cast < size_t > ( slot.b ) ].kind == op::CONST ) {
+
+								out.put ( L"(" );
+								value ( slot.a, 12 );
+								out.put ( L" + ", syntax::OPERATOR );
+								number ( b.exprs [ static_cast < size_t > ( slot.b ) ].value, 8, false, false );
+								out.put ( L")" );
+
+							} else
+								value ( callee_node.a, 14 );
+
+							out.put ( L")" );
+
+						} else {
+
+							out.put ( L"(" );
+							value ( item.a, 14 );
+							out.put ( L")" );
+
+						}
+
+						call_unused = false;
 
 					}
 
@@ -2482,7 +2528,9 @@ namespace decompiler {
 				}
 
 				case stmt::EXPR:
+					call_unused = item.right >= 0 && b.exprs [ static_cast < size_t > ( item.right ) ].kind == op::CALL;
 					value ( item.right, 0 );
+					call_unused = false;
 					semicolon ( );
 					break;
 
