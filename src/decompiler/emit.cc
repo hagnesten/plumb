@@ -1987,6 +1987,17 @@ namespace decompiler {
 
 						}
 
+						if ( !no_casts && target && b.long_mode && passed.kind == op::CAST && passed.size == 8 && passed.a >= 0 && b.exprs [ static_cast < size_t > ( passed.a ) ].size == 16 && i < 4 && callee_parameter_type ( *b.db, *b.file, b.names, target, i, param_type, 64 ) ) {
+
+							out.put ( L"(" );
+							out.put ( param_type, syntax::TYPE );
+							out.put ( L")" );
+							value ( passed.a, 14 );
+
+							continue;
+
+						}
+
 						bool unsigned_slot = passed.kind == op::CONST && passed.value < -9 && passed.size <= 4 && callee_unsigned ( target, i );
 
 						bare_unsigned = unsigned_slot;
@@ -2194,6 +2205,24 @@ namespace decompiler {
 				}
 
 				default: {
+
+					if ( item.kind == op::ADD && item.a >= 0 && item.b >= 0 && pointer_step ( item.a ) > 1 && b.exprs [ static_cast < size_t > ( item.b ) ].kind == op::MUL ) {
+
+						const expr& scaled = b.exprs [ static_cast < size_t > ( item.b ) ];
+
+						if ( scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value == pointer_step ( item.a ) ) {
+
+							out.put ( L"&", syntax::OPERATOR );
+							value ( item.a, 15 );
+							out.put ( L"[" );
+							value ( scaled.a, 0 );
+							out.put ( L"]" );
+
+							break;
+
+						}
+
+					}
 
 					if ( item.kind == op::ADD && item.b >= 0 && b.exprs [ static_cast < size_t > ( item.b ) ].kind == op::CONST && !( b.exprs [ static_cast < size_t > ( item.b ) ].bits & POINTER ) ) {
 
@@ -5860,6 +5889,7 @@ namespace decompiler {
 	static bool flow_seeded_only = true;
 	static bool flow_calls = true;
 	static bool flow_loads = true;
+	static bool flow_index = true;
 
 	static void flow_pointers ( builder& b, base::list < uint8_t >& element ) {
 
@@ -5922,6 +5952,12 @@ namespace decompiler {
 			out = b.exprs [ static_cast < size_t > ( e ) ].value;
 
 			return true;
+
+		};
+
+		auto exprs_mul = [ & ] ( int32_t e, int64_t& out ) {
+
+			return e >= 0 && b.exprs [ static_cast < size_t > ( e ) ].kind == op::MUL && constant_of ( b.exprs [ static_cast < size_t > ( e ) ].b, out );
 
 		};
 
@@ -6002,6 +6038,17 @@ namespace decompiler {
 				steps.push ( k );
 				edge_from.push ( var_of ( node.a ) );
 				edge_to.push ( -1 );
+
+				return;
+
+			}
+
+			if ( flow_index && node.kind == op::ADD && var_of ( node.a ) >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::MUL && constant_of ( b.exprs [ static_cast < size_t > ( node.b ) ].b, k ) && k > 1 ) {
+
+				steps.push ( k );
+				edge_from.push ( var_of ( node.a ) );
+				edge_to.push ( -1 );
+				self ( self, b.exprs [ static_cast < size_t > ( node.b ) ].a, depth + 1 );
 
 				return;
 
@@ -6107,6 +6154,17 @@ namespace decompiler {
 						steps.push ( k );
 						edge_from.push ( var_of ( right.a ) );
 						edge_to.push ( x );
+
+						continue;
+
+					}
+
+					if ( flow_index && x >= 0 && right.kind == op::ADD && var_of ( right.a ) >= 0 && right.b >= 0 && exprs_mul ( right.b, k ) && k > 1 ) {
+
+						steps.push ( k );
+						edge_from.push ( var_of ( right.a ) );
+						edge_to.push ( x );
+						walk ( walk, b.exprs [ static_cast < size_t > ( right.b ) ].a, 0 );
 
 						continue;
 
