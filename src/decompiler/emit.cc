@@ -471,6 +471,7 @@ namespace decompiler {
 		base::list < uint8_t > element;
 		bool inline_returns = true;
 		bool call_unused = false;
+		bool step_needs_init = false;
 		bool by_address = true;
 		bool indexing = true;
 		wchar_t param_type [ 64 ] = { };
@@ -3857,13 +3858,21 @@ namespace decompiler {
 			const expr& left = b.exprs [ static_cast < size_t > ( line.left ) ];
 			const expr& right = b.exprs [ static_cast < size_t > ( line.right ) ];
 
-			if ( left.kind != op::VAR || right.kind != op::ADD || right.a < 0 || right.b < 0 || ( right.bits & FLOATING ) )
+			step_needs_init = false;
+
+			if ( left.kind != op::VAR || ( right.bits & FLOATING ) )
 				return -1;
 
-			const expr& base_var = b.exprs [ static_cast < size_t > ( right.a ) ];
+			bool counted = right.kind == op::ADD && right.a >= 0 && right.b >= 0 && b.exprs [ static_cast < size_t > ( right.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( right.a ) ].value == left.value && b.exprs [ static_cast < size_t > ( right.b ) ].kind == op::CONST;
 
-			if ( base_var.kind != op::VAR || base_var.value != left.value || b.exprs [ static_cast < size_t > ( right.b ) ].kind != op::CONST )
-				return -1;
+			if ( !counted ) {
+
+				if ( condition < 0 || !b.references ( line.right, static_cast < int32_t > ( left.value ), -1 ) )
+					return -1;
+
+				step_needs_init = true;
+
+			}
 
 			if ( condition >= 0 && !b.references ( condition, static_cast < int32_t > ( left.value ), -1 ) )
 				return -1;
@@ -4112,7 +4121,7 @@ namespace decompiler {
 				label ( start );
 				emitted [ static_cast < size_t > ( start ) ] = 1;
 
-				if ( step >= 0 && open_for ( item.last, item.condition, !stay_taken, step, false ) )
+				if ( step >= 0 && open_for ( item.last, item.condition, !stay_taken, step, step_needs_init ) )
 					hidden [ static_cast < size_t > ( step ) ] = 1;
 				else
 					open_brace ( item.last, L"while", item.condition, !stay_taken );
