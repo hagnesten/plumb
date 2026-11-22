@@ -635,30 +635,7 @@ struct plain_names : decompiler::namer {
 
 	bool literal ( uint64_t address, wchar_t* out, int32_t room ) override {
 
-		uint64_t offset = 0;
-		int32_t length = 0;
-		const loader::binary& file = owner->file;
-
-		if ( !file.offset_of ( address, offset ) )
-			return false;
-
-		for ( uint64_t i = 0; length < room - 4 && i < 200 && offset + i < file.size; i++ ) {
-
-			uint8_t c = file.byte ( offset + i );
-
-			if ( !c )
-				break;
-
-			if ( c < 0x20 || c > 0x7E )
-				return false;
-
-			out [ length++ ] = static_cast < wchar_t > ( c );
-
-		}
-
-		out [ length ] = 0;
-
-		return length >= 2;
+		return decompiler::string_literal ( owner->file, address, out, room );
 
 	}
 

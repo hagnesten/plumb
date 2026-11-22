@@ -95,6 +95,7 @@
     <ClCompile Include="src\decompiler\facts.cc" />
     <ClCompile Include="src\decompiler\returns.cc" />
     <ClCompile Include="src\decompiler\yields.cc" />
+    <ClCompile Include="src\decompiler\literal.cc" />
     <ClCompile Include="src\decompiler\webs.cc" />
     <ClCompile Include="src\script\builtins.cc" />
     <ClCompile Include="src\script\engine.cc" />

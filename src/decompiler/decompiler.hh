@@ -115,6 +115,8 @@ namespace decompiler {
 
 	const wchar_t* api_prototype ( const wchar_t* name );
 
+	bool string_literal ( const loader::binary& file, uint64_t address, wchar_t* out, int32_t room );
+
 	struct namer {
 
 		virtual bool name ( uint64_t address, bool code, wchar_t* out, int32_t room ) = 0;

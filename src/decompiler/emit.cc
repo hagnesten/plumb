@@ -1248,17 +1248,8 @@ namespace decompiler {
 
 			wchar_t text [ 300 ];
 
-			if ( b.names->literal ( address, text + 1, 280 ) ) {
+			if ( b.names->literal ( address, text, 290 ) ) {
 
-				text [ 0 ] = L'"';
-
-				int32_t length = 1;
-
-				while ( text [ length ] )
-					length++;
-
-				text [ length++ ] = L'"';
-				text [ length ] = 0;
 				out.put ( text, syntax::STRING, address );
 
 				return;
