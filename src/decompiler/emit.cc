@@ -2536,6 +2536,8 @@ namespace decompiler {
 						real ( right.value, left.size == 4 ? 4 : 8 );
 					else if ( right.kind == op::LOAD && right.size < left.size && !( left.bits & FLOATING ) && !float_target ( item.left ) )
 						extended_load ( right, 2, UNSIGNED );
+					else if ( right.kind == op::CAST && right.a >= 0 && right.size == left.size && !( right.bits & ( FLOATING | POINTER ) ) && b.exprs [ static_cast < size_t > ( right.a ) ].size > right.size && !( b.exprs [ static_cast < size_t > ( right.a ) ].bits & FLOATING ) && b.exprs [ static_cast < size_t > ( right.a ) ].kind == op::VAR )
+						value ( right.a, 2 );
 					else if ( right.kind == op::CONST && !( right.bits & POINTER ) && ( left.size == 8 || ( left.size == 16 && right.value == 0 ) ) && b.long_mode && !float_target ( item.left ) && !( left.kind == op::VAR && left.value == result_var && b.result_width ) ) {
 
 						int64_t shown_value = right.size == 4 && right.value < 0 && left.kind == op::VAR ? static_cast < int64_t > ( static_cast < uint32_t > ( right.value ) ) : right.value;
