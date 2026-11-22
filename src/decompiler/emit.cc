@@ -2307,6 +2307,42 @@ namespace decompiler {
 
 					}
 
+					if ( !inline_mode && left.kind == op::VAR && right.kind == op::TERNARY && right.a >= 0 && right.b >= 0 && right.c >= 0 ) {
+
+						const expr& yes_arm = b.exprs [ static_cast < size_t > ( right.b ) ];
+						const expr& no_arm = b.exprs [ static_cast < size_t > ( right.c ) ];
+						bool keep_no = no_arm.kind == op::VAR && no_arm.value == left.value;
+						bool keep_yes = yes_arm.kind == op::VAR && yes_arm.value == left.value;
+
+						if ( keep_no != keep_yes ) {
+
+							out.put ( L"if", syntax::CONTROL );
+							paren_open ( );
+							value ( keep_no ? right.a : b.negate ( right.a ), 0 );
+							paren_close ( );
+							out.finish ( );
+							out.indent++;
+							out.begin ( item.address );
+							out.indent--;
+							value ( item.left, 0 );
+							out.put ( L" = ", syntax::OPERATOR );
+
+							int32_t chosen = keep_no ? right.b : right.c;
+							const expr& picked = b.exprs [ static_cast < size_t > ( chosen ) ];
+
+							if ( picked.kind == op::CONST && !( picked.bits & POINTER ) && left.size == 8 && b.long_mode )
+								number ( picked.value, 8, !simple_constant ( picked.value ), false );
+							else
+								value ( chosen, 2 );
+
+							semicolon ( );
+
+							break;
+
+						}
+
+					}
+
 					if ( left.kind == op::VAR && right.kind == op::CAST && ( right.bits & POINTER ) && ( right.bits & FLOATING ) && right.a >= 0 && b.exprs [ static_cast < size_t > ( right.a ) ].size <= 8 ) {
 
 						uint8_t width = b.exprs [ static_cast < size_t > ( right.a ) ].size;
