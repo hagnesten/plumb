@@ -334,6 +334,7 @@ namespace decompiler {
 
 	static bool sign_ops = true;
 	static bool sign_copies = true;
+	static bool sign_pointers = true;
 
 	static void note_signs ( const builder& b, int32_t e, base::list < uint8_t >& marks, int32_t depth ) {
 
@@ -446,7 +447,7 @@ namespace decompiler {
 
 			variable& item = vars [ static_cast < size_t > ( v ) ];
 
-			if ( marks [ static_cast < size_t > ( v ) ] == 1 && !( item.bits & ( FLOATING | POINTER ) ) )
+			if ( marks [ static_cast < size_t > ( v ) ] == 1 && !( item.bits & FLOATING ) && ( sign_pointers || !( item.bits & POINTER ) ) )
 				item.bits = static_cast < uint8_t > ( ( item.bits & ~SIGNED ) | UNSIGNED );
 
 		}
