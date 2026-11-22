@@ -6,7 +6,7 @@ namespace decompiler {
 
 		result* r = nullptr;
 		bool open = false;
-		bool terminal = false;
+		int32_t terminal = -1;
 		bool spaced = false;
 		bool header = false;
 		namer* names = nullptr;
@@ -22,7 +22,7 @@ namespace decompiler {
 
 		void begin ( uint64_t address ) {
 
-			terminal = false;
+			terminal = -1;
 			current = line ( );
 			current.text = r->text.count ( );
 			current.first_span = r->spans.count ( );
@@ -3099,7 +3099,7 @@ namespace decompiler {
 			gotos++;
 			ended = true;
 
-			if ( dry )
+			if ( dry || dead_exit ( ) )
 				return;
 
 			out.begin ( address );
@@ -3108,7 +3108,7 @@ namespace decompiler {
 			out.put ( base::writer ( ).add ( L"LABEL_" ).number ( block + 1 ).text ( ), syntax::LABEL );
 			out.put ( L";" );
 			out.finish ( );
-			out.terminal = true;
+			out.terminal = out.indent;
 
 		}
 
@@ -3157,7 +3157,7 @@ namespace decompiler {
 
 							ended = true;
 
-							if ( dry )
+							if ( dry || dead_exit ( ) )
 								return true;
 
 							out.begin ( address );
@@ -3171,7 +3171,7 @@ namespace decompiler {
 
 							out.put ( L";" );
 							out.finish ( );
-							out.terminal = true;
+							out.terminal = out.indent;
 
 							return true;
 
@@ -3328,11 +3328,17 @@ namespace decompiler {
 
 		}
 
+		bool dead_exit ( ) const {
+
+			return out.terminal >= 0 && out.terminal == out.indent;
+
+		}
+
 		void return_line ( const block_code& item ) {
 
 			ended = true;
 
-			if ( dry )
+			if ( dry || dead_exit ( ) )
 				return;
 
 			int32_t test = -1;
@@ -3348,7 +3354,7 @@ namespace decompiler {
 
 				branch_return ( item.returned, item.last );
 				out.finish ( );
-				out.terminal = true;
+				out.terminal = out.indent;
 				hoisted.clear ( );
 				hoisted_temp.clear ( );
 
@@ -3406,7 +3412,7 @@ namespace decompiler {
 
 			out.put ( L";" );
 			out.finish ( );
-			out.terminal = true;
+			out.terminal = out.indent;
 			hoisted.clear ( );
 			hoisted_temp.clear ( );
 
@@ -3416,14 +3422,14 @@ namespace decompiler {
 
 			ended = true;
 
-			if ( dry )
+			if ( dry || dead_exit ( ) )
 				return;
 
 			out.begin ( address );
 			out.put ( keyword, syntax::CONTROL );
 			out.put ( L";" );
 			out.finish ( );
-			out.terminal = true;
+			out.terminal = out.indent;
 
 		}
 
@@ -4638,7 +4644,7 @@ namespace decompiler {
 				else if ( target != follow )
 					go_to ( target, 0 );
 
-				if ( !out.terminal )
+				if ( out.terminal < 0 )
 					jump_line ( L"break", 0 );
 
 				out.indent--;
@@ -7226,6 +7232,64 @@ namespace decompiler {
 
 			head.out.begin ( 0 );
 			head.out.finish ( );
+
+		}
+
+		{
+
+			base::list < int32_t > targets;
+
+			auto label_number = [ & ] ( int32_t at, int32_t end ) -> int32_t {
+
+				int32_t value = 0;
+				bool any = false;
+
+				while ( at < end && body.text [ static_cast < size_t > ( at ) ] >= L'0' && body.text [ static_cast < size_t > ( at ) ] <= L'9' ) {
+
+					value = value * 10 + ( body.text [ static_cast < size_t > ( at ) ] - L'0' );
+					any = true;
+					at++;
+
+				}
+
+				return any ? value : -1;
+
+			};
+
+			for ( const line& here : body.lines ) {
+
+				for ( int32_t at = here.text; at + 11 < here.text + here.length; at++ ) {
+
+					static const wchar_t needle [ ] = L"goto LABEL_";
+					bool hit = true;
+
+					for ( int32_t k = 0; k < 11 && hit; k++ )
+						hit = body.text [ static_cast < size_t > ( at + k ) ] == needle [ k ];
+
+					if ( hit )
+						targets.push ( label_number ( at + 11, here.text + here.length ) );
+
+				}
+
+			}
+
+			for ( int32_t i = body.lines.count ( ) - 1; i >= 0; i-- ) {
+
+				const line& here = body.lines [ static_cast < size_t > ( i ) ];
+
+				if ( here.indent != 0 || here.length < 8 || body.text [ static_cast < size_t > ( here.text ) ] != L'L' || body.text [ static_cast < size_t > ( here.text + 5 ) ] != L'_' || body.text [ static_cast < size_t > ( here.text + here.length - 1 ) ] != L':' )
+					continue;
+
+				int32_t number = label_number ( here.text + 6, here.text + here.length - 1 );
+				bool used = false;
+
+				for ( int32_t target : targets )
+					used = used || target == number;
+
+				if ( number >= 0 && !used )
+					body.lines.remove_at ( static_cast < size_t > ( i ) );
+
+			}
 
 		}
 
