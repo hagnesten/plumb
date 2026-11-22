@@ -635,7 +635,7 @@ namespace decompiler {
 
 		visited.fill ( static_cast < size_t > ( exprs.count ( ) ), 0 );
 
-		auto walk = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+		auto walk = [ & ] ( auto& self, int32_t e, int32_t depth, int32_t limit ) -> void {
 
 			if ( e < 0 || e >= exprs.count ( ) || depth > 96 || visited [ static_cast < size_t > ( e ) ] )
 				return;
@@ -643,6 +643,8 @@ namespace decompiler {
 			visited [ static_cast < size_t > ( e ) ] = 1;
 
 			const expr& node = exprs [ static_cast < size_t > ( e ) ];
+			bool low_bits = !( node.bits & FLOATING ) && ( node.kind == op::ADD || node.kind == op::SUB || node.kind == op::MUL || node.kind == op::AND || node.kind == op::OR || node.kind == op::XOR || node.kind == op::NOT || node.kind == op::NEG || node.kind == op::SHL );
+			int32_t inner = node.kind == op::CAST ? ( node.size <= 4 && !( node.bits & FLOATING ) ? node.size : 0 ) : ( low_bits ? limit : 0 );
 
 			if ( node.kind == op::VAR )
 				return;
@@ -651,9 +653,9 @@ namespace decompiler {
 				note_use ( node.a, node.size );
 			else {
 
-				note_use ( node.a, 0 );
-				note_use ( node.b, 0 );
-				note_use ( node.c, 0 );
+				note_use ( node.a, inner );
+				note_use ( node.b, inner );
+				note_use ( node.c, inner );
 
 				c_prototype shape;
 				bool shaped = false;
@@ -685,12 +687,12 @@ namespace decompiler {
 
 			}
 
-			self ( self, node.a, depth + 1 );
-			self ( self, node.b, depth + 1 );
-			self ( self, node.c, depth + 1 );
+			self ( self, node.a, depth + 1, inner );
+			self ( self, node.b, depth + 1, inner );
+			self ( self, node.c, depth + 1, inner );
 
 			for ( int32_t i = 0; i < node.arg_count; i++ )
-				self ( self, args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+				self ( self, args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1, 0 );
 
 		};
 
@@ -699,16 +701,16 @@ namespace decompiler {
 			if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
 				continue;
 
-			walk ( walk, line.left, 0 );
-			walk ( walk, line.right, 0 );
+			walk ( walk, line.left, 0, 0 );
+			walk ( walk, line.right, 0, 0 );
 
 		}
 
 		for ( const block_code& block : code ) {
 
-			walk ( walk, block.condition, 0 );
-			walk ( walk, block.selector, 0 );
-			walk ( walk, block.returned, 0 );
+			walk ( walk, block.condition, 0, 0 );
+			walk ( walk, block.selector, 0, 0 );
+			walk ( walk, block.returned, 0, 0 );
 
 		}
 
