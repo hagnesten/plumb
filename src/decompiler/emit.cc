@@ -5578,6 +5578,47 @@ namespace decompiler {
 
 		}
 
+		if ( !b.returns_value ) {
+
+			for ( int32_t i = 0; i < body.lines.count ( ); i++ ) {
+
+				const line here = body.lines [ static_cast < size_t > ( i ) ];
+
+				if ( here.length < 7 || body.text [ static_cast < size_t > ( here.text ) ] != L'L' || body.text [ static_cast < size_t > ( here.text + here.length - 1 ) ] != L':' )
+					continue;
+
+				bool closing = i + 1 >= body.lines.count ( );
+				int32_t depth = 1;
+
+				if ( !closing ) {
+
+					const line& next = body.lines [ static_cast < size_t > ( i + 1 ) ];
+
+					closing = next.length == 1 && body.text [ static_cast < size_t > ( next.text ) ] == L'}';
+					depth = next.indent + 1;
+
+				}
+
+				if ( !closing )
+					continue;
+
+				line made = here;
+
+				made.text = body.text.count ( );
+				made.first_span = body.spans.count ( );
+				made.span_count = 0;
+				made.indent = depth;
+
+				for ( const wchar_t* c = L"return;"; *c; c++ )
+					body.text.push ( *c );
+
+				made.length = body.text.count ( ) - made.text;
+				body.lines.insert ( static_cast < size_t > ( i + 1 ), made );
+
+			}
+
+		}
+
 		drop_braces ( body );
 		append_result ( out, body );
 
