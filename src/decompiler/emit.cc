@@ -2809,8 +2809,19 @@ namespace decompiler {
 
 				out.put ( L" " );
 
-				if ( back.kind == op::CONST && !( back.bits & POINTER ) && !b.has_prototype && !b.returns_float && b.long_mode )
-					number ( b.result_width == 1 || b.result_width == 2 ? static_cast < int8_t > ( back.value ) : back.value, b.result_width == 1 || b.result_width == 2 ? 4 : 8, !simple_constant ( back.value ), false );
+				if ( back.kind == op::CONST && !( back.bits & POINTER ) && !b.has_prototype && !b.returns_float && b.long_mode ) {
+
+					bool narrow = b.result_width == 1 || b.result_width == 2 || ( !b.result_text.empty ( ) && b.return_size <= 4 );
+					int64_t shown_value = back.value;
+
+					if ( b.result_width == 1 || b.result_width == 2 )
+						shown_value = static_cast < int8_t > ( back.value );
+					else if ( !narrow && back.size == 4 && back.value < 0 )
+						shown_value = static_cast < int64_t > ( static_cast < uint32_t > ( back.value ) );
+
+					number ( shown_value, narrow ? 4 : 8, !simple_constant ( shown_value ), false );
+
+				}
 				else
 					value ( item.returned, 0 );
 
