@@ -1744,7 +1744,12 @@ namespace decompiler {
 							number ( passed.value, callee_wide ( target, i ) && b.long_mode ? 8 : 4, passed.value > 9, true );
 						else if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && b.long_mode && callee_wide ( target, i ) )
 							number ( passed.value, 8, !simple_constant ( passed.value ), false );
-						else
+						else if ( b.long_mode && !no_casts && target && passed.kind != op::CONST && passed.size == 4 && !( passed.bits & FLOATING ) && ( callee_unsigned ( target, i ), !shape_ok ) ) {
+
+							out.put ( L"(unsigned int)" );
+							value ( argument, 14 );
+
+						} else
 							value ( argument, 2 );
 
 						bare_unsigned = false;
