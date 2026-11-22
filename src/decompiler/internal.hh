@@ -206,6 +206,8 @@ namespace decompiler {
 		int64_t pushed = 0;
 		int64_t deepest = 0;
 		bool has_frame = false;
+		int32_t variadic_from = -1;
+		int32_t va_var = -1;
 		int64_t frame_at = 0;
 
 		int32_t make ( op kind, uint8_t size, int32_t a = -1, int32_t b = -1, int64_t value = 0, uint8_t bits = 0 );
@@ -277,6 +279,8 @@ namespace decompiler {
 		void inline_temps ( );
 
 		void merge_stack_slots ( );
+
+		void detect_variadic ( );
 
 		base::list < base::text > call_names;
 

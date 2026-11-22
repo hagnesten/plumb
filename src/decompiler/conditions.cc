@@ -194,6 +194,41 @@ namespace decompiler {
 				statement& line = statements [ static_cast < size_t > ( single [ static_cast < size_t > ( v ) ] ) ];
 				const expr source = exprs [ static_cast < size_t > ( line.right ) ];
 
+				bool va_copy = source.kind == op::ADDRESS && source.a < 0 && va_var >= 0 && source.value == va_var && !returned [ static_cast < size_t > ( v ) ];
+
+				if ( va_copy ) {
+
+					int32_t value = line.right;
+
+					line.kind = stmt::NOP;
+
+					for ( statement& other : statements ) {
+
+						if ( other.kind == stmt::NOP || other.kind == stmt::ASM )
+							continue;
+
+						bool defines = other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR;
+
+						if ( !defines )
+							other.left = substitute ( *this, other.left, v, value, 0 );
+
+						other.right = substitute ( *this, other.right, v, value, 0 );
+
+					}
+
+					for ( block_code& block : code ) {
+
+						block.condition = substitute ( *this, block.condition, v, value, 0 );
+						block.returned = substitute ( *this, block.returned, v, value, 0 );
+
+					}
+
+					changed = true;
+
+					continue;
+
+				}
+
 				if ( source.kind != op::VAR || source.value == v || !fixed ( source.value ) || source.size != exprs [ static_cast < size_t > ( line.left ) ].size || vars [ static_cast < size_t > ( source.value ) ].size != vars [ static_cast < size_t > ( v ) ].size || ( ( vars [ static_cast < size_t > ( source.value ) ].bits ^ vars [ static_cast < size_t > ( v ) ].bits ) & FLOATING ) )
 					continue;
 

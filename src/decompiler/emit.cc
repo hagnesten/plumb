@@ -857,6 +857,14 @@ namespace decompiler {
 
 			const variable& item = b.vars [ static_cast < size_t > ( index ) ];
 
+			if ( index == b.va_var ) {
+
+				out.put ( L"va_list", syntax::TYPE );
+
+				return;
+
+			}
+
 			if ( index < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( index ) ].empty ( ) ) {
 
 				out.put ( b.var_types [ static_cast < size_t > ( index ) ].get ( ), syntax::TYPE );
@@ -1930,7 +1938,10 @@ namespace decompiler {
 					if ( item.value >= 0 && item.a < 0 ) {
 
 						var_name ( static_cast < int32_t > ( item.value ), name );
-						out.put ( L"&", syntax::OPERATOR );
+
+						if ( item.value != b.va_var )
+							out.put ( L"&", syntax::OPERATOR );
+
 						out.put ( name, syntax::LOCAL );
 
 					} else {
@@ -7236,6 +7247,9 @@ namespace decompiler {
 		}
 
 		name_from_calls ( b, body_emitter.result_var );
+
+		if ( b.va_var >= 0 && b.va_var < b.call_names.count ( ) )
+			b.call_names [ static_cast < size_t > ( b.va_var ) ].set ( L"va" );
 		typed_pointers ( b, body_emitter.element );
 		boolean_vars ( b, body_emitter.boolean );
 
@@ -7418,7 +7432,7 @@ namespace decompiler {
 
 		short_symbol ( name );
 
-		if ( b.long_mode && b.params > 0 && !( b.has_prototype && b.prototype.variadic ) )
+		if ( b.long_mode && b.params > 0 && !( b.has_prototype && b.prototype.variadic ) && b.variadic_from < 0 )
 			head.out.put ( L"__fastcall ", syntax::KEYWORD );
 
 		bool exits = false;
@@ -7490,7 +7504,7 @@ namespace decompiler {
 
 		}
 
-		if ( b.has_prototype && b.prototype.variadic ) {
+		if ( ( b.has_prototype && b.prototype.variadic ) || b.variadic_from >= 0 ) {
 
 			if ( shown_params++ )
 				head.out.put ( L", " );
@@ -7679,6 +7693,52 @@ namespace decompiler {
 					body.lines.remove_at ( static_cast < size_t > ( i ) );
 
 			}
+
+		}
+
+		if ( b.va_var >= 0 && b.variadic_from > 0 ) {
+
+			int32_t last = -1;
+
+			for ( int32_t v = 0; v < b.vars.count ( ); v++ ) {
+
+				if ( b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER && b.vars [ static_cast < size_t > ( v ) ].position == b.variadic_from - 1 )
+					last = v;
+
+			}
+
+			wchar_t fixed [ 64 ] = { };
+			wchar_t list [ 64 ] = { };
+
+			if ( last >= 0 )
+				body_emitter.var_name ( last, fixed );
+
+			body_emitter.var_name ( b.va_var, list );
+
+			base::writer text;
+
+			text.add ( L"va_start(" ).add ( list ).add ( L", " );
+
+			if ( fixed [ 0 ] )
+				text.add ( fixed );
+			else
+				text.add ( L"a" ).number ( b.variadic_from );
+
+			text.add ( L");" );
+
+			line made;
+
+			made.text = body.text.count ( );
+			made.length = base::text_length ( text.text ( ) );
+			made.first_span = body.spans.count ( );
+			made.span_count = 0;
+			made.indent = 1;
+			made.address = b.function;
+
+			for ( int32_t k = 0; k < made.length; k++ )
+				body.text.push ( text.text ( ) [ k ] );
+
+			body.lines.insert ( 0, made );
 
 		}
 
