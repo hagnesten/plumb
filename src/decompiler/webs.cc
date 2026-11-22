@@ -829,6 +829,8 @@ namespace decompiler {
 
 	}
 
+	static bool select_params = true;
+
 	void builder::coalesce_selects ( ) {
 
 		base::list < int32_t > reads;
@@ -895,11 +897,74 @@ namespace decompiler {
 			int64_t into = exprs [ static_cast < size_t > ( line.left ) ].value;
 			int64_t from = exprs [ static_cast < size_t > ( arm ) ].value;
 
-			if ( into == from || into < 0 || from < 0 || into >= vars.count ( ) || from >= vars.count ( ) || reads [ static_cast < size_t > ( from ) ] != 1 )
+			if ( into == from || into < 0 || from < 0 || into >= vars.count ( ) || from >= vars.count ( ) )
 				continue;
 
 			const variable& a = vars [ static_cast < size_t > ( into ) ];
 			const variable& b = vars [ static_cast < size_t > ( from ) ];
+
+			if ( select_params && b.kind == var_kind::PARAMETER && a.kind == var_kind::REGISTER && a.family == b.family && a.family >= 0 && a.size == b.size && !a.cookie && !( ( a.bits ^ b.bits ) & FLOATING ) ) {
+
+				base::list < int32_t > local;
+
+				local.fill ( vars.size ( ), 0 );
+
+				auto inside = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+					if ( e < 0 || depth > 96 )
+						return;
+
+					const expr& node = exprs [ static_cast < size_t > ( e ) ];
+
+					if ( node.kind == op::VAR && node.value >= 0 && node.value < local.count ( ) )
+						local [ static_cast < size_t > ( node.value ) ]++;
+
+					self ( self, node.a, depth + 1 );
+					self ( self, node.b, depth + 1 );
+					self ( self, node.c, depth + 1 );
+
+				};
+
+				inside ( inside, line.right, 0 );
+
+				bool written = false;
+
+				for ( const statement& other : statements ) {
+
+					if ( other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( other.left ) ].value == from )
+						written = true;
+
+				}
+
+				int32_t writes_into = 0;
+
+				for ( const statement& other : statements ) {
+
+					if ( other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( other.left ) ].value == into )
+						writes_into++;
+
+				}
+
+				if ( !written && writes_into == 1 && local [ static_cast < size_t > ( from ) ] == reads [ static_cast < size_t > ( from ) ] ) {
+
+					for ( expr& node : exprs ) {
+
+						if ( node.kind == op::VAR && node.value == into )
+							node.value = from;
+
+					}
+
+					reads [ static_cast < size_t > ( from ) ] += reads [ static_cast < size_t > ( into ) ];
+					reads [ static_cast < size_t > ( into ) ] = 0;
+
+				}
+
+				continue;
+
+			}
+
+			if ( reads [ static_cast < size_t > ( from ) ] != 1 )
+				continue;
 
 			if ( a.kind != var_kind::REGISTER || b.kind != var_kind::REGISTER || a.family != b.family || a.family < 0 || a.size != b.size || a.cookie || b.cookie )
 				continue;
