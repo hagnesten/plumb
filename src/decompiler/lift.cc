@@ -4549,6 +4549,7 @@ namespace decompiler {
 		prune ( );
 		fold_returns ( );
 		split_webs ( );
+		fold_constants ( );
 		prune ( );
 
 		if ( api_result_type ( ) )

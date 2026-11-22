@@ -414,6 +414,7 @@ namespace decompiler {
 	}
 
 	static bool flow_casts = true;
+	static bool ghost_numbers = false;
 	static bool guarded_loops = true;
 
 	struct emitter {
@@ -559,7 +560,18 @@ namespace decompiler {
 
 			for ( int32_t v = 0; v < b.vars.count ( ); v++ ) {
 
-				if ( var_number [ static_cast < size_t > ( v ) ] >= 0 && b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER )
+				const variable& item = b.vars [ static_cast < size_t > ( v ) ];
+
+				if ( ghost_numbers && item.ghost && item.born && by_address && var_number [ static_cast < size_t > ( v ) ] < 0 ) {
+
+					first_def [ static_cast < size_t > ( v ) ] = item.born;
+					order.push ( v );
+
+					continue;
+
+				}
+
+				if ( var_number [ static_cast < size_t > ( v ) ] >= 0 && item.kind != var_kind::PARAMETER )
 					order.push ( v );
 
 			}
@@ -587,6 +599,14 @@ namespace decompiler {
 			int32_t next = b.params;
 
 			for ( int32_t v : order ) {
+
+				if ( b.vars [ static_cast < size_t > ( v ) ].ghost && var_number [ static_cast < size_t > ( v ) ] < 0 ) {
+
+					next++;
+
+					continue;
+
+				}
 
 				changed = changed || var_number [ static_cast < size_t > ( v ) ] != next;
 				var_number [ static_cast < size_t > ( v ) ] = next++;

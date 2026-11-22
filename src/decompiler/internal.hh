@@ -90,6 +90,8 @@ namespace decompiler {
 		bool saved = false;
 		bool assigned = false;
 		bool flags = false;
+		bool ghost = false;
+		uint64_t born = 0;
 
 	};
 
@@ -266,6 +268,8 @@ namespace decompiler {
 		void narrow_floats ( );
 
 		void substitute_known ( );
+
+		void fold_constants ( );
 
 		base::list < base::text > call_names;
 

@@ -76,6 +76,102 @@ namespace decompiler {
 
 	}
 
+	void builder::fold_constants ( ) {
+
+		int32_t total = vars.count ( );
+		base::list < int32_t > defs;
+		base::list < int32_t > single;
+		base::list < int32_t > uses;
+
+		defs.fill ( static_cast < size_t > ( total ), 0 );
+		single.fill ( static_cast < size_t > ( total ), -1 );
+		uses.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t s = 0; s < statements.count ( ); s++ ) {
+
+			const statement& line = statements [ static_cast < size_t > ( s ) ];
+
+			if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+				continue;
+
+			bool defines = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+
+			if ( defines ) {
+
+				int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+				if ( v >= 0 && v < total ) {
+
+					defs [ static_cast < size_t > ( v ) ]++;
+					single [ static_cast < size_t > ( v ) ] = s;
+
+				}
+
+			} else
+				count_vars ( *this, line.left, uses, 0 );
+
+			count_vars ( *this, line.right, uses, 0 );
+
+		}
+
+		base::list < int32_t > returned;
+
+		returned.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( const block_code& block : code ) {
+
+			count_vars ( *this, block.condition, uses, 0 );
+			count_vars ( *this, block.selector, uses, 0 );
+			count_vars ( *this, block.returned, uses, 0 );
+			count_vars ( *this, block.returned, returned, 0 );
+
+		}
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			const variable& item = vars [ static_cast < size_t > ( v ) ];
+
+			if ( item.kind != var_kind::REGISTER || item.flags || item.cookie || item.saved || ( item.bits & FLOATING ) || defs [ static_cast < size_t > ( v ) ] != 1 || uses [ static_cast < size_t > ( v ) ] == 0 || uses [ static_cast < size_t > ( v ) ] >= 100 )
+				continue;
+
+			statement& line = statements [ static_cast < size_t > ( single [ static_cast < size_t > ( v ) ] ) ];
+			const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
+
+			if ( source.kind != op::CONST || ( source.bits & ( POINTER | FLOATING ) ) )
+				continue;
+
+			int32_t value = line.right;
+
+			for ( statement& other : statements ) {
+
+				if ( other.kind == stmt::NOP || other.kind == stmt::ASM || &other == &line )
+					continue;
+
+				bool defines = other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR;
+
+				if ( !defines )
+					other.left = substitute ( *this, other.left, v, value, 0 );
+
+				other.right = substitute ( *this, other.right, v, value, 0 );
+
+			}
+
+			for ( block_code& block : code ) {
+
+				block.condition = substitute ( *this, block.condition, v, value, 0 );
+				block.selector = substitute ( *this, block.selector, v, value, 0 );
+				block.returned = substitute ( *this, block.returned, v, value, 0 );
+
+			}
+
+			line.kind = stmt::NOP;
+			vars [ static_cast < size_t > ( v ) ].ghost = true;
+			vars [ static_cast < size_t > ( v ) ].born = line.address;
+
+		}
+
+	}
+
 	void builder::sink_into_tests ( ) {
 
 		base::list < int32_t > uses;
