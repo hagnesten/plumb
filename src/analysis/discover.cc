@@ -484,6 +484,11 @@ namespace analysis {
 
 				search_from = index_def;
 
+			} else if ( ( d.name == x86::mnemonic::mov || d.name == x86::mnemonic::movsxd ) && d.count == 2 && d.operands [ 0 ].type == x86::kind::REG && d.operands [ 1 ].type == x86::kind::REG ) {
+
+				bound_reg = d.operands [ 1 ].reg;
+				search_from = index_def;
+
 			}
 
 		}
