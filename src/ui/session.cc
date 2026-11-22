@@ -934,12 +934,6 @@ namespace ui {
 
 		}
 
-		bool virtual_notes ( ) override {
-
-			return owner->name_virtuals;
-
-		}
-
 		bool guess_structs ( ) override {
 
 			return owner->c_guess_structs;

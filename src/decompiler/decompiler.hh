@@ -165,12 +165,6 @@ namespace decompiler {
 
 		}
 
-		virtual bool virtual_notes ( ) {
-
-			return false;
-
-		}
-
 		virtual bool guess_structs ( ) {
 
 			return false;

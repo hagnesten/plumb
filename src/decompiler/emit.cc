@@ -12,7 +12,6 @@ namespace decompiler {
 		namer* names = nullptr;
 		uint64_t commented = 0;
 		int32_t indent = 0;
-		int32_t slot_note = -1;
 		line current;
 
 		wchar_t last ( int32_t back = 1 ) const {
@@ -30,7 +29,6 @@ namespace decompiler {
 			current.indent = indent;
 			current.address = address;
 			open = true;
-			slot_note = -1;
 
 		}
 
@@ -294,34 +292,6 @@ namespace decompiler {
 
 			wrap ( );
 
-			if ( slot_note >= 0 ) {
-
-				bool keep = spaced;
-				wchar_t digits [ 16 ];
-				int32_t length = 0;
-				int32_t value = slot_note;
-
-				do {
-
-					digits [ length++ ] = static_cast < wchar_t > ( L'0' + value % 10 );
-					value /= 10;
-
-				} while ( value && length < 15 );
-
-				wchar_t text [ 32 ] = L" // vfunc ";
-				int32_t at = 10;
-
-				while ( length )
-					text [ at++ ] = digits [ --length ];
-
-				text [ at ] = 0;
-				spaced = false;
-				slot_note = -1;
-				put ( text, syntax::COMMENT );
-				spaced = keep;
-
-			}
-
 			if ( names && current.address && current.address != commented ) {
 
 				const wchar_t* note = names->comment ( current.address );
@@ -523,61 +493,10 @@ namespace decompiler {
 		}
 		bool operand = false;
 		bool no_casts = false;
-		bool virtual_notes = false;
 		base::list < uint64_t > number_addresses;
 		base::list < int64_t > number_values;
 		int32_t last_occurrence = 0;
 
-		void note_slot ( int32_t callee ) {
-
-			if ( callee < 0 )
-				return;
-
-			if ( b.exprs [ static_cast < size_t > ( callee ) ].kind == op::VAR ) {
-
-				int64_t var = b.exprs [ static_cast < size_t > ( callee ) ].value;
-				uint64_t here = out.open ? out.current.address : 0;
-				int32_t found = -1;
-
-				for ( const statement& item : b.statements ) {
-
-					if ( item.kind != stmt::ASSIGN || item.left < 0 || item.right < 0 || ( here && item.address > here ) )
-						continue;
-
-					const expr& left = b.exprs [ static_cast < size_t > ( item.left ) ];
-
-					if ( left.kind == op::VAR && left.value == var && b.exprs [ static_cast < size_t > ( item.right ) ].kind == op::LOAD )
-						found = item.right;
-
-				}
-
-				if ( found < 0 )
-					return;
-
-				callee = found;
-
-			}
-
-			const expr& load = b.exprs [ static_cast < size_t > ( callee ) ];
-			int64_t pointer = b.long_mode ? 8 : 4;
-
-			if ( load.kind != op::LOAD || load.size != pointer || load.a < 0 )
-				return;
-
-			const expr& where = b.exprs [ static_cast < size_t > ( load.a ) ];
-			int64_t offset = -1;
-
-			if ( where.kind == op::LOAD )
-				offset = 0;
-			else if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::LOAD && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST )
-				offset = b.exprs [ static_cast < size_t > ( where.b ) ].value;
-
-			if ( offset < 0 || offset % pointer || offset / pointer > 4096 )
-				return;
-
-			out.slot_note = static_cast < int32_t > ( offset / pointer );
-
-		}
 		int32_t gotos = 0;
 		int32_t depth = 0;
 		bool no_ternary = false;
@@ -592,7 +511,6 @@ namespace decompiler {
 			next_number = owner.params;
 			no_ternary = owner.names && owner.names->expand_ternary ( );
 			no_casts = owner.names && owner.names->hide_casts ( );
-			virtual_notes = owner.names && owner.names->virtual_notes ( );
 			indexing = !owner.names || owner.names->index_pointers ( );
 
 		}
@@ -1369,6 +1287,23 @@ namespace decompiler {
 
 		}
 
+		bool logical_pair ( const expr& item ) const {
+
+			auto logical = [ & ] ( int32_t e ) {
+
+				if ( e < 0 )
+					return false;
+
+				op kind = b.exprs [ static_cast < size_t > ( e ) ].kind;
+
+				return ( kind >= op::EQ && kind <= op::LOR ) || kind == op::LNOT;
+
+			};
+
+			return item.size == 1 && !( item.bits & FLOATING ) && logical ( item.a ) && logical ( item.b );
+
+		}
+
 		void index_number ( int64_t amount ) {
 
 			if ( amount < 0 ) {
@@ -1965,9 +1900,6 @@ namespace decompiler {
 						number ( static_cast < int64_t > ( target ), 8, true, false );
 					else {
 
-						if ( virtual_notes && !dry )
-							note_slot ( item.a );
-
 						const expr& callee_node = b.exprs [ static_cast < size_t > ( item.a ) ];
 
 						if ( callee_node.kind == op::LOAD && callee_node.size == 8 && callee_node.a >= 0 && b.long_mode ) {
@@ -2298,13 +2230,13 @@ namespace decompiler {
 							break;
 
 						case op::AND:
-							symbol = L" & ";
-							bitwise = true;
+							symbol = logical_pair ( item ) ? L" && " : L" & ";
+							bitwise = !logical_pair ( item );
 							break;
 
 						case op::OR:
-							symbol = L" | ";
-							bitwise = true;
+							symbol = logical_pair ( item ) ? L" || " : L" | ";
+							bitwise = !logical_pair ( item );
 							break;
 
 						case op::XOR:
@@ -5544,6 +5476,7 @@ namespace decompiler {
 	static bool typed_locals = true;
 	static bool char_locals = true;
 
+	static bool untype_passed = true;
 	static bool detect_bools = true;
 
 	static void boolean_vars ( builder& b, base::list < uint8_t >& boolean ) {
@@ -6353,8 +6286,10 @@ namespace decompiler {
 		}
 
 		base::list < uint8_t > direct;
+		base::list < uint8_t > passed_on;
 
 		direct.fill ( static_cast < size_t > ( total ), 0 );
+		passed_on.fill ( static_cast < size_t > ( total ), 0 );
 
 		auto record = [ & ] ( int32_t v, const expr& load, int64_t offset ) {
 
@@ -6465,6 +6400,9 @@ namespace decompiler {
 								if ( ( shape & 0x40 ) && var_of ( passed ) < total && element [ static_cast < size_t > ( var_of ( passed ) ) ] )
 									element [ static_cast < size_t > ( var_of ( passed ) ) ] |= 0x40;
 
+								if ( ( shape & 0x1F ) == 8 && var_of ( passed ) < total )
+									passed_on [ static_cast < size_t > ( var_of ( passed ) ) ] = 1;
+
 							}
 
 						}
@@ -6571,6 +6509,19 @@ namespace decompiler {
 
 		if ( element_flavors )
 			flavor_elements ( b, element );
+
+		if ( untype_passed ) {
+
+			for ( int32_t v = 0; v < total; v++ ) {
+
+				uint8_t& slot = element [ static_cast < size_t > ( v ) ];
+
+				if ( passed_on [ static_cast < size_t > ( v ) ] && ( slot & 0x9F ) == 8 && ( slot & 0x60 ) )
+					slot = 0;
+
+			}
+
+		}
 
 	}
 

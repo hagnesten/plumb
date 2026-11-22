@@ -778,7 +778,7 @@ namespace ui {
 				name_virtuals = !name_virtuals;
 				names_revision++;
 				annotation_revision++;
-				log ( log_kind::INFO, name_virtuals ? L"Virtual functions are named Class::vfunc_N and calls through a vtable show their slot." : L"Virtual functions keep plain fn_ names." );
+				log ( log_kind::INFO, name_virtuals ? L"Virtual functions are named Class::vfunc_N." : L"Virtual functions keep plain fn_ names." );
 				break;
 
 			case command::INDEX_POINTERS:
