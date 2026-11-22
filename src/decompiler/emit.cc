@@ -1740,7 +1740,7 @@ namespace decompiler {
 
 						bare_unsigned = unsigned_slot;
 
-						if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && passed.value >= 0 && callee_unsigned ( target, i ) )
+						if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && passed.value > 0 && callee_unsigned ( target, i ) )
 							number ( passed.value, callee_wide ( target, i ) && b.long_mode ? 8 : 4, passed.value > 9, true );
 						else if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && b.long_mode && callee_wide ( target, i ) )
 							number ( passed.value, 8, !simple_constant ( passed.value ), false );
@@ -5197,7 +5197,25 @@ namespace decompiler {
 
 				}
 
-				if ( v < 0 || v >= b.vars.count ( ) || v == result_var || b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER || !b.call_names [ static_cast < size_t > ( v ) ].empty ( ) )
+				if ( v < 0 || v >= b.vars.count ( ) || v == result_var || !b.call_names [ static_cast < size_t > ( v ) ].empty ( ) )
+					continue;
+
+				bool only_constants = b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER;
+				bool any_write = false;
+
+				for ( const statement& line : b.statements ) {
+
+					if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || b.exprs [ static_cast < size_t > ( line.left ) ].value != v )
+						continue;
+
+					any_write = true;
+
+					if ( b.exprs [ static_cast < size_t > ( line.right ) ].kind != op::CONST )
+						only_constants = false;
+
+				}
+
+				if ( only_constants && any_write && !address )
 					continue;
 
 				const wchar_t* rest = shape.names [ i ];
