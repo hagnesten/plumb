@@ -1569,7 +1569,14 @@ namespace decompiler {
 				const expr& zero = b.exprs [ static_cast < size_t > ( item.b ) ];
 				const expr& tested = b.exprs [ static_cast < size_t > ( item.a ) ];
 
-				if ( zero.kind == op::CONST && zero.value == 0 && !( zero.bits & POINTER ) && !( tested.bits & FLOATING ) && !explicit_zero ) {
+				int32_t bare = item.a;
+
+				while ( bare >= 0 && b.exprs [ static_cast < size_t > ( bare ) ].kind == op::CAST )
+					bare = b.exprs [ static_cast < size_t > ( bare ) ].a;
+
+				bool assigning = bare >= 0 && b.exprs [ static_cast < size_t > ( bare ) ].kind == op::SET;
+
+				if ( zero.kind == op::CONST && zero.value == 0 && !( zero.bits & POINTER ) && !( tested.bits & FLOATING ) && !explicit_zero && !assigning ) {
 
 					if ( item.kind == op::NE ) {
 
@@ -1913,6 +1920,34 @@ namespace decompiler {
 					value ( item.a, 14 );
 					break;
 
+				case op::SET:
+
+					out.put ( L"(" );
+					value ( item.a, 0 );
+					out.put ( L" = ", syntax::OPERATOR );
+
+					{
+
+						const expr& stored = b.exprs [ static_cast < size_t > ( item.b ) ];
+						const expr& target_var = b.exprs [ static_cast < size_t > ( item.a ) ];
+
+						if ( stored.kind == op::CONST && !( stored.bits & POINTER ) && target_var.size == 8 && b.long_mode )
+							number ( stored.value, 8, !simple_constant ( stored.value ), false );
+						else
+							value ( item.b, 2 );
+
+					}
+
+					if ( item.value == 1 && item.c >= 0 ) {
+
+						out.put ( L", " );
+						value ( item.c, 2 );
+
+					}
+
+					out.put ( L")" );
+					break;
+
 				case op::TERNARY: {
 
 					auto arm = [ & ] ( int32_t e, int32_t level ) {
@@ -2132,10 +2167,17 @@ namespace decompiler {
 
 					if ( right.kind == op::CONST && !( right.bits & POINTER ) && compare ) {
 
+						bool held = operand;
+
+						if ( lhs.kind == op::SET && lhs.size == 8 && b.long_mode )
+							operand = false;
+
 						if ( float_compare && right.value == 0 )
 							real ( 0, right.size );
 						else
-							number ( right.value, right.size, !simple_constant ( right.value ) || ( unsigned_compare && right.value > 9 ), unsigned_compare );
+							number ( right.value, lhs.kind == op::SET ? lhs.size : right.size, !simple_constant ( right.value ) || ( unsigned_compare && right.value > 9 ), unsigned_compare );
+
+						operand = held;
 
 					} else
 						value ( item.b, mine + 1, bitwise );

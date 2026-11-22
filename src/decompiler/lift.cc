@@ -500,6 +500,21 @@ namespace decompiler {
 			case op::CONST:
 				return constant ( item.value ? 0 : 1, 1 );
 
+			case op::SET:
+
+				if ( item.value == 1 && item.c >= 0 ) {
+
+					int32_t flipped = negate ( item.c );
+					int32_t made = make ( op::SET, 1, item.a, item.b, 1 );
+
+					exprs [ static_cast < size_t > ( made ) ].c = flipped;
+
+					return made;
+
+				}
+
+				return make ( op::LNOT, 1, condition );
+
 			default:
 				return make ( op::LNOT, 1, condition );
 

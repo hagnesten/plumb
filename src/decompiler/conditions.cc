@@ -798,6 +798,109 @@ namespace decompiler {
 
 	}
 
+	static bool assign_in_tests = true;
+
+	static bool bare_var ( const builder& b, int32_t e, int64_t v ) {
+
+		return e >= 0 && b.exprs [ static_cast < size_t > ( e ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( e ) ].value == v && !( b.exprs [ static_cast < size_t > ( e ) ].bits & FLOATING ) && !( b.vars [ static_cast < size_t > ( v ) ].bits & FLOATING );
+
+	}
+
+	static int32_t explicit_test ( builder& b, int32_t e, int64_t v ) {
+
+		if ( e < 0 )
+			return e;
+
+		expr node = b.exprs [ static_cast < size_t > ( e ) ];
+
+		if ( node.kind == op::LAND || node.kind == op::LOR ) {
+
+			int32_t left = explicit_test ( b, node.a, v );
+			int32_t right = explicit_test ( b, node.b, v );
+
+			if ( left == node.a && right == node.b )
+				return e;
+
+			return b.make ( node.kind, node.size, left, right );
+
+		}
+
+		if ( node.kind == op::LNOT && bare_var ( b, node.a, v ) ) {
+
+			uint8_t size = b.exprs [ static_cast < size_t > ( node.a ) ].size;
+
+			return b.binary ( op::EQ, node.a, b.constant ( 0, size ), 1 );
+
+		}
+
+		if ( bare_var ( b, e, v ) )
+			return b.binary ( op::NE, e, b.constant ( 0, node.size ), 1 );
+
+		return e;
+
+	}
+
+	static int32_t comma_test ( builder& b, int32_t e, int64_t v, int32_t target, int32_t source ) {
+
+		if ( e < 0 )
+			return e;
+
+		expr node = b.exprs [ static_cast < size_t > ( e ) ];
+
+		if ( node.kind == op::LAND || node.kind == op::LOR ) {
+
+			int32_t left = comma_test ( b, node.a, v, target, source );
+			int32_t right = comma_test ( b, node.b, v, target, source );
+
+			if ( left == node.a && right == node.b )
+				return e;
+
+			return b.make ( node.kind, node.size, left, right );
+
+		}
+
+		if ( !b.references ( e, static_cast < int32_t > ( v ), -1 ) )
+			return e;
+
+		int32_t made = b.make ( op::SET, 1, target, source, 1 );
+
+		b.exprs [ static_cast < size_t > ( made ) ].c = e;
+
+		return made;
+
+	}
+
+	static bool tests_directly ( const builder& b, int32_t e, int64_t v ) {
+
+		if ( e < 0 )
+			return false;
+
+		const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+		switch ( node.kind ) {
+
+			case op::LAND:
+			case op::LOR:
+				return tests_directly ( b, node.a, v ) || tests_directly ( b, node.b, v );
+
+			case op::LNOT:
+				return bare_var ( b, node.a, v ) || tests_directly ( b, node.a, v );
+
+			case op::EQ:
+			case op::NE:
+			case op::LT:
+			case op::LE:
+			case op::GT:
+			case op::GE:
+				return bare_var ( b, node.a, v ) || bare_var ( b, node.b, v );
+
+			default:
+				return bare_var ( b, e, v );
+
+		}
+
+	}
+
 	void builder::merge_conditions ( ) {
 
 		sink_into_tests ( );
@@ -900,10 +1003,74 @@ namespace decompiler {
 					if ( inner <= 0 || inner >= total || inner == a || preds [ static_cast < size_t > ( inner ) ] != 1 )
 						continue;
 
-					const block_code next = code [ static_cast < size_t > ( inner ) ];
+					block_code next = code [ static_cast < size_t > ( inner ) ];
 
-					if ( next.end != term::BRANCH || next.condition < 0 || next.taken == next.other || next.taken == inner || next.other == inner || !empty ( inner ) )
+					if ( next.end != term::BRANCH || next.condition < 0 || next.taken == next.other || next.taken == inner || next.other == inner )
 						continue;
+
+					int32_t assigned = -1;
+
+					if ( !empty ( inner ) ) {
+
+						if ( !assign_in_tests )
+							continue;
+
+						for ( int32_t s = next.first; s < next.first + next.count && s < statements.count ( ); s++ ) {
+
+							if ( statements [ static_cast < size_t > ( s ) ].kind == stmt::NOP )
+								continue;
+
+							assigned = assigned < 0 ? s : -2;
+
+						}
+
+						if ( assigned < 0 )
+							continue;
+
+						const statement& line = statements [ static_cast < size_t > ( assigned ) ];
+
+						if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+							continue;
+
+						int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+						int32_t joined = side == 0 ? head.taken : head.other;
+						int32_t rest = next.taken == joined ? next.other : ( next.other == joined ? next.taken : -1 );
+
+						if ( rest < 0 || rest >= total || rest <= inner || joined <= inner )
+							continue;
+
+						if ( code [ static_cast < size_t > ( joined ) ].end == term::RETURN && empty ( joined ) )
+							continue;
+
+						const block_code& after = code [ static_cast < size_t > ( rest ) ];
+
+						if ( after.end == term::FALL && ( after.taken == joined || after.other == joined ) )
+							continue;
+
+						if ( after.end == term::BRANCH && ( after.taken == joined || after.other == joined ) )
+							continue;
+						base::list < int32_t > seen;
+
+						seen.fill ( vars.size ( ), 0 );
+						count_vars ( *this, next.condition, seen, 0 );
+
+						if ( v < 0 || v >= seen.count ( ) || seen [ static_cast < size_t > ( v ) ] != 1 )
+							continue;
+
+						if ( !tests_directly ( *this, next.condition, v ) )
+							continue;
+
+						if ( exprs [ static_cast < size_t > ( line.right ) ].kind == op::CALL )
+							next.condition = comma_test ( *this, explicit_test ( *this, next.condition, v ), v, line.left, line.right );
+						else {
+
+							int32_t setter = make ( op::SET, exprs [ static_cast < size_t > ( line.left ) ].size, line.left, line.right );
+
+							next.condition = substitute ( *this, explicit_test ( *this, next.condition, v ), v, setter, 0 );
+
+						}
+
+					}
 
 					int32_t shared = side == 0 ? head.taken : head.other;
 					int32_t condition = -1;
@@ -951,6 +1118,10 @@ namespace decompiler {
 					head.taken = taken;
 					head.other = other;
 					head.last = next.last;
+
+					if ( assigned >= 0 )
+						statements [ static_cast < size_t > ( assigned ) ].kind = stmt::NOP;
+
 					rewire ( a, inner, taken, other );
 					changed = true;
 

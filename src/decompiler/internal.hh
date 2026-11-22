@@ -39,6 +39,7 @@ namespace decompiler {
 		LAND,
 		LOR,
 		TERNARY,
+		SET,
 
 	};
 
