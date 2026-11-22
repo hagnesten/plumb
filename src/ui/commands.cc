@@ -97,6 +97,7 @@ namespace ui {
 		{ L"Hide casts in C", L"\\" },
 		{ L"Collapse local declarations", L"Ctrl+Num -" },
 		{ L"Name virtual functions by vtable slot", L"" },
+		{ L"Index pointers like arrays", L"" },
 		{ L"Settings", L"Ctrl+," },
 		{ L"Colors", L"Ctrl+Shift+," },
 		{ L"Run script file", L"Alt+F7" },
@@ -239,6 +240,7 @@ namespace ui {
 
 			case command::HIDE_CASTS:
 			case command::COLLAPSE_LOCALS:
+			case command::INDEX_POINTERS:
 				return analyzed && showing == view::PSEUDOCODE;
 
 			case command::TOGGLE_GRAPH:
@@ -294,6 +296,9 @@ namespace ui {
 
 			case command::NAME_VIRTUALS:
 				return name_virtuals;
+
+			case command::INDEX_POINTERS:
+				return c_index_pointers;
 
 			case command::DEBUG_BREAKPOINT:
 				return is_breakpoint ( now->cursor_address );
@@ -774,6 +779,12 @@ namespace ui {
 				names_revision++;
 				annotation_revision++;
 				log ( log_kind::INFO, name_virtuals ? L"Virtual functions are named Class::vfunc_N and calls through a vtable show their slot." : L"Virtual functions keep plain fn_ names." );
+				break;
+
+			case command::INDEX_POINTERS:
+				c_index_pointers = !c_index_pointers;
+				names_revision++;
+				log ( log_kind::INFO, c_index_pointers ? L"Pointers in the C view are indexed like arrays, like a3[128]." : L"Pointers in the C view are written as offsets, like *(_DWORD *)(a3 + 512)." );
 				break;
 
 			case command::SETTINGS:

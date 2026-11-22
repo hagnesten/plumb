@@ -472,6 +472,7 @@ namespace decompiler {
 		bool inline_returns = true;
 		bool call_unused = false;
 		bool by_address = true;
+		bool indexing = true;
 		wchar_t param_type [ 64 ] = { };
 		bool defer_joins = false;
 		bool rotate_guards = false;
@@ -587,6 +588,7 @@ namespace decompiler {
 			no_ternary = owner.names && owner.names->expand_ternary ( );
 			no_casts = owner.names && owner.names->hide_casts ( );
 			virtual_notes = owner.names && owner.names->virtual_notes ( );
+			indexing = !owner.names || owner.names->index_pointers ( );
 
 		}
 
@@ -1469,7 +1471,7 @@ namespace decompiler {
 
 			}
 
-			if ( where.kind == op::ADD && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::MUL ) {
+			if ( indexing && where.kind == op::ADD && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::MUL ) {
 
 				const expr& scaled = b.exprs [ static_cast < size_t > ( where.b ) ];
 
@@ -5468,6 +5470,13 @@ namespace decompiler {
 
 		name_from_calls ( b, body_emitter.result_var );
 		typed_pointers ( b, body_emitter.element );
+
+		if ( !body_emitter.indexing ) {
+
+			for ( uint8_t& slot : body_emitter.element )
+				slot = 0;
+
+		}
 
 		body_emitter.out.r = &body;
 		body_emitter.dry = true;

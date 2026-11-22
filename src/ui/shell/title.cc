@@ -25,7 +25,7 @@ namespace ui {
 	};
 
 	static const menu_spec code_menu = {
-		L"C", { command::RENAME, command::SET_TYPE, command::COMMENT, command::STRUCT_FROM_VAR, command::COUNT, command::NUMBER_RADIX, command::NUMBER_CHAR, command::NUMBER_BINARY, command::NUMBER_RESET, command::COUNT, command::HIDE_CASTS, command::COLLAPSE_LOCALS, command::TOGGLE_TERNARY, command::COUNT, command::SHOW_REFERENCES, command::SWAP_VIEW, command::COUNT, command::COPY, command::COPY_FUNCTION }, 19
+		L"C", { command::RENAME, command::SET_TYPE, command::COMMENT, command::STRUCT_FROM_VAR, command::COUNT, command::NUMBER_RADIX, command::NUMBER_CHAR, command::NUMBER_BINARY, command::NUMBER_RESET, command::COUNT, command::HIDE_CASTS, command::COLLAPSE_LOCALS, command::TOGGLE_TERNARY, command::INDEX_POINTERS, command::COUNT, command::SHOW_REFERENCES, command::SWAP_VIEW, command::COUNT, command::COPY, command::COPY_FUNCTION }, 20
 	};
 
 	static constexpr int32_t menu_count = 9;

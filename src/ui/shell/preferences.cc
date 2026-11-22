@@ -211,10 +211,10 @@ namespace ui {
 
 		{
 
-			bool* flags [ 6 ] = { &c_spaced, &c_no_ternary, &c_hide_casts, &c_collapse_locals, &name_virtuals, &c_guess_structs };
-			const wchar_t* labels [ 6 ] = { L"Spaces inside parentheses, like  fn ( a1 )", L"Write ternaries as if and else", L"Hide casts", L"Collapse local declarations", L"Name virtual functions by vtable slot", L"Guess structs for pointer parameters" };
+			bool* flags [ 7 ] = { &c_spaced, &c_no_ternary, &c_hide_casts, &c_collapse_locals, &name_virtuals, &c_guess_structs, &c_index_pointers };
+			const wchar_t* labels [ 7 ] = { L"Spaces inside parentheses, like  fn ( a1 )", L"Write ternaries as if and else", L"Hide casts", L"Collapse local declarations", L"Name virtual functions by vtable slot", L"Guess structs for pointer parameters", L"Index pointers like arrays, like  a3[128]" };
 
-			for ( int32_t i = 0; i < 6; i++ ) {
+			for ( int32_t i = 0; i < 7; i++ ) {
 
 				if ( settings_check ( make_id ( "settings_check", i ), math::rect ( left, y, column, 24.0f ), labels [ i ], *flags [ i ] ) ) {
 

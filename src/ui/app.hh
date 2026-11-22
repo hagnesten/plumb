@@ -217,6 +217,7 @@ namespace ui {
 		HIDE_CASTS,
 		COLLAPSE_LOCALS,
 		NAME_VIRTUALS,
+		INDEX_POINTERS,
 		SETTINGS,
 		COLORS,
 		RUN_SCRIPT,
@@ -1122,6 +1123,7 @@ namespace ui {
 		bool c_hide_casts = false;
 		bool c_collapse_locals = false;
 		bool c_guess_structs = false;
+		bool c_index_pointers = true;
 		bool name_virtuals = true;
 		math::vec2 code_menu_at;
 		int32_t code_hover_line = -1;

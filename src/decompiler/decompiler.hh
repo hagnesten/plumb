@@ -177,6 +177,12 @@ namespace decompiler {
 
 		}
 
+		virtual bool index_pointers ( ) {
+
+			return true;
+
+		}
+
 		virtual wchar_t number_form ( uint64_t, int64_t, int32_t ) {
 
 			return 0;
