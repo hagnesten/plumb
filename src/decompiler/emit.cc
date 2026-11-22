@@ -5621,6 +5621,27 @@ namespace decompiler {
 		if ( b.long_mode && b.params > 0 && !( b.has_prototype && b.prototype.variadic ) )
 			head.out.put ( L"__fastcall ", syntax::KEYWORD );
 
+		bool exits = false;
+
+		for ( const block_code& item : b.code ) {
+
+			if ( item.reachable && ( item.end == term::RETURN || item.end == term::TAIL ) )
+				exits = true;
+
+		}
+
+		bool ends_program = false;
+
+		for ( const statement& item : b.statements ) {
+
+			if ( !exits && item.kind == stmt::EXPR && item.right >= 0 && head.no_return ( b.exprs [ static_cast < size_t > ( item.right ) ] ) )
+				ends_program = true;
+
+		}
+
+		if ( !exits && ends_program && !b.returns_value && !b.has_prototype )
+			head.out.put ( L"__noreturn ", syntax::KEYWORD );
+
 		head.out.put ( name, syntax::FUNCTION, b.function );
 		head.out.put ( L"(" );
 
