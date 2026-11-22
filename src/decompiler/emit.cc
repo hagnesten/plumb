@@ -2932,8 +2932,8 @@ namespace decompiler {
 
 					if ( !inline_mode && left.kind == op::VAR && right.kind == op::TERNARY && right.a >= 0 && right.b >= 0 && right.c >= 0 ) {
 
-						const expr& yes_arm = b.exprs [ static_cast < size_t > ( right.b ) ];
-						const expr& no_arm = b.exprs [ static_cast < size_t > ( right.c ) ];
+						const expr& yes_arm = b.exprs [ static_cast < size_t > ( strip ( right.b ) ) ];
+						const expr& no_arm = b.exprs [ static_cast < size_t > ( strip ( right.c ) ) ];
 						bool keep_no = no_arm.kind == op::VAR && no_arm.value == left.value;
 						bool keep_yes = yes_arm.kind == op::VAR && yes_arm.value == left.value;
 
