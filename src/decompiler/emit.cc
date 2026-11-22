@@ -5443,6 +5443,7 @@ namespace decompiler {
 		head.next_number = body_emitter.next_number;
 		head.result_var = body_emitter.result_var;
 		head.element = body_emitter.element;
+		head.loop_letter = body_emitter.loop_letter;
 		head.out.r = &out;
 
 		for ( int32_t v = 0; v < b.vars.count ( ); v++ ) {
