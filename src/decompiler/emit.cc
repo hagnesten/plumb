@@ -1749,6 +1749,13 @@ namespace decompiler {
 							out.put ( L"(unsigned int)" );
 							value ( argument, 14 );
 
+						} else if ( b.long_mode && !no_casts && target && passed.kind == op::VAR && passed.value >= 0 && passed.value < b.vars.count ( ) && passed.size == 8 && !( passed.bits & FLOATING ) && b.vars [ static_cast < size_t > ( passed.value ) ].kind != var_kind::PARAMETER && ( passed.value >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( passed.value ) ].empty ( ) ) && ( passed.value >= element.count ( ) || !element [ static_cast < size_t > ( passed.value ) ] ) && ( callee_unsigned ( target, i ), shape_ok ) && i < shape->count && shape->params [ i ].pointer && shape->types [ i ] [ 0 ] ) {
+
+							out.put ( L"(" );
+							out.put ( shape->types [ i ], syntax::TYPE );
+							out.put ( L")" );
+							value ( argument, 14 );
+
 						} else if ( b.long_mode && !no_casts && target && passed.kind == op::VAR && passed.value >= 0 && passed.value < element.count ( ) && element [ static_cast < size_t > ( passed.value ) ] && ( callee_unsigned ( target, i ), !shape_ok ) ) {
 
 							out.put ( L"(__int64)" );
@@ -4796,8 +4803,27 @@ namespace decompiler {
 
 				const expr& passed = b.exprs [ static_cast < size_t > ( index ) ];
 
-				if ( passed.kind == op::VAR )
-					offer ( static_cast < int32_t > ( passed.value ), shape->types [ i ] );
+				if ( passed.kind == op::VAR ) {
+
+					bool constants_only = b.vars [ static_cast < size_t > ( passed.value ) ].kind != var_kind::PARAMETER;
+					bool written = false;
+
+					for ( const statement& line : b.statements ) {
+
+						if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || b.exprs [ static_cast < size_t > ( line.left ) ].value != passed.value )
+							continue;
+
+						written = true;
+
+						if ( b.exprs [ static_cast < size_t > ( line.right ) ].kind != op::CONST )
+							constants_only = false;
+
+					}
+
+					if ( !( constants_only && written ) )
+						offer ( static_cast < int32_t > ( passed.value ), shape->types [ i ] );
+
+				}
 				else if ( passed.kind == op::ADDRESS && passed.a < 0 ) {
 
 					wchar_t inner [ 64 ];

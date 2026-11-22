@@ -698,7 +698,7 @@ namespace decompiler {
 
 	bool builder::api_result_type ( ) {
 
-		if ( has_prototype || !returns_value || returns_float || result_width || !names )
+		if ( has_prototype || returns_float || result_width || !names )
 			return false;
 
 		base::text chosen;
@@ -717,7 +717,7 @@ namespace decompiler {
 			c_prototype shape;
 			base::writer problem;
 
-			if ( !api || !parse_prototype ( api, long_mode, shape, problem ) || shape.result_type.pointer || shape.result_type.empty || shape.result_type.size == 0 || shape.result_type.size > 4 || ( shape.result_type.bits & FLOATING ) )
+			if ( !api || !parse_prototype ( api, long_mode, shape, problem ) || shape.result_type.empty || shape.result_type.size == 0 || ( shape.result_type.bits & FLOATING ) )
 				return false;
 
 			if ( !any ) {
@@ -736,7 +736,7 @@ namespace decompiler {
 
 		for ( const block_code& item : code ) {
 
-			if ( !item.reachable || item.end != term::RETURN || item.returned < 0 )
+			if ( !item.reachable || ( item.end != term::RETURN && item.end != term::TAIL ) || item.returned < 0 )
 				continue;
 
 			int32_t e = strip_casts ( *this, item.returned );
@@ -785,9 +785,16 @@ namespace decompiler {
 			return false;
 
 		result_text = chosen;
-		return_size = chosen_size;
 
-		return true;
+		if ( chosen_size <= 4 ) {
+
+			return_size = chosen_size;
+
+			return true;
+
+		}
+
+		return false;
 
 	}
 
