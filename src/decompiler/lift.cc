@@ -2341,7 +2341,36 @@ namespace decompiler {
 
 			}
 
-			int32_t made = k.make ( op::CALL, 8, target, -1, static_cast < int64_t > ( direct ) );
+			uint8_t result_size = k.long_mode ? 8 : 4;
+			uint8_t result_bits = 0;
+
+			if ( direct ) {
+
+				const wchar_t* api = nullptr;
+
+				if ( k.names->name ( direct, true, name, 200 ) )
+					api = api_prototype ( name );
+
+				if ( !api && callee >= 0 && ( k.db->functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK ) && k.db->functions [ static_cast < size_t > ( callee ) ].import >= 0 )
+					api = api_prototype ( k.file->imports [ static_cast < size_t > ( k.db->functions [ static_cast < size_t > ( callee ) ].import ) ].name.get ( ) );
+
+				if ( api ) {
+
+					c_prototype shape;
+					base::writer problem;
+
+					if ( parse_prototype ( api, k.long_mode, shape, problem ) && !shape.result_type.pointer && !shape.result_type.empty && shape.result_type.size > 0 && shape.result_type.size < result_size && !( shape.result_type.bits & FLOATING ) ) {
+
+						result_size = shape.result_type.size;
+						result_bits = shape.result_type.bits & ( SIGNED | UNSIGNED );
+
+					}
+
+				}
+
+			}
+
+			int32_t made = k.make ( op::CALL, result_size, target, -1, static_cast < int64_t > ( direct ), result_bits );
 			int32_t first = k.args.count ( );
 			base::list < int32_t > list;
 
