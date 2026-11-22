@@ -5843,6 +5843,7 @@ namespace decompiler {
 
 	static bool flow_typing = true;
 	static bool flow_seeded_only = true;
+	static bool flow_calls = true;
 
 	static void flow_pointers ( builder& b, base::list < uint8_t >& element ) {
 
@@ -5866,6 +5867,9 @@ namespace decompiler {
 
 		base::list < uint8_t > stepped;
 		base::list < uint8_t > params_in;
+		base::list < uint8_t > called;
+
+		called.fill ( static_cast < size_t > ( total ), 0 );
 
 		stepped.fill ( static_cast < size_t > ( total ), 0 );
 		params_in.fill ( static_cast < size_t > ( total ), 0 );
@@ -6103,6 +6107,15 @@ namespace decompiler {
 
 					}
 
+					if ( x >= 0 && right.kind == op::CALL && right.value && b.names && !b.names->prototype ( static_cast < uint64_t > ( right.value ) ) ) {
+
+						wchar_t callee [ 200 ];
+
+						if ( !( b.names->name ( static_cast < uint64_t > ( right.value ), true, callee, 200 ) && api_prototype ( callee ) ) )
+							called [ static_cast < size_t > ( x ) ] = 1;
+
+					}
+
 					walk ( walk, item.right, 0 );
 
 					continue;
@@ -6189,6 +6202,9 @@ namespace decompiler {
 
 			if ( !bad [ static_cast < size_t > ( v ) ] && b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER )
 				params_in [ static_cast < size_t > ( find ( v ) ) ] = 1;
+
+			if ( flow_calls && !bad [ static_cast < size_t > ( v ) ] && called [ static_cast < size_t > ( v ) ] )
+				seeded [ static_cast < size_t > ( find ( v ) ) ] = 1;
 
 		}
 
