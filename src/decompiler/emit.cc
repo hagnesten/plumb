@@ -1722,7 +1722,9 @@ namespace decompiler {
 
 						bare_unsigned = unsigned_slot;
 
-						if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && b.long_mode && callee_wide ( target, i ) )
+						if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && passed.value >= 0 && callee_unsigned ( target, i ) )
+							number ( passed.value, callee_wide ( target, i ) && b.long_mode ? 8 : 4, passed.value > 9, true );
+						else if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && b.long_mode && callee_wide ( target, i ) )
 							number ( passed.value, 8, !simple_constant ( passed.value ), false );
 						else
 							value ( argument, 2 );
