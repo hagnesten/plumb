@@ -1729,11 +1729,20 @@ namespace decompiler {
 						if ( i )
 							out.put ( L", " );
 
-						if ( !no_casts && passed.kind == op::CONST && ( passed.bits & POINTER ) && b.db->function_starting ( static_cast < uint64_t > ( passed.value ) ) >= 0 && !( target && b.names->prototype ( target ) ) ) {
+						if ( !no_casts && passed.kind == op::CONST && b.long_mode && passed.value > 0 && b.db->function_starting ( static_cast < uint64_t > ( passed.value ) ) >= 0 ) {
 
+							callee_unsigned ( target, i );
 							out.put ( L"(" );
-							type_name ( 8, 0, false );
+
+							if ( target && shape_ok && i < shape->count && shape->types [ i ] [ 0 ] )
+								out.put ( shape->types [ i ], syntax::TYPE );
+							else
+								type_name ( 8, 0, false );
+
 							out.put ( L")" );
+							pointer_constant ( static_cast < uint64_t > ( passed.value ) );
+
+							continue;
 
 						}
 
