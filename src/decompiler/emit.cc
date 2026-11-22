@@ -946,6 +946,15 @@ namespace decompiler {
 
 				uint8_t shape = element [ static_cast < size_t > ( index ) ];
 
+				if ( shape == 0x10 ) {
+
+					out.put ( L"char", syntax::TYPE );
+					out.put ( L" *" );
+
+					return;
+
+				}
+
 				if ( ( shape & 0x9F ) == 8 && ( shape & 0x40 ) ) {
 
 					out.put ( L"void", syntax::TYPE );
@@ -1357,6 +1366,150 @@ namespace decompiler {
 
 		}
 
+		int32_t char_var ( int32_t e ) const {
+
+			if ( e < 0 )
+				return -1;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind != op::VAR || node.value < 0 || node.value >= element.count ( ) || element [ static_cast < size_t > ( node.value ) ] != 0x10 )
+				return -1;
+
+			return static_cast < int32_t > ( node.value );
+
+		}
+
+		bool char_load ( const expr& item, int32_t parent ) {
+
+			const expr& where = b.exprs [ static_cast < size_t > ( item.a ) ];
+			wchar_t name [ 64 ];
+			int32_t var = char_var ( item.a );
+			int32_t index = -1;
+			int64_t offset = 0;
+
+			if ( var < 0 && where.kind == op::ADD ) {
+
+				const expr& right = b.exprs [ static_cast < size_t > ( where.b ) ];
+
+				if ( right.kind == op::CONST && !( right.bits & POINTER ) ) {
+
+					offset = right.value;
+					var = char_var ( where.a );
+
+					if ( var < 0 && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::ADD ) {
+
+						const expr& inner = b.exprs [ static_cast < size_t > ( where.a ) ];
+
+						var = char_var ( inner.a );
+						index = inner.b;
+
+					}
+
+				} else {
+
+					var = char_var ( where.a );
+					index = where.b;
+
+				}
+
+			}
+
+			if ( var < 0 )
+				return false;
+
+			var_name ( var, name );
+
+			auto pointer_type = [ & ] ( ) {
+
+				out.put ( L"(" );
+				type_name ( item.size, item.bits, false, true );
+				out.put ( L" *)" );
+
+			};
+
+			if ( index >= 0 ) {
+
+				if ( item.size != 1 ) {
+
+					if ( parent > 14 )
+						out.put ( L"(" );
+
+					out.put ( L"*", syntax::OPERATOR );
+					pointer_type ( );
+					out.put ( L"&", syntax::OPERATOR );
+
+				}
+
+				out.put ( name, syntax::LOCAL );
+				out.put ( L"[" );
+				value ( index, 0 );
+
+				if ( offset ) {
+
+					out.put ( offset < 0 ? L" - " : L" + ", syntax::OPERATOR );
+					number ( offset < 0 ? -offset : offset, 8, !simple_constant ( offset ), false );
+
+				}
+
+				out.put ( L"]" );
+
+				if ( item.size != 1 && parent > 14 )
+					out.put ( L")" );
+
+				return true;
+
+			}
+
+			if ( item.size == 1 ) {
+
+				if ( offset == 0 ) {
+
+					if ( parent > 14 )
+						out.put ( L"(" );
+
+					out.put ( L"*", syntax::OPERATOR );
+					out.put ( name, syntax::LOCAL );
+
+					if ( parent > 14 )
+						out.put ( L")" );
+
+				} else {
+
+					out.put ( name, syntax::LOCAL );
+					out.put ( L"[" );
+					out.put ( base::writer ( ).number ( static_cast < int32_t > ( offset ) ).text ( ), syntax::NUMBER );
+					out.put ( L"]" );
+
+				}
+
+				return true;
+
+			}
+
+			if ( offset != 0 && offset % item.size == 0 ) {
+
+				if ( parent > 14 )
+					out.put ( L"(" );
+
+				out.put ( L"*(", syntax::OPERATOR );
+				pointer_type ( );
+				out.put ( name, syntax::LOCAL );
+				out.put ( L" + ", syntax::OPERATOR );
+				out.put ( base::writer ( ).number ( static_cast < int32_t > ( offset / item.size ) ).text ( ), syntax::NUMBER );
+				out.put ( L")" );
+
+				if ( parent > 14 )
+					out.put ( L")" );
+
+				return true;
+
+			}
+
+			return false;
+
+		}
+
 		void lvalue_or_load ( const expr& item, int32_t parent ) {
 
 			const expr& where = b.exprs [ static_cast < size_t > ( item.a ) ];
@@ -1370,6 +1523,9 @@ namespace decompiler {
 				return;
 
 			}
+
+			if ( !( item.bits & FLOATING ) && char_load ( item, parent ) )
+				return;
 
 			{
 
@@ -5237,13 +5393,19 @@ namespace decompiler {
 	static bool pass_typed = true;
 	static bool callee_shapes = true;
 	static bool element_flavors = true;
+	static bool typed_locals = true;
+	static bool char_locals = true;
 
 	static void flavor_elements ( builder& b, base::list < uint8_t >& element ) {
 
 		int32_t total = b.vars.count ( );
 		base::list < int32_t > source;
+		base::list < uint8_t > mixed;
+		base::list < uint8_t > based;
 
 		source.fill ( static_cast < size_t > ( total ), -1 );
+		mixed.fill ( static_cast < size_t > ( total ), 0 );
+		based.fill ( static_cast < size_t > ( total ), 0 );
 
 		auto owner = [ & ] ( int32_t e ) -> int32_t {
 
@@ -5307,6 +5469,9 @@ namespace decompiler {
 					if ( x >= 0 && x < total && v >= 0 )
 						source [ static_cast < size_t > ( x ) ] = v;
 
+					if ( x >= 0 && x < total && v < 0 )
+						mixed [ static_cast < size_t > ( x ) ] = 1;
+
 				}
 
 			}
@@ -5331,6 +5496,26 @@ namespace decompiler {
 
 				mark ( loaded_from ( node.a ), 0x20 );
 				mark ( loaded_from ( node.b ), 0x20 );
+
+			}
+
+			if ( node.kind == op::LOAD && node.a >= 0 && b.exprs [ static_cast < size_t > ( node.a ) ].kind == op::ADD ) {
+
+				int32_t at = node.a;
+
+				while ( at >= 0 && b.exprs [ static_cast < size_t > ( at ) ].kind == op::ADD )
+					at = b.exprs [ static_cast < size_t > ( at ) ].a;
+
+				if ( at >= 0 && b.exprs [ static_cast < size_t > ( at ) ].kind == op::VAR ) {
+
+					int64_t x = b.exprs [ static_cast < size_t > ( at ) ].value;
+					const expr& sum = b.exprs [ static_cast < size_t > ( node.a ) ];
+					bool variable_index = sum.b >= 0 && b.exprs [ static_cast < size_t > ( sum.b ) ].kind != op::CONST;
+
+					if ( x >= 0 && x < total && ( variable_index || b.exprs [ static_cast < size_t > ( sum.a ) ].kind == op::ADD ) )
+						based [ static_cast < size_t > ( x ) ] = 1;
+
+				}
 
 			}
 
@@ -5387,6 +5572,22 @@ namespace decompiler {
 
 		}
 
+		if ( !char_locals )
+			return;
+
+		for ( int32_t x = 0; x < total; x++ ) {
+
+			const variable& item = b.vars [ static_cast < size_t > ( x ) ];
+			int32_t from = source [ static_cast < size_t > ( x ) ];
+
+			if ( item.kind != var_kind::REGISTER || item.size != 8 || item.flags || ( item.bits & FLOATING ) || mixed [ static_cast < size_t > ( x ) ] || !based [ static_cast < size_t > ( x ) ] || from < 0 || element [ static_cast < size_t > ( x ) ] )
+				continue;
+
+			if ( ( element [ static_cast < size_t > ( from ) ] & 0x40 ) && ( x >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( x ) ].empty ( ) ) )
+				element [ static_cast < size_t > ( x ) ] = 0x10;
+
+		}
+
 	}
 
 	static void typed_pointers ( builder& b, base::list < uint8_t >& element ) {
@@ -5402,7 +5603,7 @@ namespace decompiler {
 
 			const variable& item = b.vars [ static_cast < size_t > ( v ) ];
 
-			if ( item.kind != var_kind::PARAMETER || item.size != 8 || ( item.bits & FLOATING ) || ( v < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( v ) ].empty ( ) ) )
+			if ( ( item.kind != var_kind::PARAMETER && !( typed_locals && item.kind == var_kind::REGISTER && !item.flags && !item.cookie ) ) || item.size != 8 || ( item.bits & FLOATING ) || ( v < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( v ) ].empty ( ) ) )
 				bad [ static_cast < size_t > ( v ) ] = 1;
 
 		}
@@ -5553,7 +5754,12 @@ namespace decompiler {
 				if ( item.kind == stmt::NOP || item.kind == stmt::ASM )
 					continue;
 
-				walk ( walk, item.left, 0 );
+				if ( !( typed_locals && item.kind == stmt::ASSIGN && var_of ( item.left ) >= 0 ) )
+					walk ( walk, item.left, 0 );
+
+				if ( typed_locals && item.kind == stmt::ASSIGN && var_of ( item.left ) >= 0 && var_of ( item.right ) >= 0 && b.vars [ static_cast < size_t > ( var_of ( item.left ) ) ].kind != var_kind::PARAMETER )
+					continue;
+
 				walk ( walk, item.right, 0 );
 
 			}
@@ -5570,6 +5776,49 @@ namespace decompiler {
 
 			if ( bad [ static_cast < size_t > ( v ) ] || !direct [ static_cast < size_t > ( v ) ] )
 				element [ static_cast < size_t > ( v ) ] = 0;
+
+		}
+
+		if ( typed_locals ) {
+
+			base::list < uint8_t > copied;
+
+			copied.fill ( static_cast < size_t > ( total ), 0 );
+
+			for ( const block_code& block : b.code ) {
+
+				if ( !block.reachable )
+					continue;
+
+				for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+					const statement& item = b.statements [ static_cast < size_t > ( s ) ];
+					int32_t v = item.kind == stmt::ASSIGN ? var_of ( item.left ) : -1;
+
+					if ( v < 0 || v >= total || b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER )
+						continue;
+
+					int32_t from = var_of ( item.right );
+
+					if ( from < 0 || from >= total || b.vars [ static_cast < size_t > ( from ) ].kind != var_kind::PARAMETER || !element [ static_cast < size_t > ( from ) ] || ( copied [ static_cast < size_t > ( v ) ] && copied [ static_cast < size_t > ( v ) ] != element [ static_cast < size_t > ( from ) ] ) )
+						copied [ static_cast < size_t > ( v ) ] = 0xFF;
+					else if ( !copied [ static_cast < size_t > ( v ) ] )
+						copied [ static_cast < size_t > ( v ) ] = element [ static_cast < size_t > ( from ) ];
+
+				}
+
+			}
+
+			for ( int32_t v = 0; v < total; v++ ) {
+
+				if ( b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER || !element [ static_cast < size_t > ( v ) ] )
+					continue;
+
+				uint8_t from = copied [ static_cast < size_t > ( v ) ];
+
+				element [ static_cast < size_t > ( v ) ] = from != 0xFF && ( from & 0x9F ) == ( element [ static_cast < size_t > ( v ) ] & 0x9F ) ? from : 0;
+
+			}
 
 		}
 
