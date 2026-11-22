@@ -2014,7 +2014,12 @@ namespace decompiler {
 
 					if ( item.kind == op::MUL && right.kind == op::CONST && !( right.bits & POINTER ) && !( item.bits & FLOATING ) ) {
 
+						bool held = operand;
+						bool widened = item.size == 8 && item.a >= 0 && b.exprs [ static_cast < size_t > ( item.a ) ].size < 8;
+
+						operand = !widened && held;
 						number ( right.value, item.size == 8 ? 8 : right.size, !simple_constant ( right.value ), false );
+						operand = held;
 						out.put ( symbol, syntax::OPERATOR );
 						value ( item.a, mine + 1, bitwise );
 
@@ -2060,7 +2065,7 @@ namespace decompiler {
 						if ( float_compare && right.value == 0 )
 							real ( 0, right.size );
 						else
-							number ( right.value, right.size, !simple_constant ( right.value ), unsigned_compare );
+							number ( right.value, right.size, !simple_constant ( right.value ) || ( unsigned_compare && right.value > 9 ), unsigned_compare );
 
 					} else
 						value ( item.b, mine + 1, bitwise );
