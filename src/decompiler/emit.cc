@@ -2015,6 +2015,21 @@ namespace decompiler {
 
 					}
 
+					if ( item.kind == op::ADD && right.kind == op::CONST && !( right.bits & POINTER ) && right.value > 0 && item.size == 8 && !( item.bits & FLOATING ) && item.a >= 0 && b.exprs [ static_cast < size_t > ( item.a ) ].kind == op::LOAD && b.exprs [ static_cast < size_t > ( item.a ) ].size == 8 && !( b.exprs [ static_cast < size_t > ( item.a ) ].bits & FLOATING ) ) {
+
+						value ( item.a, mine, bitwise );
+						out.put ( symbol, syntax::OPERATOR );
+
+						bool held = operand;
+
+						operand = false;
+						number ( right.value, 8, !simple_constant ( right.value ), false );
+						operand = held;
+
+						break;
+
+					}
+
 					bool compare = item.kind >= op::EQ && item.kind <= op::GE;
 					bool unsigned_compare = compare && ( item.bits & UNSIGNED ) && item.kind != op::EQ && item.kind != op::NE;
 					bool float_compare = compare && ( item.bits & FLOATING );
@@ -2548,7 +2563,7 @@ namespace decompiler {
 						extended_load ( right, 2, UNSIGNED );
 					else if ( right.kind == op::CAST && right.a >= 0 && right.size == left.size && !( right.bits & ( FLOATING | POINTER ) ) && b.exprs [ static_cast < size_t > ( right.a ) ].size > right.size && !( b.exprs [ static_cast < size_t > ( right.a ) ].bits & FLOATING ) && b.exprs [ static_cast < size_t > ( right.a ) ].kind == op::VAR )
 						value ( right.a, 2 );
-					else if ( right.kind == op::CONST && !( right.bits & POINTER ) && ( left.size == 8 || ( left.size == 16 && right.value == 0 ) ) && b.long_mode && !float_target ( item.left ) && !( left.kind == op::VAR && left.value == result_var && b.result_width ) ) {
+					else if ( right.kind == op::CONST && !( right.bits & POINTER ) && ( left.size == 8 || left.size == 16 ) && b.long_mode && !float_target ( item.left ) && !( left.kind == op::VAR && left.value == result_var && b.result_width ) ) {
 
 						int64_t shown_value = right.size == 4 && right.value < 0 && left.kind == op::VAR ? static_cast < int64_t > ( static_cast < uint32_t > ( right.value ) ) : right.value;
 

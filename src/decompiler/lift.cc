@@ -3466,6 +3466,16 @@ namespace decompiler {
 			if ( index < 0 || ins.count < 2 || ins.operands [ 0 ].type != x86::kind::REG )
 				return false;
 
+			bool all_ones = ( ins.name == mnemonic::pcmpeqb || ins.name == mnemonic::pcmpeqw || ins.name == mnemonic::pcmpeqd || ins.name == mnemonic::pcmpeqq ) && ins.operands [ 1 ].type == x86::kind::REG && ins.operands [ 1 ].reg == ins.operands [ 0 ].reg;
+
+			if ( all_ones ) {
+
+				write ( ins, 0, k.constant ( -1, 16 ) );
+
+				return true;
+
+			}
+
 			const packed_form& item = packed_forms [ index ];
 			uint8_t bits = item.floating ? FLOATING : 0;
 			int32_t id = packed_base + index * 2;
