@@ -1036,6 +1036,33 @@ namespace decompiler {
 
 		}
 
+		bool no_return ( const expr& call ) {
+
+			wchar_t name [ 200 ];
+
+			if ( call.kind != op::CALL || !call.value || !b.names->name ( static_cast < uint64_t > ( call.value ), true, name, 200 ) )
+				return false;
+
+			short_symbol ( name );
+
+			const wchar_t* text = name;
+
+			while ( *text == L'_' )
+				text++;
+
+			static const wchar_t* const known [ ] = { L"terminate", L"abort", L"exit", L"ExitProcess", L"ExitThread", L"FatalExit", L"FatalAppExitW", L"FatalAppExitA", L"RaiseFailFastException", L"invalid_parameter_noinfo_noreturn", L"report_gsfailure", L"raise_securityfailure", L"CxxThrowException", L"amsg_exit", L"invoke_watson" };
+
+			for ( const wchar_t* item : known ) {
+
+				if ( base::same_text ( text, item ) )
+					return true;
+
+			}
+
+			return false;
+
+		}
+
 		bool callee_wide ( uint64_t target, int32_t index ) {
 
 			callee_unsigned ( target, index );
@@ -2530,6 +2557,18 @@ namespace decompiler {
 					value ( item.right, 0 );
 					call_unused = false;
 					semicolon ( );
+
+					if ( item.right >= 0 && no_return ( b.exprs [ static_cast < size_t > ( item.right ) ] ) ) {
+
+						if ( !inline_mode )
+							out.finish ( );
+
+						ended = true;
+
+						return;
+
+					}
+
 					break;
 
 				case stmt::ASM:
