@@ -471,6 +471,7 @@ namespace decompiler {
 		base::list < uint8_t > element;
 		bool inline_returns = true;
 		bool call_unused = false;
+		bool fall_returns = true;
 		bool step_needs_init = false;
 		bool by_address = true;
 		bool indexing = true;
@@ -2799,13 +2800,35 @@ namespace decompiler {
 
 		void go_to ( int32_t block, uint64_t address ) {
 
+			if ( inline_return ( block, address ) )
+				return;
+
+			wanted_label [ static_cast < size_t > ( block ) ] = 1;
+			gotos++;
+			ended = true;
+
+			if ( dry )
+				return;
+
+			out.begin ( address );
+			out.put ( L"goto", syntax::CONTROL );
+			out.put ( L" " );
+			out.put ( base::writer ( ).add ( L"LABEL_" ).number ( block + 1 ).text ( ), syntax::LABEL );
+			out.put ( L";" );
+			out.finish ( );
+			out.terminal = true;
+
+		}
+
+		bool inline_return ( int32_t block, uint64_t address ) {
+
 			const block_code& target = b.code [ static_cast < size_t > ( block ) ];
 
 			if ( inline_returns && target.end == term::RETURN && empty_block ( block ) && ( target.returned < 0 || b.exprs [ static_cast < size_t > ( target.returned ) ].kind == op::CONST || b.exprs [ static_cast < size_t > ( target.returned ) ].kind == op::VAR ) ) {
 
 				return_line ( target );
 
-				return;
+				return true;
 
 			}
 
@@ -2843,7 +2866,7 @@ namespace decompiler {
 							ended = true;
 
 							if ( dry )
-								return;
+								return true;
 
 							out.begin ( address );
 							out.put ( L"return", syntax::CONTROL );
@@ -2858,7 +2881,7 @@ namespace decompiler {
 							out.finish ( );
 							out.terminal = true;
 
-							return;
+							return true;
 
 						}
 
@@ -2868,20 +2891,7 @@ namespace decompiler {
 
 			}
 
-			wanted_label [ static_cast < size_t > ( block ) ] = 1;
-			gotos++;
-			ended = true;
-
-			if ( dry )
-				return;
-
-			out.begin ( address );
-			out.put ( L"goto", syntax::CONTROL );
-			out.put ( L" " );
-			out.put ( base::writer ( ).add ( L"LABEL_" ).number ( block + 1 ).text ( ), syntax::LABEL );
-			out.put ( L";" );
-			out.finish ( );
-			out.terminal = true;
+			return false;
 
 		}
 
@@ -3209,6 +3219,8 @@ namespace decompiler {
 					case term::FALL:
 
 						if ( special ( item.taken, stop, context, item.last ) )
+							block = -1;
+						else if ( fall_returns && item.taken >= 0 && item.taken != stop && pred [ static_cast < size_t > ( item.taken ) ].count ( ) > 1 && b.code [ static_cast < size_t > ( item.taken ) ].end != term::RETURN && inline_return ( item.taken, item.last ) )
 							block = -1;
 						else
 							block = item.taken;
