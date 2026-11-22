@@ -1504,7 +1504,13 @@ namespace decompiler {
 
 				case op::GLOBAL:
 
-					if ( b.names->name ( static_cast < uint64_t > ( item.value ), false, name, 200 ) )
+					if ( b.file->section_at ( static_cast < uint64_t > ( item.value ) ) <= 0 && static_cast < uint64_t > ( item.value ) >= b.file->base ) {
+
+						out.put ( L"MEMORY[" );
+						out.put ( base::writer ( ).add ( L"0x" ).hex ( static_cast < uint64_t > ( item.value ) ).text ( ), syntax::NUMBER );
+						out.put ( L"]" );
+
+					} else if ( b.names->name ( static_cast < uint64_t > ( item.value ), false, name, 200 ) )
 						out.put ( name, syntax::GLOBAL, static_cast < uint64_t > ( item.value ) );
 					else
 						number ( item.value, 8, true, false );
