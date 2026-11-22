@@ -414,7 +414,7 @@ namespace decompiler {
 	}
 
 	static bool flow_casts = true;
-	static bool ghost_numbers = false;
+	static bool ghost_numbers = true;
 	static bool exits_inline = true;
 	static bool frame_deepest = true;
 	static bool implicit_narrow = true;

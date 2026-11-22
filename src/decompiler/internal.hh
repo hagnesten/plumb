@@ -274,6 +274,8 @@ namespace decompiler {
 
 		void fold_constants ( );
 
+		void inline_temps ( );
+
 		base::list < base::text > call_names;
 
 		bool lift ( );

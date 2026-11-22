@@ -76,6 +76,247 @@ namespace decompiler {
 
 	}
 
+	static bool ghost_folds = false;
+	static bool copy_fixed = true;
+	static bool copy_into = true;
+	static bool calls_forward = true;
+
+	static bool has_call ( const builder& b, int32_t e, int32_t depth ) {
+
+		if ( e < 0 || depth > 64 )
+			return false;
+
+		const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+		if ( node.kind == op::CALL || node.kind == op::SET )
+			return true;
+
+		if ( has_call ( b, node.a, depth + 1 ) || has_call ( b, node.b, depth + 1 ) || has_call ( b, node.c, depth + 1 ) )
+			return true;
+
+		for ( int32_t i = 0; i < node.arg_count; i++ ) {
+
+			if ( has_call ( b, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 ) )
+				return true;
+
+		}
+
+		return false;
+
+	}
+
+	void builder::inline_temps ( ) {
+
+		int32_t total = vars.count ( );
+
+		for ( int32_t round = 0; round < 4; round++ ) {
+
+			base::list < int32_t > defs;
+			base::list < int32_t > uses;
+			base::list < int32_t > single;
+			bool changed = false;
+
+			defs.fill ( static_cast < size_t > ( total ), 0 );
+			uses.fill ( static_cast < size_t > ( total ), 0 );
+			single.fill ( static_cast < size_t > ( total ), -1 );
+
+			for ( int32_t s = 0; s < statements.count ( ); s++ ) {
+
+				const statement& line = statements [ static_cast < size_t > ( s ) ];
+
+				if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+					continue;
+
+				bool defines = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+
+				if ( defines ) {
+
+					int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+					if ( v >= 0 && v < total ) {
+
+						defs [ static_cast < size_t > ( v ) ]++;
+						single [ static_cast < size_t > ( v ) ] = s;
+
+					}
+
+				} else
+					count_vars ( *this, line.left, uses, 0 );
+
+				count_vars ( *this, line.right, uses, 0 );
+
+			}
+
+			base::list < int32_t > returned;
+
+			returned.fill ( static_cast < size_t > ( total ), 0 );
+
+			for ( const block_code& block : code ) {
+
+				count_vars ( *this, block.condition, uses, 0 );
+				count_vars ( *this, block.selector, uses, 0 );
+				count_vars ( *this, block.returned, uses, 0 );
+				count_vars ( *this, block.returned, returned, 0 );
+
+			}
+
+			auto plain = [ & ] ( int64_t v ) {
+
+				if ( v < 0 || v >= total )
+					return false;
+
+				const variable& item = vars [ static_cast < size_t > ( v ) ];
+
+				return item.kind == var_kind::REGISTER && !item.flags && !item.cookie && !item.saved && uses [ static_cast < size_t > ( v ) ] < 100;
+
+			};
+
+			auto fixed = [ & ] ( int64_t v ) {
+
+				if ( v < 0 || v >= total || uses [ static_cast < size_t > ( v ) ] >= 100 )
+					return false;
+
+				const variable& item = vars [ static_cast < size_t > ( v ) ];
+
+				if ( item.kind == var_kind::PARAMETER )
+					return defs [ static_cast < size_t > ( v ) ] == 0;
+
+				return item.kind == var_kind::REGISTER && !item.flags && defs [ static_cast < size_t > ( v ) ] == 1;
+
+			};
+
+			for ( int32_t v = 0; v < total && copy_fixed; v++ ) {
+
+				if ( !plain ( v ) || defs [ static_cast < size_t > ( v ) ] != 1 || single [ static_cast < size_t > ( v ) ] < 0 || returned [ static_cast < size_t > ( v ) ] )
+					continue;
+
+				statement& line = statements [ static_cast < size_t > ( single [ static_cast < size_t > ( v ) ] ) ];
+				const expr source = exprs [ static_cast < size_t > ( line.right ) ];
+
+				if ( source.kind != op::VAR || source.value == v || !fixed ( source.value ) || source.size != exprs [ static_cast < size_t > ( line.left ) ].size || vars [ static_cast < size_t > ( source.value ) ].size != vars [ static_cast < size_t > ( v ) ].size || ( ( vars [ static_cast < size_t > ( source.value ) ].bits ^ vars [ static_cast < size_t > ( v ) ].bits ) & FLOATING ) )
+					continue;
+
+				int32_t value = line.right;
+
+				line.kind = stmt::NOP;
+				vars [ static_cast < size_t > ( v ) ].ghost = true;
+				vars [ static_cast < size_t > ( v ) ].born = line.address;
+
+				for ( statement& other : statements ) {
+
+					if ( other.kind == stmt::NOP || other.kind == stmt::ASM )
+						continue;
+
+					bool defines = other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR;
+
+					if ( !defines )
+						other.left = substitute ( *this, other.left, v, value, 0 );
+
+					other.right = substitute ( *this, other.right, v, value, 0 );
+
+				}
+
+				for ( block_code& block : code ) {
+
+					block.condition = substitute ( *this, block.condition, v, value, 0 );
+					block.selector = substitute ( *this, block.selector, v, value, 0 );
+					block.returned = substitute ( *this, block.returned, v, value, 0 );
+
+				}
+
+				changed = true;
+
+			}
+
+			for ( const block_code& block : code ) {
+
+				if ( !block.reachable )
+					continue;
+
+				int32_t previous = -1;
+
+				for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ ) {
+
+					statement& line = statements [ static_cast < size_t > ( s ) ];
+
+					if ( line.kind == stmt::NOP )
+						continue;
+
+					if ( previous >= 0 ) {
+
+						statement& head = statements [ static_cast < size_t > ( previous ) ];
+						int64_t x = exprs [ static_cast < size_t > ( head.left ) ].value;
+						const expr& feed = exprs [ static_cast < size_t > ( head.right ) ];
+
+						if ( copy_into && line.kind == stmt::ASSIGN && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.right ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.right ) ].value == x && exprs [ static_cast < size_t > ( line.right ) ].size == exprs [ static_cast < size_t > ( head.left ) ].size && exprs [ static_cast < size_t > ( line.left ) ].size == exprs [ static_cast < size_t > ( head.left ) ].size && plain ( exprs [ static_cast < size_t > ( line.left ) ].value ) && !( ( vars [ static_cast < size_t > ( exprs [ static_cast < size_t > ( line.left ) ].value ) ].bits ^ vars [ static_cast < size_t > ( x ) ].bits ) & FLOATING ) ) {
+
+							vars [ static_cast < size_t > ( x ) ].ghost = true;
+							vars [ static_cast < size_t > ( x ) ].born = head.address;
+							head.left = line.left;
+							line.kind = stmt::NOP;
+							uses [ static_cast < size_t > ( x ) ] = 0;
+							changed = true;
+							previous = -1;
+
+							continue;
+
+						}
+
+						if ( calls_forward && feed.kind == op::CALL && line.kind != stmt::ASM && !has_call ( *this, line.right, 0 ) && !has_call ( *this, line.left, 0 ) ) {
+
+							base::list < int32_t > here;
+
+							here.fill ( static_cast < size_t > ( total ), 0 );
+							count_vars ( *this, line.right, here, 0 );
+
+							if ( !( line.kind == stmt::ASSIGN && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR ) )
+								count_vars ( *this, line.left, here, 0 );
+
+							if ( here [ static_cast < size_t > ( x ) ] == 1 ) {
+
+								int32_t value = head.right;
+
+								line.right = substitute ( *this, line.right, x, value, 0 );
+
+								if ( !( line.kind == stmt::ASSIGN && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR ) )
+									line.left = substitute ( *this, line.left, x, value, 0 );
+
+								head.kind = stmt::NOP;
+								vars [ static_cast < size_t > ( x ) ].ghost = true;
+								vars [ static_cast < size_t > ( x ) ].born = head.address;
+								changed = true;
+								previous = -1;
+
+								continue;
+
+							}
+
+						}
+
+					}
+
+					previous = -1;
+
+					if ( line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR ) {
+
+						int64_t x = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+						if ( plain ( x ) && defs [ static_cast < size_t > ( x ) ] == 1 && uses [ static_cast < size_t > ( x ) ] == 1 )
+							previous = s;
+
+					}
+
+				}
+
+			}
+
+			if ( !changed )
+				break;
+
+		}
+
+	}
+
 	static bool fold_pointers = true;
 
 	void builder::fold_constants ( ) {
@@ -229,7 +470,7 @@ namespace decompiler {
 			}
 
 			line.kind = stmt::NOP;
-			vars [ static_cast < size_t > ( v ) ].ghost = true;
+			vars [ static_cast < size_t > ( v ) ].ghost = ghost_folds;
 			vars [ static_cast < size_t > ( v ) ].born = line.address;
 
 		}
