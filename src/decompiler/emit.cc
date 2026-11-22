@@ -1749,6 +1749,11 @@ namespace decompiler {
 							out.put ( L"(unsigned int)" );
 							value ( argument, 14 );
 
+						} else if ( b.long_mode && !no_casts && target && passed.kind == op::VAR && passed.value >= 0 && passed.value < element.count ( ) && element [ static_cast < size_t > ( passed.value ) ] && ( callee_unsigned ( target, i ), !shape_ok ) ) {
+
+							out.put ( L"(__int64)" );
+							value ( argument, 14 );
+
 						} else
 							value ( argument, 2 );
 
@@ -4932,6 +4937,29 @@ namespace decompiler {
 
 			if ( ( node.kind == op::EQ || node.kind == op::NE ) && var_of ( node.a ) >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( node.b ) ].value == 0 )
 				return;
+
+			if ( node.kind == op::CALL && node.value && !b.names->prototype ( static_cast < uint64_t > ( node.value ) ) ) {
+
+				wchar_t callee [ 200 ];
+
+				if ( !( b.names->name ( static_cast < uint64_t > ( node.value ), true, callee, 200 ) && api_prototype ( callee ) ) ) {
+
+					self ( self, node.a, depth + 1 );
+
+					for ( int32_t i = 0; i < node.arg_count; i++ ) {
+
+						int32_t passed = b.args [ static_cast < size_t > ( node.first_arg + i ) ];
+
+						if ( var_of ( passed ) < 0 )
+							self ( self, passed, depth + 1 );
+
+					}
+
+					return;
+
+				}
+
+			}
 
 			self ( self, node.a, depth + 1 );
 			self ( self, node.b, depth + 1 );
