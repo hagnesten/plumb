@@ -1640,6 +1640,61 @@ namespace analysis {
 
 			}
 
+			for ( int32_t i = 0; i + 1 < functions.count ( ); i++ ) {
+
+				function_info& host = functions [ static_cast < size_t > ( i ) ];
+				const function_info& piece = functions [ static_cast < size_t > ( i + 1 ) ];
+
+				if ( piece.flags != FROM_JUMP || piece.start < host.end || piece.start - host.end > 32 )
+					continue;
+
+				uint64_t gap = host.end;
+				bool padding = true;
+
+				while ( gap < piece.start && padding ) {
+
+					x86::instruction filler;
+
+					if ( decode ( gap, filler ) && filler.valid ( ) && ( filler.name == x86::mnemonic::nop || filler.name == x86::mnemonic::int3 ) )
+						gap = filler.next ( );
+					else
+						padding = false;
+
+				}
+
+				if ( !padding || gap != piece.start )
+					continue;
+
+				bool reached = false;
+
+				for ( uint64_t scan = host.start; scan < host.end && !reached; ) {
+
+					x86::instruction step;
+
+					if ( !is_start ( scan ) || !decode ( scan, step ) || !step.valid ( ) ) {
+
+						scan++;
+
+						continue;
+
+					}
+
+					if ( ( step.control == x86::flow::JUMP || step.control == x86::flow::BRANCH ) && step.direct ( ) && step.target ( ) >= piece.start && step.target ( ) < piece.end )
+						reached = true;
+
+					scan = step.next ( );
+
+				}
+
+				if ( !reached )
+					continue;
+
+				host.end = piece.end;
+				functions.remove_at ( static_cast < size_t > ( i + 1 ) );
+				i--;
+
+			}
+
 		}
 
 		for ( const loader::symbol& item : source.functions ) {
