@@ -483,6 +483,9 @@ namespace decompiler {
 
 			size_t v = static_cast < size_t > ( node.value );
 
+			if ( width <= 0 && node.size < vars [ v ].size && node.size <= 4 )
+				width = node.size;
+
 			if ( width <= 0 || width > 4 )
 				blocked [ v ] = 1;
 			else
@@ -562,6 +565,9 @@ namespace decompiler {
 					const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
 					uint8_t size = source.kind == op::CALL || source.kind == op::CONST ? 1 : source.size;
 
+					if ( source.kind == op::CAST && source.a >= 0 && exprs [ static_cast < size_t > ( source.a ) ].size < source.size && !( source.bits & ( FLOATING | POINTER ) ) && !( exprs [ static_cast < size_t > ( source.a ) ].bits & FLOATING ) )
+						size = exprs [ static_cast < size_t > ( source.a ) ].size;
+
 					defined [ static_cast < size_t > ( v ) ] = 1;
 
 					if ( source.kind == op::CONST && ( source.value > 0x7FFFFFFFll || source.value < -0x80000000ll ) )
@@ -585,7 +591,8 @@ namespace decompiler {
 
 			note_use ( block.condition, 0 );
 			note_use ( block.selector, 0 );
-			note_use ( block.returned, returns_value && !returns_float && return_size && return_size <= 4 ? return_size : 0 );
+			if ( block.reachable )
+				note_use ( block.returned, returns_value && !returns_float && return_size && return_size <= 4 ? return_size : 0 );
 
 		}
 
@@ -634,6 +641,23 @@ namespace decompiler {
 
 			if ( bits & ( SIGNED | UNSIGNED ) )
 				node.bits = static_cast < uint8_t > ( ( node.bits & ~( SIGNED | UNSIGNED ) ) | ( bits & ( SIGNED | UNSIGNED ) ) );
+
+		}
+
+		for ( statement& line : statements ) {
+
+			if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 )
+				continue;
+
+			const expr& left = exprs [ static_cast < size_t > ( line.left ) ];
+
+			if ( left.kind != op::VAR || left.value < 0 || left.value >= total || !chosen [ static_cast < size_t > ( left.value ) ] )
+				continue;
+
+			const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
+
+			if ( source.kind == op::CAST && source.a >= 0 && exprs [ static_cast < size_t > ( source.a ) ].size == left.size && !( source.bits & ( FLOATING | POINTER ) ) )
+				line.right = source.a;
 
 		}
 

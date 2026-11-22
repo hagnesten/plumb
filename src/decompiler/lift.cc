@@ -1676,8 +1676,10 @@ namespace decompiler {
 
 			if ( flag_kind ) {
 
-				flag_a = b->replace ( flag_a, source, replacement );
-				flag_b = b->replace ( flag_b, source, replacement );
+				int32_t sized = value.size < b->vars [ static_cast < size_t > ( var ) ].size && value.kind != op::CONST ? b->var_expr ( var, value.size ) : replacement;
+
+				flag_a = b->replace ( flag_a, source, sized );
+				flag_b = b->replace ( flag_b, source, sized );
 
 			}
 
@@ -1690,11 +1692,13 @@ namespace decompiler {
 
 			if ( value.kind != op::CONST && value.kind != op::VAR ) {
 
+				int32_t sized = value.size < b->vars [ static_cast < size_t > ( var ) ].size ? b->var_expr ( var, value.size ) : replacement;
+
 				if ( guard_a >= 0 )
-					guard_a = b->replace ( guard_a, source, replacement );
+					guard_a = b->replace ( guard_a, source, sized );
 
 				if ( guard_b >= 0 )
-					guard_b = b->replace ( guard_b, source, replacement );
+					guard_b = b->replace ( guard_b, source, sized );
 
 			}
 
@@ -1913,11 +1917,17 @@ namespace decompiler {
 			int32_t a = flag_a;
 			int32_t z = k.constant ( 0, size );
 
+			if ( size < 8 && k.exprs [ static_cast < size_t > ( a ) ].size > size && k.exprs [ static_cast < size_t > ( a ) ].size <= 8 && !( k.exprs [ static_cast < size_t > ( a ) ].bits & FLOATING ) )
+				a = k.make ( op::CAST, size, a, -1, 0, 0 );
+
 			switch ( flag_kind ) {
 
 				case 1: {
 
 					int32_t c = flag_b;
+
+					if ( c >= 0 && size < 8 && k.exprs [ static_cast < size_t > ( c ) ].size > size && k.exprs [ static_cast < size_t > ( c ) ].size <= 8 && !( k.exprs [ static_cast < size_t > ( c ) ].bits & FLOATING ) )
+						c = k.make ( op::CAST, size, c, -1, 0, 0 );
 
 					switch ( code ) {
 
