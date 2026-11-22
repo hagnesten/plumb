@@ -76,6 +76,8 @@ namespace decompiler {
 
 	}
 
+	static bool fold_pointers = true;
+
 	void builder::fold_constants ( ) {
 
 		int32_t total = vars.count ( );
@@ -137,8 +139,70 @@ namespace decompiler {
 			statement& line = statements [ static_cast < size_t > ( single [ static_cast < size_t > ( v ) ] ) ];
 			const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
 
-			if ( source.kind != op::CONST || ( source.bits & ( POINTER | FLOATING ) ) )
+			if ( source.kind != op::CONST || ( source.bits & FLOATING ) || ( ( source.bits & POINTER ) && !fold_pointers ) )
 				continue;
+
+			if ( source.bits & POINTER ) {
+
+				bool arithmetic = false;
+
+				auto scan = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+					if ( e < 0 || depth > 64 || arithmetic )
+						return;
+
+					const expr& node = exprs [ static_cast < size_t > ( e ) ];
+
+					if ( node.kind == op::LOAD && node.a >= 0 && exprs [ static_cast < size_t > ( node.a ) ].kind == op::ADD && exprs [ static_cast < size_t > ( node.a ) ].a >= 0 && exprs [ static_cast < size_t > ( node.a ) ].b >= 0 ) {
+
+						const expr& sum = exprs [ static_cast < size_t > ( node.a ) ];
+						const int32_t sides [ 2 ] = { sum.a, sum.b };
+
+						for ( int32_t k = 0; k < 2; k++ ) {
+
+							int32_t inner = sides [ k ];
+							int32_t other = sides [ 1 - k ];
+
+							while ( inner >= 0 && exprs [ static_cast < size_t > ( inner ) ].kind == op::CAST )
+								inner = exprs [ static_cast < size_t > ( inner ) ].a;
+
+							if ( inner >= 0 && exprs [ static_cast < size_t > ( inner ) ].kind == op::VAR && exprs [ static_cast < size_t > ( inner ) ].value == v && exprs [ static_cast < size_t > ( other ) ].kind != op::CONST )
+								arithmetic = true;
+
+						}
+
+					}
+
+					self ( self, node.a, depth + 1 );
+					self ( self, node.b, depth + 1 );
+					self ( self, node.c, depth + 1 );
+
+					for ( int32_t i = 0; i < node.arg_count; i++ )
+						self ( self, args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+				};
+
+				for ( const statement& other : statements ) {
+
+					if ( other.kind == stmt::NOP || other.kind == stmt::ASM )
+						continue;
+
+					scan ( scan, other.left, 0 );
+					scan ( scan, other.right, 0 );
+
+				}
+
+				for ( const block_code& block : code ) {
+
+					scan ( scan, block.condition, 0 );
+					scan ( scan, block.returned, 0 );
+
+				}
+
+				if ( arithmetic )
+					continue;
+
+			}
 
 			int32_t value = line.right;
 
