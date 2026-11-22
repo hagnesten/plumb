@@ -2809,6 +2809,65 @@ namespace decompiler {
 
 			}
 
+			const block_code* ending = &target;
+
+			if ( target.end == term::FALL && target.taken >= 0 && b.code [ static_cast < size_t > ( target.taken ) ].end == term::RETURN && empty_block ( target.taken ) )
+				ending = &b.code [ static_cast < size_t > ( target.taken ) ];
+
+			if ( inline_returns && ending->end == term::RETURN && ending->returned >= 0 && b.returns_value && b.exprs [ static_cast < size_t > ( ending->returned ) ].kind == op::VAR ) {
+
+				int32_t only = -1;
+				int32_t live = 0;
+
+				for ( int32_t s = target.first; s < target.first + target.count; s++ ) {
+
+					if ( b.statements [ static_cast < size_t > ( s ) ].kind != stmt::NOP ) {
+
+						only = s;
+						live++;
+
+					}
+
+				}
+
+				if ( live == 1 ) {
+
+					const statement& line = b.statements [ static_cast < size_t > ( only ) ];
+
+					if ( line.kind == stmt::ASSIGN && line.left >= 0 && line.right >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( line.left ) ].value == b.exprs [ static_cast < size_t > ( ending->returned ) ].value ) {
+
+						const expr& source = b.exprs [ static_cast < size_t > ( line.right ) ];
+
+						if ( source.kind == op::VAR || source.kind == op::CONST ) {
+
+							ended = true;
+
+							if ( dry )
+								return;
+
+							out.begin ( address );
+							out.put ( L"return", syntax::CONTROL );
+							out.put ( L" " );
+
+							if ( source.kind == op::CONST && b.long_mode && !b.result_width )
+								number ( source.value, 8, !simple_constant ( source.value ), false );
+							else
+								value ( line.right, 0 );
+
+							out.put ( L";" );
+							out.finish ( );
+							out.terminal = true;
+
+							return;
+
+						}
+
+					}
+
+				}
+
+			}
+
 			wanted_label [ static_cast < size_t > ( block ) ] = 1;
 			gotos++;
 			ended = true;
@@ -5107,6 +5166,8 @@ namespace decompiler {
 
 	}
 
+	static bool pass_typed = true;
+
 	static void typed_pointers ( builder& b, base::list < uint8_t >& element ) {
 
 		int32_t total = b.vars.count ( );
@@ -5209,7 +5270,7 @@ namespace decompiler {
 			if ( ( node.kind == op::EQ || node.kind == op::NE ) && var_of ( node.a ) >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( node.b ) ].value == 0 )
 				return;
 
-			if ( node.kind == op::CALL && node.value && !b.names->prototype ( static_cast < uint64_t > ( node.value ) ) ) {
+			if ( pass_typed && node.kind == op::CALL && node.value && !b.names->prototype ( static_cast < uint64_t > ( node.value ) ) ) {
 
 				wchar_t callee [ 200 ];
 
