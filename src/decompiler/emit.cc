@@ -2049,11 +2049,18 @@ namespace decompiler {
 					bool lhs_unsigned = lhs.kind == op::LOAD || ( lhs.bits & UNSIGNED ) || ( lhs.kind == op::VAR && lhs.value >= 0 && lhs.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( lhs.value ) ].bits & UNSIGNED ) ) || lhs.kind == op::CAST;
 					bool cast_lhs = unsigned_compare && !lhs_unsigned && !no_casts && right.kind == op::CONST && lhs.size <= 8;
 
+					bool signed_compare = compare && ( item.bits & SIGNED ) && item.kind != op::EQ && item.kind != op::NE && !( item.bits & FLOATING );
+
 					if ( cast_lhs ) {
 
 						out.put ( lhs.size == 1 ? L"(unsigned __int8)" : ( lhs.size == 2 ? L"(unsigned __int16)" : ( lhs.size == 4 ? L"(unsigned int)" : L"(unsigned __int64)" ) ), syntax::TYPE );
 						value ( item.a, 14, bitwise );
 						unsigned_compare = false;
+
+					} else if ( signed_compare && !no_casts && lhs.kind == op::CAST && lhs.a >= 0 && lhs.size < b.exprs [ static_cast < size_t > ( lhs.a ) ].size && lhs.size <= 4 && !( lhs.bits & FLOATING ) && b.exprs [ static_cast < size_t > ( lhs.a ) ].kind == op::VAR ) {
+
+						out.put ( lhs.size == 1 ? L"(char)" : ( lhs.size == 2 ? L"(__int16)" : L"(int)" ), syntax::TYPE );
+						value ( lhs.a, 14, bitwise );
 
 					} else
 						value ( item.a, item.kind == op::SHL || item.kind == op::SHR ? mine + 1 : mine, bitwise );
