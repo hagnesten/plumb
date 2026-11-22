@@ -4317,6 +4317,9 @@ namespace decompiler {
 		fold_returns ( );
 		split_webs ( );
 		prune ( );
+
+		if ( api_result_type ( ) )
+			narrow_webs ( );
 		merge_conditions ( );
 		fold_switches ( );
 		infer_signs ( );

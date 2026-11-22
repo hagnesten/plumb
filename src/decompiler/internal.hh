@@ -250,6 +250,10 @@ namespace decompiler {
 
 		void chain_switches ( );
 
+		bool api_result_type ( );
+
+		base::text result_text;
+
 		void split_webs ( );
 
 		void coalesce_copies ( );

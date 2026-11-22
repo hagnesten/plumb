@@ -5375,6 +5375,8 @@ namespace decompiler {
 
 			if ( b.returns_float )
 				head.type_name ( b.return_size ? b.return_size : 4, FLOATING, false );
+			else if ( b.result_width == 0 && !b.result_text.empty ( ) )
+				head.out.put ( b.result_text.get ( ), syntax::TYPE );
 			else if ( b.result_width == 0 && b.long_mode && unsigned_result ( b ) )
 				head.out.put ( L"unsigned __int64", syntax::TYPE );
 			else if ( b.result_width == 2 )
