@@ -470,6 +470,7 @@ namespace decompiler {
 		base::list < uint8_t > hidden;
 		base::list < uint8_t > element;
 		bool inline_returns = true;
+		bool defer_joins = false;
 		base::list < int8_t > loop_letter;
 		int32_t next_letter = 0;
 		int32_t last_assign = -1;
@@ -2708,6 +2709,24 @@ namespace decompiler {
 
 		}
 
+		bool deferred ( int32_t target, int32_t from ) {
+
+			if ( target < 0 || target >= count || emitted [ static_cast < size_t > ( target ) ] || pred [ static_cast < size_t > ( target ) ].count ( ) < 2 || header [ static_cast < size_t > ( target ) ] )
+				return false;
+
+			uint64_t start = b.graph.blocks [ static_cast < size_t > ( target ) ].start;
+
+			for ( int32_t p : pred [ static_cast < size_t > ( target ) ] ) {
+
+				if ( p != from && !emitted [ static_cast < size_t > ( p ) ] && b.graph.blocks [ static_cast < size_t > ( p ) ].end == start && b.code [ static_cast < size_t > ( p ) ].reachable && !dominates ( target, p ) )
+					return true;
+
+			}
+
+			return false;
+
+		}
+
 		int32_t branch ( int32_t block, int32_t stop, const frame& context, bool chained ) {
 
 			const block_code& item = b.code [ static_cast < size_t > ( block ) ];
@@ -2799,18 +2818,28 @@ namespace decompiler {
 
 			ended = false;
 
-			if ( !special ( then_part, -2, context, item.last ) )
-				region ( then_part, follow, context );
+			if ( !special ( then_part, -2, context, item.last ) ) {
+
+				if ( defer_joins && deferred ( then_part, block ) )
+					go_to ( then_part, item.last );
+				else
+					region ( then_part, follow, context );
+
+			}
 
 			bool then_ends = ended;
 
 			out.indent--;
 
-			if ( skip_else )
-				brace ( L"}" );
-			else if ( then_ends && else_part != follow && else_part >= 0 ) {
+			if ( skip_else ) {
 
 				brace ( L"}" );
+				ended = false;
+
+			} else if ( then_ends && else_part != follow && else_part >= 0 ) {
+
+				brace ( L"}" );
+				ended = false;
 
 				if ( !special ( else_part, -2, context, item.last ) )
 					region ( else_part, follow, context );
@@ -2827,6 +2856,7 @@ namespace decompiler {
 					int32_t next = branch ( else_part, stop, context, true );
 
 					( void ) next;
+					ended = then_ends && ended;
 
 				} else {
 
@@ -2834,16 +2864,24 @@ namespace decompiler {
 					else_line ( );
 					brace ( L"{" );
 					out.indent++;
+					ended = false;
 
 					if ( !special ( else_part, -2, context, item.last ) )
 						region ( else_part, follow, context );
 
+					bool else_ends = ended;
+
 					close_brace ( );
+					ended = then_ends && else_ends;
 
 				}
 
-			} else
+			} else {
+
 				brace ( L"}" );
+				ended = false;
+
+			}
 
 			return follow;
 
