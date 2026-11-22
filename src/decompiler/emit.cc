@@ -1924,14 +1924,23 @@ namespace decompiler {
 					};
 
 					const expr& test = b.exprs [ static_cast < size_t > ( item.a ) ];
+					bool zero_test = ( test.kind == op::EQ || test.kind == op::NE ) && test.b >= 0 && b.exprs [ static_cast < size_t > ( test.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( test.b ) ].value == 0 && !( test.bits & FLOATING );
+					bool swap = zero_test && test.kind == op::EQ;
 
-					explicit_zero = test.kind == op::EQ || test.kind == op::NE;
-					value ( item.a, 4 );
-					explicit_zero = false;
+					if ( zero_test )
+						value ( test.a, 4 );
+					else {
+
+						explicit_zero = test.kind == op::EQ || test.kind == op::NE;
+						value ( item.a, 4 );
+						explicit_zero = false;
+
+					}
+
 					out.put ( L" ? ", syntax::OPERATOR );
-					arm ( item.b, 4 );
+					arm ( swap ? item.c : item.b, 4 );
 					out.put ( L" : ", syntax::OPERATOR );
-					arm ( item.c, 3 );
+					arm ( swap ? item.b : item.c, 3 );
 					break;
 
 				}
@@ -3304,6 +3313,33 @@ namespace decompiler {
 
 		}
 
+		int32_t single_assign ( int32_t block, int32_t follow ) {
+
+			const block_code& item = b.code [ static_cast < size_t > ( block ) ];
+
+			if ( item.end != term::FALL || item.taken != follow || pred [ static_cast < size_t > ( block ) ].count ( ) != 1 || wanted_label [ static_cast < size_t > ( block ) ] || header [ static_cast < size_t > ( block ) ] || emitted [ static_cast < size_t > ( block ) ] )
+				return -1;
+
+			int32_t found = -1;
+
+			for ( int32_t s = item.first; s < item.first + item.count; s++ ) {
+
+				const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( line.kind == stmt::NOP )
+					continue;
+
+				if ( found >= 0 || line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || ( s < hidden.count ( ) && hidden [ static_cast < size_t > ( s ) ] ) )
+					return -1;
+
+				found = s;
+
+			}
+
+			return found;
+
+		}
+
 		int32_t counted_step ( int32_t latch, int32_t test ) {
 
 			const block_code& tail = b.code [ static_cast < size_t > ( latch ) ];
@@ -3604,6 +3640,51 @@ namespace decompiler {
 				then_part = other;
 				else_part = taken;
 				negated = true;
+
+			}
+
+			if ( !no_ternary && follow >= 0 && then_part >= 0 && else_part >= 0 && then_part != follow && else_part != follow ) {
+
+				int32_t then_line = single_assign ( then_part, follow );
+				int32_t else_line = single_assign ( else_part, follow );
+
+				if ( then_line >= 0 && else_line >= 0 ) {
+
+					const statement& yes = b.statements [ static_cast < size_t > ( then_line ) ];
+					const statement& no = b.statements [ static_cast < size_t > ( else_line ) ];
+					const expr& yes_left = b.exprs [ static_cast < size_t > ( yes.left ) ];
+					const expr& no_left = b.exprs [ static_cast < size_t > ( no.left ) ];
+
+					if ( yes_left.kind == op::VAR && no_left.kind == op::VAR && yes_left.value == no_left.value ) {
+
+						int32_t test = negated ? b.negate ( item.condition ) : item.condition;
+						int32_t select = b.make ( op::TERNARY, yes_left.size, test, yes.right );
+
+						b.exprs [ static_cast < size_t > ( select ) ].c = no.right;
+						b.deepen ( select );
+						label ( then_part );
+						label ( else_part );
+						emitted [ static_cast < size_t > ( then_part ) ] = 1;
+						emitted [ static_cast < size_t > ( else_part ) ] = 1;
+
+						if ( !dry ) {
+
+							out.begin ( yes.address );
+							value ( yes.left, 0 );
+							out.put ( L" = ", syntax::OPERATOR );
+							value ( select, 2 );
+							out.put ( L";" );
+							out.finish ( );
+
+						}
+
+						ended = false;
+
+						return follow;
+
+					}
+
+				}
 
 			}
 
