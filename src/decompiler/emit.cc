@@ -3222,6 +3222,35 @@ namespace decompiler {
 
 			}
 
+			if ( follow < 0 && then_part >= 0 && else_part >= 0 && !chained ) {
+
+				for ( int32_t side = 0; side < 2; side++ ) {
+
+					int32_t bare = side == 0 ? else_part : then_part;
+					int32_t work = side == 0 ? then_part : else_part;
+					const block_code& empty_ret = b.code [ static_cast < size_t > ( bare ) ];
+					const block_code& full_ret = b.code [ static_cast < size_t > ( work ) ];
+
+					if ( empty_ret.end != term::RETURN || full_ret.end != term::RETURN || !empty_block ( bare ) || empty_block ( work ) || emitted [ static_cast < size_t > ( work ) ] || emitted [ static_cast < size_t > ( bare ) ] || pred [ static_cast < size_t > ( work ) ].count ( ) != 1 )
+						continue;
+
+					bool alike = ( empty_ret.returned < 0 && full_ret.returned < 0 ) || ( empty_ret.returned >= 0 && full_ret.returned >= 0 && b.same ( empty_ret.returned, full_ret.returned ) );
+
+					if ( !alike )
+						continue;
+
+					bool toward = side == 0 ? negated : !negated;
+
+					open_brace ( item.last, L"if", item.condition, toward );
+					body ( work );
+					close_brace ( );
+
+					return bare;
+
+				}
+
+			}
+
 			if ( rotate_guards && !chained && then_part >= 0 && else_part >= 0 && then_part != follow && else_part != context.loop && else_part != context.exit ) {
 
 				int32_t after = rotate ( block, then_part, else_part, negated ? b.negate ( item.condition ) : item.condition, context );
