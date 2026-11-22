@@ -564,7 +564,7 @@ namespace decompiler {
 			int32_t position = static_cast < int32_t > ( offset / 8 ) - 1;
 			int32_t family = homes [ position ];
 
-			if ( entry_live & ( ( 1u << family ) | ( 1u << ( 16 + position ) ) ) )
+			if ( !( home_local & ( 1u << position ) ) && ( entry_live & ( ( 1u << family ) | ( 1u << ( 16 + position ) ) ) ) )
 				return register_var ( ( entry_live & ( 1u << family ) ) ? family : 16 + position );
 
 		}
@@ -967,6 +967,9 @@ namespace decompiler {
 			}
 
 			for ( const block_code& item : code ) {
+
+				if ( !item.reachable )
+					continue;
 
 				count_reads ( *this, item.condition, reads );
 				count_reads ( *this, item.selector, reads );
@@ -1785,6 +1788,18 @@ namespace decompiler {
 						break;
 
 					}
+
+				}
+
+				if ( b->long_mode && slot >= 8 && slot <= 32 && ( slot & 7 ) == 0 ) {
+
+					static const int32_t homes [ 4 ] = { 1, 2, 8, 9 };
+					int32_t position = static_cast < int32_t > ( slot / 8 ) - 1;
+					const expr& incoming = b->exprs [ static_cast < size_t > ( value ) ];
+					bool spill = prologue && incoming.kind == op::VAR && incoming.value >= 0 && incoming.value < b->vars.count ( ) && b->vars [ static_cast < size_t > ( incoming.value ) ].kind != var_kind::STACK && ( b->vars [ static_cast < size_t > ( incoming.value ) ].family == homes [ position ] || b->vars [ static_cast < size_t > ( incoming.value ) ].family == 16 + position );
+
+					if ( !spill )
+						b->home_local |= 1u << position;
 
 				}
 
@@ -4272,6 +4287,7 @@ namespace decompiler {
 		prune ( );
 		fold_returns ( );
 		split_webs ( );
+		prune ( );
 		merge_conditions ( );
 		fold_switches ( );
 		infer_signs ( );

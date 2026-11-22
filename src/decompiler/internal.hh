@@ -187,6 +187,7 @@ namespace decompiler {
 		base::list < int32_t > saved_families;
 		int32_t family_var [ 32 ];
 		uint32_t entry_live = 0;
+		uint32_t home_local = 0;
 		int32_t params = 0;
 		bool has_prototype = false;
 		c_prototype prototype;
