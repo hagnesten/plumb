@@ -291,6 +291,9 @@ namespace decompiler {
 		if ( kind == op::ADD && same_tree ( *this, a, b, 0 ) )
 			return binary ( op::MUL, a, constant ( 2, size ), size );
 
+		if ( kind == op::MUL && right.kind == op::CONST && left.kind == op::SHL && left.b >= 0 && exprs [ static_cast < size_t > ( left.b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( left.b ) ].value < 32 )
+			return binary ( op::MUL, left.a, constant ( right.value << exprs [ static_cast < size_t > ( left.b ) ].value, size ), size );
+
 		if ( kind == op::ADD ) {
 
 			const int32_t sides [ 2 ] = { a, b };
@@ -402,6 +405,16 @@ namespace decompiler {
 
 		if ( !floating && left.kind == op::CONST && ( kind == op::ADD || kind == op::MUL || kind == op::AND || kind == op::OR || kind == op::XOR ) )
 			return binary ( kind, b, a, size, bits );
+
+		if ( !floating && ( bits & UNSIGNED ) && right.kind == op::CONST ) {
+
+			if ( ( kind == op::GE && right.value == 1 ) || ( kind == op::GT && right.value == 0 ) )
+				return make ( op::NE, 1, a, constant ( 0, left.size ), 0, 0 );
+
+			if ( ( kind == op::LT && right.value == 1 ) || ( kind == op::LE && right.value == 0 ) )
+				return make ( op::EQ, 1, a, constant ( 0, left.size ), 0, 0 );
+
+		}
 
 		if ( !floating ) {
 
@@ -1646,6 +1659,16 @@ namespace decompiler {
 
 				if ( other != slot && regs [ other ] >= 0 )
 					regs [ other ] = b->replace ( regs [ other ], source, replacement );
+
+			}
+
+			if ( value.kind != op::CONST && value.kind != op::VAR ) {
+
+				if ( guard_a >= 0 )
+					guard_a = b->replace ( guard_a, source, replacement );
+
+				if ( guard_b >= 0 )
+					guard_b = b->replace ( guard_b, source, replacement );
 
 			}
 
