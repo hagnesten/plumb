@@ -1404,7 +1404,7 @@ namespace decompiler {
 
 		}
 
-		void pointer_cast ( int32_t v ) {
+		void pointer_cast ( int32_t v, bool twice = false ) {
 
 			uint8_t shape = element [ static_cast < size_t > ( v ) ];
 
@@ -1412,16 +1412,21 @@ namespace decompiler {
 
 			if ( shape == 0x10 )
 				out.put ( L"char", syntax::TYPE );
-			else if ( ( shape & 0x9F ) == 8 && ( shape & 0x40 ) )
-				out.put ( L"void *", syntax::TYPE );
-			else if ( ( shape & 0x9F ) == 8 && ( shape & 0x20 ) )
+			else if ( ( shape & 0x9F ) == 8 && ( shape & 0x40 ) ) {
+
+				out.put ( L"void", syntax::TYPE );
+				out.put ( twice ? L" ***)" : L" **)" );
+
+				return;
+
+			} else if ( ( shape & 0x9F ) == 8 && ( shape & 0x20 ) )
 				type_name ( 8, SIGNED, false );
 			else if ( ( shape & 0x40 ) && !( shape & 0x80 ) )
 				type_name ( shape & 0x1F, UNSIGNED, false );
 			else
 				type_name ( shape & 0x1F, ( shape & 0x80 ) ? FLOATING : 0, false, !( shape & 0x80 ) );
 
-			out.put ( L" *)" );
+			out.put ( twice ? L" **)" : L" *)" );
 
 		}
 
@@ -3005,8 +3010,18 @@ namespace decompiler {
 					}
 					else if ( flow_casts && left.kind == op::VAR && pointer_step ( item.left ) > 0 && !typed_value ( item.right ) && right.kind != op::CAST ) {
 
-						pointer_cast ( static_cast < int32_t > ( left.value ) );
-						value ( item.right, 14 );
+						if ( right.kind == op::LOAD && right.size == 8 && !void_element_load ( item.right ) && element [ static_cast < size_t > ( left.value ) ] != 0x10 && !( ( element [ static_cast < size_t > ( left.value ) ] & 0x9F ) == 8 && ( element [ static_cast < size_t > ( left.value ) ] & 0x40 ) ) ) {
+
+							out.put ( L"*", syntax::OPERATOR );
+							pointer_cast ( static_cast < int32_t > ( left.value ), true );
+							value ( right.a, 14 );
+
+						} else {
+
+							pointer_cast ( static_cast < int32_t > ( left.value ) );
+							value ( item.right, 14 );
+
+						}
 
 					} else if ( flow_casts && left.kind == op::VAR && left.size == 8 && pointer_step ( item.left ) == 0 && void_element_load ( item.right ) && !( left.bits & FLOATING ) && !( left.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( left.value ) ].empty ( ) ) ) {
 
@@ -5844,6 +5859,7 @@ namespace decompiler {
 	static bool flow_typing = true;
 	static bool flow_seeded_only = true;
 	static bool flow_calls = true;
+	static bool flow_loads = true;
 
 	static void flow_pointers ( builder& b, base::list < uint8_t >& element ) {
 
@@ -5868,8 +5884,10 @@ namespace decompiler {
 		base::list < uint8_t > stepped;
 		base::list < uint8_t > params_in;
 		base::list < uint8_t > called;
+		base::list < uint8_t > loaded_in;
 
 		called.fill ( static_cast < size_t > ( total ), 0 );
+		loaded_in.fill ( static_cast < size_t > ( total ), 0 );
 
 		stepped.fill ( static_cast < size_t > ( total ), 0 );
 		params_in.fill ( static_cast < size_t > ( total ), 0 );
@@ -6107,6 +6125,9 @@ namespace decompiler {
 
 					}
 
+					if ( flow_loads && x >= 0 && right.kind == op::LOAD && right.size == 8 && !( right.bits & FLOATING ) && !called [ static_cast < size_t > ( x ) ] )
+						called [ static_cast < size_t > ( x ) ] = 2;
+
 					if ( x >= 0 && right.kind == op::CALL && right.value && b.names && !b.names->prototype ( static_cast < uint64_t > ( right.value ) ) ) {
 
 						wchar_t callee [ 200 ];
@@ -6203,8 +6224,11 @@ namespace decompiler {
 			if ( !bad [ static_cast < size_t > ( v ) ] && b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER )
 				params_in [ static_cast < size_t > ( find ( v ) ) ] = 1;
 
-			if ( flow_calls && !bad [ static_cast < size_t > ( v ) ] && called [ static_cast < size_t > ( v ) ] )
+			if ( flow_calls && !bad [ static_cast < size_t > ( v ) ] && called [ static_cast < size_t > ( v ) ] == 1 )
 				seeded [ static_cast < size_t > ( find ( v ) ) ] = 1;
+
+			if ( !bad [ static_cast < size_t > ( v ) ] && called [ static_cast < size_t > ( v ) ] == 2 )
+				loaded_in [ static_cast < size_t > ( find ( v ) ) ] = 1;
 
 		}
 
@@ -6258,7 +6282,7 @@ namespace decompiler {
 			int32_t root = find ( v );
 			uint8_t form = shape [ static_cast < size_t > ( root ) ];
 
-			if ( !form || conflict [ static_cast < size_t > ( root ) ] || !direct [ static_cast < size_t > ( root ) ] || !( seeded [ static_cast < size_t > ( root ) ] || ( stepped [ static_cast < size_t > ( root ) ] && params_in [ static_cast < size_t > ( root ) ] && ( form & 0x1F ) < 8 ) ) )
+			if ( !form || conflict [ static_cast < size_t > ( root ) ] || !direct [ static_cast < size_t > ( root ) ] || !( seeded [ static_cast < size_t > ( root ) ] || ( stepped [ static_cast < size_t > ( root ) ] && params_in [ static_cast < size_t > ( root ) ] && ( form & 0x1F ) < 8 ) || ( loaded_in [ static_cast < size_t > ( root ) ] && ( form & 0x1F ) < 8 ) ) )
 				continue;
 
 			uint8_t& slot = element [ static_cast < size_t > ( v ) ];
