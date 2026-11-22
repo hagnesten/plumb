@@ -1680,26 +1680,6 @@ namespace decompiler {
 
 			}
 
-			if ( indexing && where.kind == op::ADD && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::MUL ) {
-
-				const expr& scaled = b.exprs [ static_cast < size_t > ( where.b ) ];
-
-				if ( scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value == item.size ) {
-
-					out.put ( L"((" );
-					type_name ( item.size, item.bits, false, true );
-					out.put ( L" *)" );
-					value ( where.a, 14 );
-					out.put ( L")[" );
-					value ( scaled.a, 0 );
-					out.put ( L"]" );
-
-					return;
-
-				}
-
-			}
-
 			if ( parent > 14 )
 				out.put ( L"(" );
 
@@ -2406,6 +2386,11 @@ namespace decompiler {
 
 						operand = held;
 
+					} else if ( compare && flow_casts && void_element_load ( item.b ) && lhs.kind == op::VAR && pointer_step ( item.a ) == 0 && lhs.value >= 0 && lhs.value < b.vars.count ( ) ) {
+
+						out.put ( ( b.vars [ static_cast < size_t > ( lhs.value ) ].bits & UNSIGNED ) ? L"(unsigned __int64)" : L"(__int64)", syntax::TYPE );
+						value ( item.b, 14 );
+
 					} else
 						value ( item.b, mine + 1, bitwise );
 
@@ -2999,6 +2984,13 @@ namespace decompiler {
 					else if ( flow_casts && left.kind == op::VAR && pointer_step ( item.left ) > 0 && !typed_value ( item.right ) && right.kind != op::CAST ) {
 
 						pointer_cast ( static_cast < int32_t > ( left.value ) );
+						value ( item.right, 14 );
+
+					} else if ( flow_casts && left.kind == op::VAR && left.size == 8 && pointer_step ( item.left ) == 0 && void_element_load ( item.right ) && !( left.bits & FLOATING ) && !( left.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( left.value ) ].empty ( ) ) ) {
+
+						bool unsigned_target = left.value >= 0 && left.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( left.value ) ].bits & UNSIGNED );
+
+						out.put ( unsigned_target ? L"(unsigned __int64)" : L"(__int64)", syntax::TYPE );
 						value ( item.right, 14 );
 
 					} else if ( flow_casts && left.size == 8 && pointer_step ( item.left ) == 0 && typed_value ( item.right ) && !( left.bits & FLOATING ) ) {
