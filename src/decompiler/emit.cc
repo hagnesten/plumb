@@ -469,6 +469,7 @@ namespace decompiler {
 		bool explicit_zero = false;
 		base::list < uint8_t > hidden;
 		base::list < uint8_t > element;
+		bool inline_returns = true;
 		base::list < int8_t > loop_letter;
 		int32_t next_letter = 0;
 		int32_t last_assign = -1;
@@ -2314,6 +2315,16 @@ namespace decompiler {
 
 		void go_to ( int32_t block, uint64_t address ) {
 
+			const block_code& target = b.code [ static_cast < size_t > ( block ) ];
+
+			if ( inline_returns && target.end == term::RETURN && empty_block ( block ) && ( target.returned < 0 || b.exprs [ static_cast < size_t > ( target.returned ) ].kind == op::CONST ) ) {
+
+				return_line ( target );
+
+				return;
+
+			}
+
 			wanted_label [ static_cast < size_t > ( block ) ] = 1;
 			gotos++;
 			ended = true;
@@ -2699,6 +2710,33 @@ namespace decompiler {
 			int32_t follow = follow_of ( block, stop, context );
 			bool taken_jump = taken == context.loop || taken == context.exit;
 			bool other_jump = other == context.loop || other == context.exit;
+
+			if ( context.loop >= 0 && stop == context.loop && ( taken == context.loop ) != ( other == context.loop ) ) {
+
+				int32_t away = taken == context.loop ? other : taken;
+				const base::list < uint8_t >& members = loop_body [ static_cast < size_t > ( context.loop ) ];
+				bool outside = away == context.exit || emitted [ static_cast < size_t > ( away ) ] || ( !members.empty ( ) && !members [ static_cast < size_t > ( away ) ] );
+
+				if ( outside ) {
+
+					open_brace ( item.last, chained ? L"else if" : L"if", item.condition, taken == context.loop );
+
+					if ( !special ( away, -2, context, item.last ) ) {
+
+						if ( emitted [ static_cast < size_t > ( away ) ] )
+							go_to ( away, item.last );
+						else
+							region ( away, context.loop, context );
+
+					}
+
+					close_brace ( );
+
+					return -1;
+
+				}
+
+			}
 
 			if ( taken_jump && !other_jump ) {
 
