@@ -1013,6 +1013,10 @@ namespace decompiler {
 				shape_ok = false;
 
 				const wchar_t* declared = b.names->prototype ( target );
+				wchar_t callee [ 200 ];
+
+				if ( !declared && b.names->name ( target, true, callee, 200 ) )
+					declared = api_prototype ( callee );
 
 				if ( declared ) {
 
@@ -1028,6 +1032,14 @@ namespace decompiler {
 			}
 
 			return shape_ok && index < shape->count && ( shape->params [ index ].bits & UNSIGNED ) && !shape->params [ index ].pointer;
+
+		}
+
+		bool callee_wide ( uint64_t target, int32_t index ) {
+
+			callee_unsigned ( target, index );
+
+			return shape_ok && index < shape->count && ( shape->params [ index ].pointer || shape->params [ index ].size == 8 ) && !( shape->params [ index ].bits & FLOATING );
 
 		}
 
@@ -1630,7 +1642,12 @@ namespace decompiler {
 						bool unsigned_slot = passed.kind == op::CONST && passed.value < -9 && passed.size <= 4 && callee_unsigned ( target, i );
 
 						bare_unsigned = unsigned_slot;
-						value ( argument, 2 );
+
+						if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && b.long_mode && callee_wide ( target, i ) )
+							number ( passed.value, 8, !simple_constant ( passed.value ), false );
+						else
+							value ( argument, 2 );
+
 						bare_unsigned = false;
 
 					}
