@@ -830,6 +830,7 @@ namespace decompiler {
 	}
 
 	static bool select_params = true;
+	static bool select_inside = true;
 
 	void builder::coalesce_selects ( ) {
 
@@ -963,8 +964,35 @@ namespace decompiler {
 
 			}
 
-			if ( reads [ static_cast < size_t > ( from ) ] != 1 )
-				continue;
+			if ( reads [ static_cast < size_t > ( from ) ] != 1 ) {
+
+				if ( !select_inside || reads [ static_cast < size_t > ( from ) ] > 4 )
+					continue;
+
+				int32_t local = 0;
+
+				auto inside = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+					if ( e < 0 || depth > 96 )
+						return;
+
+					const expr& node = exprs [ static_cast < size_t > ( e ) ];
+
+					if ( node.kind == op::VAR && node.value == from )
+						local++;
+
+					self ( self, node.a, depth + 1 );
+					self ( self, node.b, depth + 1 );
+					self ( self, node.c, depth + 1 );
+
+				};
+
+				inside ( inside, line.right, 0 );
+
+				if ( local != reads [ static_cast < size_t > ( from ) ] )
+					continue;
+
+			}
 
 			if ( a.kind != var_kind::REGISTER || b.kind != var_kind::REGISTER || a.family != b.family || a.family < 0 || a.size != b.size || a.cookie || b.cookie )
 				continue;
