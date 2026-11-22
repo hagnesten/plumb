@@ -4741,6 +4741,18 @@ namespace decompiler {
 			if ( only.indent != head.indent + 1 || !simple_line ( r, only ) || !line_is ( r, close, L"}" ) || close.indent != head.indent )
 				continue;
 
+			if ( i > 0 && line_is ( r, head, L"else" ) && line_is ( r, r.lines [ static_cast < size_t > ( i - 1 ) ], L"}" ) && !skip [ static_cast < size_t > ( i - 1 ) ] && r.lines [ static_cast < size_t > ( i - 1 ) ].indent == head.indent )
+				continue;
+
+			if ( i + 5 < total && !line_is ( r, head, L"else" ) && line_is ( r, r.lines [ static_cast < size_t > ( i + 4 ) ], L"else" ) && r.lines [ static_cast < size_t > ( i + 4 ) ].indent == head.indent && line_is ( r, r.lines [ static_cast < size_t > ( i + 5 ) ], L"{" ) ) {
+
+				bool single_else = i + 7 < total && line_is ( r, r.lines [ static_cast < size_t > ( i + 7 ) ], L"}" ) && r.lines [ static_cast < size_t > ( i + 7 ) ].indent == head.indent && r.lines [ static_cast < size_t > ( i + 6 ) ].indent == head.indent + 1 && simple_line ( r, r.lines [ static_cast < size_t > ( i + 6 ) ] );
+
+				if ( !single_else )
+					continue;
+
+			}
+
 			skip [ static_cast < size_t > ( i + 1 ) ] = 1;
 			skip [ static_cast < size_t > ( i + 3 ) ] = 1;
 
