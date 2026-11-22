@@ -2112,6 +2112,9 @@ namespace decompiler {
 					} else
 						value ( item.a, item.kind == op::SHL || item.kind == op::SHR ? mine + 1 : mine, bitwise );
 
+					if ( unsigned_compare && lhs.kind == op::VAR && lhs.value >= 0 && lhs.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( lhs.value ) ].bits & UNSIGNED ) )
+						unsigned_compare = false;
+
 					out.put ( symbol, syntax::OPERATOR );
 
 					if ( right.kind == op::CONST && !( right.bits & POINTER ) && compare ) {
