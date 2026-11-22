@@ -243,6 +243,8 @@ namespace decompiler {
 
 		void fold_switches ( );
 
+		void chain_switches ( );
+
 		void split_webs ( );
 
 		void coalesce_copies ( );

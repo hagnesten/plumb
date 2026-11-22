@@ -454,9 +454,252 @@ namespace decompiler {
 
 	}
 
+	void builder::chain_switches ( ) {
+
+		int32_t total = code.count ( );
+
+		if ( total != graph.blocks.count ( ) )
+			return;
+
+		base::list < int32_t > preds;
+
+		auto count_preds = [ & ] ( ) {
+
+			preds.clear ( );
+			preds.fill ( static_cast < size_t > ( total ), 0 );
+
+			for ( const analysis::edge& link : graph.edges ) {
+
+				if ( link.to >= 0 && link.to < total )
+					preds [ static_cast < size_t > ( link.to ) ]++;
+
+			}
+
+		};
+
+		auto empty = [ & ] ( int32_t block ) {
+
+			const block_code& item = code [ static_cast < size_t > ( block ) ];
+
+			for ( int32_t s = item.first; s < item.first + item.count && s < statements.count ( ); s++ ) {
+
+				if ( statements [ static_cast < size_t > ( s ) ].kind != stmt::NOP )
+					return false;
+
+			}
+
+			return true;
+
+		};
+
+		auto tested = [ & ] ( int32_t block, int64_t& constant ) -> int32_t {
+
+			const block_code& item = code [ static_cast < size_t > ( block ) ];
+
+			if ( item.end != term::BRANCH || item.condition < 0 || !item.reachable )
+				return -1;
+
+			const expr& test = exprs [ static_cast < size_t > ( item.condition ) ];
+			bool usable = test.kind == op::EQ || test.kind == op::NE || test.kind == op::LT || test.kind == op::LE || test.kind == op::GT || test.kind == op::GE;
+
+			if ( !usable || test.a < 0 || test.b < 0 || exprs [ static_cast < size_t > ( test.b ) ].kind != op::CONST || ( test.bits & FLOATING ) )
+				return -1;
+
+			int32_t subject = strip_casts ( *this, test.a );
+
+			if ( subject < 0 || exprs [ static_cast < size_t > ( subject ) ].kind != op::VAR )
+				return -1;
+
+			constant = exprs [ static_cast < size_t > ( test.b ) ].value;
+
+			return static_cast < int32_t > ( exprs [ static_cast < size_t > ( subject ) ].value );
+
+		};
+
+		bool changed = false;
+
+		count_preds ( );
+
+		for ( int32_t root = 0; root < total; root++ ) {
+
+			int64_t first_value = 0;
+			int32_t subject = tested ( root, first_value );
+
+			if ( subject < 0 )
+				continue;
+
+			base::list < int32_t > nodes;
+			base::list < int32_t > work;
+			base::list < analysis::edge > cases;
+			int32_t fallback = -1;
+			bool broken = false;
+
+			work.push ( root );
+
+			while ( work.count ( ) && !broken ) {
+
+				int32_t at = work [ static_cast < size_t > ( work.count ( ) - 1 ) ];
+
+				work.pop ( );
+
+				int64_t value = 0;
+				bool inside = at == root || ( at != root && tested ( at, value ) == subject && empty ( at ) && preds [ static_cast < size_t > ( at ) ] == 1 );
+
+				if ( at == root )
+					tested ( at, value );
+
+				bool listed = false;
+
+				for ( int32_t n : nodes )
+					listed = listed || n == at;
+
+				if ( listed ) {
+
+					broken = true;
+
+					break;
+
+				}
+
+				if ( !inside ) {
+
+					if ( fallback >= 0 && fallback != at )
+						broken = true;
+
+					fallback = at;
+
+					continue;
+
+				}
+
+				nodes.push ( at );
+
+				const block_code& item = code [ static_cast < size_t > ( at ) ];
+				const expr& test = exprs [ static_cast < size_t > ( item.condition ) ];
+
+				if ( test.kind == op::EQ || test.kind == op::NE ) {
+
+					int32_t hit = test.kind == op::EQ ? item.taken : item.other;
+					int32_t miss = test.kind == op::EQ ? item.other : item.taken;
+					analysis::edge link;
+
+					link.from = root;
+					link.to = hit;
+					link.kind = analysis::edge_kind::CASE;
+					link.value = static_cast < int32_t > ( value );
+
+					if ( value != static_cast < int64_t > ( link.value ) )
+						broken = true;
+
+					cases.push ( link );
+					work.push ( miss );
+
+				} else {
+
+					work.push ( item.taken );
+					work.push ( item.other );
+
+				}
+
+			}
+
+			if ( broken || fallback < 0 || cases.count ( ) < 4 )
+				continue;
+
+			bool clash = false;
+
+			for ( int32_t i = 0; i < cases.count ( ); i++ ) {
+
+				if ( cases [ static_cast < size_t > ( i ) ].to == fallback )
+					clash = true;
+
+				for ( int32_t n : nodes )
+					clash = clash || ( n != root && cases [ static_cast < size_t > ( i ) ].to == n );
+
+				for ( int32_t j = 0; j < i; j++ )
+					clash = clash || cases [ static_cast < size_t > ( j ) ].value == cases [ static_cast < size_t > ( i ) ].value;
+
+			}
+
+			if ( clash )
+				continue;
+
+			for ( int32_t i = 1; i < cases.count ( ); i++ ) {
+
+				for ( int32_t j = i; j > 0 && cases [ static_cast < size_t > ( j - 1 ) ].value > cases [ static_cast < size_t > ( j ) ].value; j-- ) {
+
+					analysis::edge swap = cases [ static_cast < size_t > ( j ) ];
+
+					cases [ static_cast < size_t > ( j ) ] = cases [ static_cast < size_t > ( j - 1 ) ];
+					cases [ static_cast < size_t > ( j - 1 ) ] = swap;
+
+				}
+
+			}
+
+			int32_t kept = 0;
+
+			for ( int32_t e = 0; e < graph.edges.count ( ); e++ ) {
+
+				const analysis::edge link = graph.edges [ static_cast < size_t > ( e ) ];
+				bool drop = false;
+
+				for ( int32_t n : nodes )
+					drop = drop || link.from == n;
+
+				if ( !drop )
+					graph.edges [ static_cast < size_t > ( kept++ ) ] = link;
+
+			}
+
+			while ( graph.edges.count ( ) > kept )
+				graph.edges.pop ( );
+
+			for ( const analysis::edge& link : cases )
+				graph.edges.push ( link );
+
+			analysis::edge otherwise;
+
+			otherwise.from = root;
+			otherwise.to = fallback;
+			otherwise.kind = analysis::edge_kind::JUMP;
+			graph.edges.push ( otherwise );
+
+			block_code& head = code [ static_cast < size_t > ( root ) ];
+
+			head.selector = exprs [ static_cast < size_t > ( head.condition ) ].a;
+			head.end = term::SWITCH;
+			head.condition = -1;
+			head.taken = -1;
+			head.other = -1;
+
+			for ( int32_t n : nodes ) {
+
+				if ( n == root )
+					continue;
+
+				block_code& dead = code [ static_cast < size_t > ( n ) ];
+
+				dead.reachable = false;
+				dead.end = term::STOP;
+				dead.condition = -1;
+
+			}
+
+			changed = true;
+			count_preds ( );
+
+		}
+
+		if ( changed )
+			reindex_edges ( );
+
+	}
+
 	void builder::merge_conditions ( ) {
 
 		sink_into_tests ( );
+		chain_switches ( );
 
 		int32_t total = code.count ( );
 
