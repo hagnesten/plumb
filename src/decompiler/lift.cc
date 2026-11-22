@@ -1215,6 +1215,7 @@ namespace decompiler {
 	}
 
 	static bool rescue_flags = true;
+	static bool sized_shield = true;
 
 	struct machine {
 
@@ -1785,7 +1786,7 @@ namespace decompiler {
 				return guard;
 
 			if ( source >= 0 && !b->references ( guard, var, source ) )
-				return b->replace ( guard, source, b->var_expr ( var, 0 ) );
+				return b->replace ( guard, source, b->var_expr ( var, sized_shield ? b->exprs [ static_cast < size_t > ( source ) ].size : 0 ) );
 
 			return spill ( guard, address );
 

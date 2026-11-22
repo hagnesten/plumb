@@ -1987,7 +1987,7 @@ namespace decompiler {
 							number ( passed.value, callee_wide ( target, i ) && b.long_mode ? 8 : 4, passed.value > 9, true );
 						else if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && b.long_mode && callee_wide ( target, i ) )
 							number ( passed.value, 8, !simple_constant ( passed.value ), false );
-						else if ( b.long_mode && !no_casts && target && passed.kind != op::CONST && passed.size == 4 && !( passed.bits & FLOATING ) && ( callee_unsigned ( target, i ), !shape_ok ) ) {
+						else if ( b.long_mode && !no_casts && target && passed.kind != op::CONST && passed.size == 4 && !( passed.bits & FLOATING ) && ( callee_unsigned ( target, i ), !shape_ok ) && !( passed.kind == op::VAR && passed.value >= 0 && passed.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( passed.value ) ].bits & UNSIGNED ) && b.vars [ static_cast < size_t > ( passed.value ) ].size == 4 ) ) {
 
 							out.put ( L"(unsigned int)" );
 							value ( argument, 14 );
@@ -2380,8 +2380,14 @@ namespace decompiler {
 					} else
 						value ( item.a, item.kind == op::SHL || item.kind == op::SHR ? mine + 1 : mine, bitwise );
 
-					if ( unsigned_compare && lhs.kind == op::VAR && lhs.value >= 0 && lhs.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( lhs.value ) ].bits & UNSIGNED ) )
+					bool hex_bound = false;
+
+					if ( unsigned_compare && lhs.kind == op::VAR && lhs.value >= 0 && lhs.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( lhs.value ) ].bits & UNSIGNED ) ) {
+
 						unsigned_compare = false;
+						hex_bound = true;
+
+					}
 
 					out.put ( symbol, syntax::OPERATOR );
 
@@ -2395,7 +2401,7 @@ namespace decompiler {
 						if ( float_compare && right.value == 0 )
 							real ( 0, right.size );
 						else
-							number ( right.value, lhs.kind == op::SET ? lhs.size : right.size, !simple_constant ( right.value ) || ( unsigned_compare && right.value > 9 ), unsigned_compare );
+							number ( right.value, lhs.kind == op::SET ? lhs.size : right.size, !simple_constant ( right.value ) || ( ( unsigned_compare || hex_bound ) && right.value > 9 ), unsigned_compare );
 
 						operand = held;
 
