@@ -5,7 +5,7 @@ namespace decompiler {
 	using x86::mnemonic;
 
 	static const wchar_t* const intrinsics [ ] = {
-		L"__debugbreak", L"memset", L"memcpy", L"_tzcnt", L"_lzcnt", L"__popcnt", L"_byteswap", L"_rotl", L"_rotr", L"__umulh", L"__mulh",
+		L"__debugbreak", L"memset", L"qmemcpy", L"_tzcnt", L"_lzcnt", L"__popcnt", L"_byteswap", L"_rotl", L"_rotr", L"__umulh", L"__mulh",
 		L"sqrtf", L"sqrt", L"fminf", L"fmaxf", L"fmin", L"fmax", L"__rdtsc", L"__cpuid", L"_InterlockedExchangeAdd", L"_InterlockedCompareExchange",
 		L"_InterlockedExchange", L"__overflow", L"__parity", L"__unordered", L"__readfsqword", L"__readgsqword", L"__fastfail", L"_bittest", L"__halt",
 		L"_mm_and", L"_mm_or", L"_mm_xor", L"_mm_andnot", L"__shiftleft128", L"__shiftright128", L"__readeflags", L"_xgetbv", L"__syscall",

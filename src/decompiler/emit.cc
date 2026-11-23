@@ -429,6 +429,7 @@ namespace decompiler {
 	static bool return_exits = true;
 	static bool trim_crt = true;
 	static bool unnamed_results = true;
+	static bool intrinsic_types = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
 
@@ -2307,7 +2308,8 @@ namespace decompiler {
 
 					const expr& inner = b.exprs [ static_cast < size_t > ( item.a ) ];
 					bool float_change = ( inner.bits & FLOATING ) != ( item.bits & FLOATING );
-					bool shown = ( float_change || inner.size != item.size ) && !no_casts;
+					bool retyped = inner.kind == op::VAR && inner.value >= 0 && inner.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( inner.value ) ].empty ( ) && b.vars [ static_cast < size_t > ( inner.value ) ].size == item.size;
+					bool shown = ( float_change || inner.size != item.size ) && !no_casts && !retyped;
 
 					if ( ( item.bits & POINTER ) && ( item.bits & FLOATING ) ) {
 
@@ -2677,7 +2679,7 @@ namespace decompiler {
 						if ( float_compare && right.value == 0 )
 							real ( 0, right.size );
 						else
-							number ( right.value, lhs.kind == op::SET ? lhs.size : right.size, !simple_constant ( right.value ) || ( ( unsigned_compare || hex_bound ) && right.value > 9 ), unsigned_compare );
+							number ( right.value, lhs.kind == op::SET ? lhs.size : right.size, !simple_constant ( right.value ) || ( ( unsigned_compare || hex_bound ) && right.value > 9 ), unsigned_compare || ( hex_bound && right.value < 0 ) );
 
 						operand = held;
 
@@ -5990,6 +5992,52 @@ namespace decompiler {
 
 		delete shape;
 
+		if ( intrinsic_types ) {
+
+			for ( const expr& item : b.exprs ) {
+
+				if ( item.kind != op::INTRINSIC || item.arg_count != 3 )
+					continue;
+
+				const wchar_t* called = intrinsic_name ( static_cast < int32_t > ( item.value ) );
+				bool fill = base::same_text ( called, L"memset" );
+
+				if ( !fill && !base::same_text ( called, L"qmemcpy" ) )
+					continue;
+
+				const wchar_t* types [ 3 ] = { L"void *", fill ? L"char" : L"const void *", L"unsigned __int64" };
+
+				for ( int32_t i = 0; i < 3; i++ ) {
+
+					int32_t index = b.args [ static_cast < size_t > ( item.first_arg + i ) ];
+
+					while ( index >= 0 && b.exprs [ static_cast < size_t > ( index ) ].kind == op::CAST )
+						index = b.exprs [ static_cast < size_t > ( index ) ].a;
+
+					if ( index < 0 || b.exprs [ static_cast < size_t > ( index ) ].kind != op::VAR )
+						continue;
+
+					int32_t v = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( index ) ].value );
+
+					if ( v < 0 || v >= b.vars.count ( ) || b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER || !out [ static_cast < size_t > ( v ) ].empty ( ) )
+						continue;
+
+					if ( i == 1 && fill && b.vars [ static_cast < size_t > ( v ) ].size >= 1 ) {
+
+						out [ static_cast < size_t > ( v ) ].set ( L"char" );
+
+						continue;
+
+					}
+
+					offer ( v, types [ i ] );
+
+				}
+
+			}
+
+		}
+
 		for ( int32_t round = 0; round < 4; round++ ) {
 
 			bool moved = false;
@@ -6029,6 +6077,40 @@ namespace decompiler {
 				break;
 
 		}
+
+	}
+
+	static const wchar_t* returned_pointer ( const builder& b ) {
+
+		const wchar_t* found = nullptr;
+
+		for ( const block_code& item : b.code ) {
+
+			if ( !item.reachable || item.end != term::RETURN )
+				continue;
+
+			if ( item.returned < 0 )
+				return nullptr;
+
+			const expr& back = b.exprs [ static_cast < size_t > ( item.returned ) ];
+
+			if ( back.kind != op::VAR || back.value < 0 || back.value >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( back.value ) ].empty ( ) )
+				return nullptr;
+
+			const wchar_t* text = b.var_types [ static_cast < size_t > ( back.value ) ].get ( );
+			bool star = false;
+
+			for ( const wchar_t* p = text; *p; p++ )
+				star = star || *p == L'*';
+
+			if ( !star || ( found && !base::same_text ( found, text ) ) )
+				return nullptr;
+
+			found = text;
+
+		}
+
+		return found;
 
 	}
 
@@ -7866,6 +7948,8 @@ namespace decompiler {
 				head.type_name ( b.return_size ? b.return_size : 4, FLOATING, false );
 			else if ( b.result_width == 0 && !b.result_text.empty ( ) )
 				head.out.put ( b.result_text.get ( ), syntax::TYPE );
+			else if ( b.result_width == 0 && returned_pointer ( b ) )
+				head.out.put ( returned_pointer ( b ), syntax::TYPE );
 			else if ( b.result_width == 0 && b.long_mode && unsigned_result ( b ) )
 				head.out.put ( L"unsigned __int64", syntax::TYPE );
 			else if ( b.result_width == 2 )
