@@ -431,6 +431,7 @@ namespace decompiler {
 	static bool unnamed_results = true;
 	static bool intrinsic_types = true;
 	static bool global_arrays = true;
+	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
 
@@ -2120,6 +2121,67 @@ namespace decompiler {
 					global_element ( start, at_index );
 
 					if ( parent > 14 )
+						out.put ( L")" );
+
+					return;
+
+				}
+
+			}
+
+			if ( void_arithmetic && item.kind == op::ADD && item.a >= 0 && item.b >= 0 && item.size == 8 ) {
+
+				int32_t terms [ 8 ];
+				int32_t count_terms = 0;
+				int32_t stack [ 8 ];
+				int32_t depth = 0;
+				int64_t sum = 0;
+				bool ok = true;
+
+				stack [ depth++ ] = index;
+
+				while ( depth && ok ) {
+
+					int32_t at = stack [ --depth ];
+					const expr& node = b.exprs [ static_cast < size_t > ( at ) ];
+
+					if ( node.kind == op::ADD && node.size == 8 && node.a >= 0 && node.b >= 0 && depth + 2 <= 8 ) {
+
+						stack [ depth++ ] = node.b;
+						stack [ depth++ ] = node.a;
+
+					} else if ( node.kind == op::CONST && !( node.bits & POINTER ) )
+						sum += node.value;
+					else if ( count_terms < 8 )
+						terms [ count_terms++ ] = at;
+					else
+						ok = false;
+
+				}
+
+				if ( ok && count_terms == 2 && void_element_load ( terms [ 0 ] ) != void_element_load ( terms [ 1 ] ) && !( b.exprs [ static_cast < size_t > ( void_element_load ( terms [ 0 ] ) ? terms [ 1 ] : terms [ 0 ] ) ].bits & POINTER ) && pointer_step ( void_element_load ( terms [ 0 ] ) ? terms [ 1 ] : terms [ 0 ] ) == 0 ) {
+
+					int32_t element_load = void_element_load ( terms [ 0 ] ) ? terms [ 0 ] : terms [ 1 ];
+					int32_t offset_term = element_load == terms [ 0 ] ? terms [ 1 ] : terms [ 0 ];
+
+					if ( parent > 12 )
+						out.put ( L"(" );
+
+					out.put ( L"(" );
+					out.put ( L"char", syntax::TYPE );
+					out.put ( L" *)" );
+					value ( element_load, 14 );
+					out.put ( L" + ", syntax::OPERATOR );
+					value ( offset_term, 13 );
+
+					if ( sum ) {
+
+						out.put ( sum < 0 ? L" - " : L" + ", syntax::OPERATOR );
+						index_number ( sum < 0 ? -sum : sum );
+
+					}
+
+					if ( parent > 12 )
 						out.put ( L")" );
 
 					return;
