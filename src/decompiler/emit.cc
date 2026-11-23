@@ -427,6 +427,8 @@ namespace decompiler {
 	static bool void_needs_char = true;
 	static bool void_needs_char_params = false;
 	static bool return_exits = true;
+	static bool trim_crt = true;
+	static bool unnamed_results = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
 
@@ -2123,7 +2125,7 @@ namespace decompiler {
 
 						short_symbol ( name );
 
-						bool trimmed = imported && name [ 0 ] == L'_' && name [ 1 ] == L'_' && name [ 2 ] >= L'a' && name [ 2 ] <= L'z';
+						bool trimmed = imported && name [ 0 ] == L'_' && ( ( name [ 1 ] == L'_' && name [ 2 ] >= L'a' && name [ 2 ] <= L'z' ) || ( trim_crt && name [ 1 ] >= L'a' && name [ 1 ] <= L'z' ) );
 
 						out.put ( trimmed ? name + 1 : name, imported ? syntax::IMPORT : syntax::FUNCTION, target );
 
@@ -7598,6 +7600,7 @@ namespace decompiler {
 
 				bool only_constants = b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER;
 				bool any_write = false;
+				bool call_result = false;
 
 				for ( const statement& line : b.statements ) {
 
@@ -7609,9 +7612,20 @@ namespace decompiler {
 					if ( b.exprs [ static_cast < size_t > ( line.right ) ].kind != op::CONST )
 						only_constants = false;
 
+					int32_t source = line.right;
+
+					while ( source >= 0 && b.exprs [ static_cast < size_t > ( source ) ].kind == op::CAST )
+						source = b.exprs [ static_cast < size_t > ( source ) ].a;
+
+					if ( source >= 0 && b.exprs [ static_cast < size_t > ( source ) ].kind == op::CALL )
+						call_result = true;
+
 				}
 
 				if ( only_constants && any_write && !address )
+					continue;
+
+				if ( call_result && !address && unnamed_results )
 					continue;
 
 				const wchar_t* rest = shape.names [ i ];
