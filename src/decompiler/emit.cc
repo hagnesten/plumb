@@ -430,6 +430,7 @@ namespace decompiler {
 	static bool trim_crt = true;
 	static bool unnamed_results = true;
 	static bool intrinsic_types = true;
+	static bool global_arrays = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
 
@@ -1703,10 +1704,98 @@ namespace decompiler {
 
 		}
 
+		bool global_index ( int32_t address, int32_t size, int32_t& index, uint64_t& start ) const {
+
+			if ( !global_arrays || address < 0 )
+				return false;
+
+			const expr& sum = b.exprs [ static_cast < size_t > ( address ) ];
+
+			if ( sum.kind != op::ADD || sum.a < 0 || sum.b < 0 || sum.size != 8 )
+				return false;
+
+			for ( int32_t side = 0; side < 2; side++ ) {
+
+				const expr& base_node = b.exprs [ static_cast < size_t > ( side ? sum.b : sum.a ) ];
+				int32_t other = side ? sum.a : sum.b;
+				const expr& scaled = b.exprs [ static_cast < size_t > ( other ) ];
+
+				if ( base_node.kind != op::CONST || !( base_node.bits & POINTER ) || b.file->section_at ( static_cast < uint64_t > ( base_node.value ) ) <= 0 )
+					continue;
+
+				if ( scaled.kind == op::MUL && scaled.a >= 0 && scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value == size && size > 1 ) {
+
+					index = scaled.a;
+					start = static_cast < uint64_t > ( base_node.value );
+
+					return true;
+
+				}
+
+				if ( scaled.kind == op::SHL && scaled.a >= 0 && scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && size > 1 && ( 1ll << b.exprs [ static_cast < size_t > ( scaled.b ) ].value ) == size ) {
+
+					index = scaled.a;
+					start = static_cast < uint64_t > ( base_node.value );
+
+					return true;
+
+				}
+
+				if ( size == 1 && !( scaled.bits & POINTER ) && scaled.kind != op::CONST ) {
+
+					index = other;
+					start = static_cast < uint64_t > ( base_node.value );
+
+					return true;
+
+				}
+
+			}
+
+			return false;
+
+		}
+
+		void global_element ( uint64_t start, int32_t index ) {
+
+			wchar_t label [ 200 ];
+
+			if ( b.names->name ( start, false, label, 200 ) )
+				out.put ( label, syntax::GLOBAL, start );
+			else
+				number ( static_cast < int64_t > ( start ), 8, true, false );
+
+			out.put ( L"[" );
+
+			int32_t shown = index;
+
+			while ( shown >= 0 && b.exprs [ static_cast < size_t > ( shown ) ].kind == op::CAST && b.exprs [ static_cast < size_t > ( shown ) ].a >= 0 && b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( shown ) ].a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( shown ) ].size > b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( shown ) ].a ) ].size )
+				shown = b.exprs [ static_cast < size_t > ( shown ) ].a;
+
+			value ( shown, 0 );
+			out.put ( L"]" );
+
+		}
+
 		void lvalue_or_load ( const expr& item, int32_t parent ) {
 
 			const expr& where = b.exprs [ static_cast < size_t > ( item.a ) ];
 			wchar_t name [ 64 ];
+
+			{
+
+				int32_t at_index = -1;
+				uint64_t start = 0;
+
+				if ( global_index ( item.a, item.size, at_index, start ) ) {
+
+					global_element ( start, at_index );
+
+					return;
+
+				}
+
+			}
 
 			if ( where.kind == op::ADDRESS && where.value >= 0 ) {
 
@@ -1909,6 +1998,21 @@ namespace decompiler {
 
 			const expr& where = b.exprs [ static_cast < size_t > ( item.a ) ];
 
+			{
+
+				int32_t at_index = -1;
+				uint64_t start = 0;
+
+				if ( global_index ( item.a, item.size, at_index, start ) ) {
+
+					global_element ( start, at_index );
+
+					return;
+
+				}
+
+			}
+
 			int32_t var = -1;
 
 			if ( where.kind == op::VAR )
@@ -1990,6 +2094,30 @@ namespace decompiler {
 
 					out.put ( L"!", syntax::OPERATOR );
 					value ( item.a, 14 );
+
+					if ( parent > 14 )
+						out.put ( L")" );
+
+					return;
+
+				}
+
+			}
+
+			if ( global_arrays && item.kind == op::ADD && item.a >= 0 && item.b >= 0 ) {
+
+				int32_t scaled = b.exprs [ static_cast < size_t > ( item.a ) ].kind == op::MUL ? item.a : ( b.exprs [ static_cast < size_t > ( item.b ) ].kind == op::MUL ? item.b : -1 );
+				int64_t step = scaled >= 0 && b.exprs [ static_cast < size_t > ( scaled ) ].b >= 0 && b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( scaled ) ].b ) ].kind == op::CONST ? b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( scaled ) ].b ) ].value : 0;
+				int32_t at_index = -1;
+				uint64_t start = 0;
+
+				if ( ( step == 2 || step == 4 || step == 8 ) && global_index ( index, static_cast < int32_t > ( step ), at_index, start ) ) {
+
+					if ( parent > 14 )
+						out.put ( L"(" );
+
+					out.put ( L"&", syntax::OPERATOR );
+					global_element ( start, at_index );
 
 					if ( parent > 14 )
 						out.put ( L")" );
