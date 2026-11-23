@@ -354,6 +354,8 @@ namespace decompiler {
 	}
 
 	static bool fold_pointers = true;
+	static bool fold_vector_zero = true;
+	static bool ghost_vector_zero = true;
 	static bool keep_returned_constants = false;
 
 	void builder::fold_constants ( ) {
@@ -407,9 +409,55 @@ namespace decompiler {
 
 		}
 
+		base::list < int32_t > stored;
+
+		stored.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( const statement& line : statements ) {
+
+			if ( ( line.kind != stmt::ASSIGN && line.kind != stmt::STORE ) || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::LOAD || exprs [ static_cast < size_t > ( line.right ) ].kind != op::VAR )
+				continue;
+
+			int64_t v = exprs [ static_cast < size_t > ( line.right ) ].value;
+
+			if ( v >= 0 && v < total )
+				stored [ static_cast < size_t > ( v ) ]++;
+
+		}
+
 		for ( int32_t v = 0; v < total; v++ ) {
 
 			const variable& item = vars [ static_cast < size_t > ( v ) ];
+
+			if ( fold_vector_zero && ( item.bits & FLOATING ) && item.kind == var_kind::REGISTER && !item.flags && defs [ static_cast < size_t > ( v ) ] == 1 && uses [ static_cast < size_t > ( v ) ] > 0 && uses [ static_cast < size_t > ( v ) ] == stored [ static_cast < size_t > ( v ) ] ) {
+
+				statement& line = statements [ static_cast < size_t > ( single [ static_cast < size_t > ( v ) ] ) ];
+				const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
+
+				if ( source.kind != op::CONST || source.value != 0 )
+					continue;
+
+				int32_t zero = make ( op::CONST, 8, -1, -1, 0, 0 );
+
+				for ( statement& other : statements ) {
+
+					if ( ( other.kind != stmt::ASSIGN && other.kind != stmt::STORE ) || other.left < 0 || other.right < 0 || exprs [ static_cast < size_t > ( other.right ) ].kind != op::VAR || exprs [ static_cast < size_t > ( other.right ) ].value != v || exprs [ static_cast < size_t > ( other.left ) ].kind != op::LOAD )
+						continue;
+
+					const expr target = exprs [ static_cast < size_t > ( other.left ) ];
+
+					other.left = make ( op::LOAD, target.size, target.a, target.b, target.value, static_cast < uint8_t > ( target.bits & ~FLOATING ) );
+					other.right = zero;
+
+				}
+
+				line.kind = stmt::NOP;
+				vars [ static_cast < size_t > ( v ) ].ghost = ghost_vector_zero;
+				vars [ static_cast < size_t > ( v ) ].born = line.address;
+
+				continue;
+
+			}
 
 			if ( item.kind != var_kind::REGISTER || item.flags || item.cookie || item.saved || ( item.bits & FLOATING ) || defs [ static_cast < size_t > ( v ) ] != 1 || uses [ static_cast < size_t > ( v ) ] == 0 || uses [ static_cast < size_t > ( v ) ] >= 100 )
 				continue;
