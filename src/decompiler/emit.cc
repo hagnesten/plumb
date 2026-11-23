@@ -423,6 +423,9 @@ namespace decompiler {
 	static bool char_address = true;
 	static bool char_calls = true;
 	static bool vector_copies = true;
+	static bool byte_elements = true;
+	static bool void_needs_char = true;
+	static bool void_needs_char_params = false;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
 
@@ -6987,7 +6990,62 @@ namespace decompiler {
 				continue;
 
 			if ( ( element [ static_cast < size_t > ( from ) ] & 0x40 ) && ( x >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( x ) ].empty ( ) ) )
-				element [ static_cast < size_t > ( x ) ] = 0x10;
+				element [ static_cast < size_t > ( x ) ] = byte_elements && !wide_access [ static_cast < size_t > ( x ) ] ? 0x01 : 0x10;
+
+		}
+
+		if ( !void_needs_char )
+			return;
+
+		base::list < uint8_t > keep;
+
+		keep.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t x = 0; x < total; x++ ) {
+
+			int32_t from = source [ static_cast < size_t > ( x ) ];
+
+			if ( from >= 0 && element [ static_cast < size_t > ( x ) ] == 0x10 )
+				keep [ static_cast < size_t > ( from ) ] = 1;
+
+		}
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& item = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( ( item.kind != stmt::STORE && item.kind != stmt::ASSIGN ) || item.left < 0 || item.right < 0 )
+					continue;
+
+				const expr& target = b.exprs [ static_cast < size_t > ( item.left ) ];
+				const expr& stored = b.exprs [ static_cast < size_t > ( item.right ) ];
+
+				if ( target.kind != op::LOAD || target.size != 8 || stored.kind != op::VAR || stored.value < 0 || stored.value >= total || element [ static_cast < size_t > ( stored.value ) ] != 0x10 )
+					continue;
+
+				int32_t at = target.a;
+
+				if ( at >= 0 && b.exprs [ static_cast < size_t > ( at ) ].kind == op::ADD && b.exprs [ static_cast < size_t > ( at ) ].b >= 0 && b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( at ) ].b ) ].kind == op::CONST )
+					at = b.exprs [ static_cast < size_t > ( at ) ].a;
+
+				if ( at >= 0 && b.exprs [ static_cast < size_t > ( at ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( at ) ].value >= 0 && b.exprs [ static_cast < size_t > ( at ) ].value < total )
+					keep [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( at ) ].value ) ] = 1;
+
+			}
+
+		}
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			uint8_t shape = element [ static_cast < size_t > ( v ) ];
+
+			if ( ( shape & 0x9F ) == 8 && ( shape & 0x40 ) && !keep [ static_cast < size_t > ( v ) ] && ( b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER || !void_needs_char_params ) )
+				element [ static_cast < size_t > ( v ) ] = 0;
 
 		}
 
