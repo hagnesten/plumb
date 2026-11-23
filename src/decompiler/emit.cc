@@ -422,6 +422,7 @@ namespace decompiler {
 	static bool char_split = true;
 	static bool char_address = true;
 	static bool char_calls = true;
+	static bool vector_copies = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
 
@@ -448,10 +449,12 @@ namespace decompiler {
 		bool inline_mode = false;
 		bool ended = false;
 		bool bare_unsigned = false;
+		bool vector_store = false;
 		bool explicit_zero = false;
 		base::list < uint8_t > hidden;
 		base::list < uint8_t > element;
 		base::list < uint8_t > boolean;
+		base::list < uint8_t > vector;
 		bool inline_returns = true;
 		bool call_unused = false;
 		bool fall_returns = true;
@@ -787,7 +790,9 @@ namespace decompiler {
 
 			const wchar_t* text = L"__int64";
 
-			if ( bits & FLOATING )
+			if ( size == 16 && vector_store )
+				text = L"__m128i";
+			else if ( bits & FLOATING )
 				text = size == 4 ? L"float" : ( size == 8 ? L"double" : L"__m128" );
 			else if ( pointer )
 				text = L"_BYTE *";
@@ -865,6 +870,14 @@ namespace decompiler {
 			if ( index == b.va_var ) {
 
 				out.put ( L"va_list", syntax::TYPE );
+
+				return;
+
+			}
+
+			if ( index < vector.count ( ) && vector [ static_cast < size_t > ( index ) ] ) {
+
+				out.put ( L"__m128i", syntax::TYPE );
 
 				return;
 
@@ -3065,6 +3078,35 @@ namespace decompiler {
 
 						}
 
+						semicolon ( );
+
+						break;
+
+					}
+
+					if ( left.kind == op::VAR && right.kind == op::LOAD && right.size == 16 && left.value >= 0 && left.value < vector.count ( ) && vector [ static_cast < size_t > ( left.value ) ] ) {
+
+						value ( item.left, 0 );
+						out.put ( L" = ", syntax::OPERATOR );
+						out.put ( L"_mm_loadu_si128", syntax::FUNCTION );
+						out.put ( L"((" );
+						out.put ( L"const __m128i", syntax::TYPE );
+						out.put ( L" *)" );
+						value ( right.a, 14 );
+						out.put ( L")" );
+						semicolon ( );
+
+						break;
+
+					}
+
+					if ( left.kind == op::LOAD && left.size == 16 && right.kind == op::VAR && right.value >= 0 && right.value < vector.count ( ) && vector [ static_cast < size_t > ( right.value ) ] ) {
+
+						vector_store = true;
+						value ( item.left, 0 );
+						vector_store = false;
+						out.put ( L" = ", syntax::OPERATOR );
+						value ( item.right, 2 );
 						semicolon ( );
 
 						break;
@@ -5979,6 +6021,113 @@ namespace decompiler {
 	static bool untype_passed = true;
 	static bool detect_bools = true;
 
+	static void vector_vars ( builder& b, base::list < uint8_t >& vector ) {
+
+		int32_t total = b.vars.count ( );
+		base::list < uint8_t > bad;
+		base::list < int32_t > loads;
+		base::list < int32_t > stores;
+
+		vector.clear ( );
+		vector.fill ( static_cast < size_t > ( total ), 0 );
+
+		if ( !vector_copies )
+			return;
+
+		bad.fill ( static_cast < size_t > ( total ), 0 );
+		loads.fill ( static_cast < size_t > ( total ), 0 );
+		stores.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			const variable& item = b.vars [ static_cast < size_t > ( v ) ];
+
+			if ( item.kind != var_kind::REGISTER || item.size < 8 || !( item.bits & FLOATING ) || item.flags || ( v < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( v ) ].empty ( ) ) )
+				bad [ static_cast < size_t > ( v ) ] = 1;
+
+		}
+
+		auto taint = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+			if ( e < 0 || depth > 96 )
+				return;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind == op::VAR && node.value >= 0 && node.value < total )
+				bad [ static_cast < size_t > ( node.value ) ] = 1;
+
+			self ( self, node.a, depth + 1 );
+			self ( self, node.b, depth + 1 );
+			self ( self, node.c, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+		};
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( line.kind == stmt::NOP )
+					continue;
+
+				const expr* left = line.left >= 0 ? &b.exprs [ static_cast < size_t > ( line.left ) ] : nullptr;
+				const expr* right = line.right >= 0 ? &b.exprs [ static_cast < size_t > ( line.right ) ] : nullptr;
+
+				if ( line.kind == stmt::ASSIGN && left && left->kind == op::VAR && left->value >= 0 && left->value < total ) {
+
+					if ( right && right->kind == op::LOAD && right->size == 16 ) {
+
+						loads [ static_cast < size_t > ( left->value ) ]++;
+						taint ( taint, right->a, 0 );
+
+					} else {
+
+						bad [ static_cast < size_t > ( left->value ) ] = 1;
+						taint ( taint, line.right, 0 );
+
+					}
+
+					continue;
+
+				}
+
+				if ( ( line.kind == stmt::STORE || line.kind == stmt::ASSIGN ) && left && left->kind == op::LOAD && left->size == 16 && right && right->kind == op::VAR && right->value >= 0 && right->value < total ) {
+
+					stores [ static_cast < size_t > ( right->value ) ]++;
+					taint ( taint, left->a, 0 );
+
+					continue;
+
+				}
+
+				taint ( taint, line.left, 0 );
+				taint ( taint, line.right, 0 );
+
+			}
+
+			taint ( taint, block.condition, 0 );
+			taint ( taint, block.selector, 0 );
+			taint ( taint, block.returned, 0 );
+
+		}
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			if ( !bad [ static_cast < size_t > ( v ) ] && loads [ static_cast < size_t > ( v ) ] > 0 && stores [ static_cast < size_t > ( v ) ] > 0 )
+				vector [ static_cast < size_t > ( v ) ] = 1;
+
+		}
+
+	}
+
 	static void boolean_vars ( builder& b, base::list < uint8_t >& boolean ) {
 
 		int32_t total = b.vars.count ( );
@@ -7437,6 +7586,7 @@ namespace decompiler {
 			b.call_names [ static_cast < size_t > ( b.va_var ) ].set ( L"va" );
 		typed_pointers ( b, body_emitter.element );
 		boolean_vars ( b, body_emitter.boolean );
+		vector_vars ( b, body_emitter.vector );
 
 		if ( !body_emitter.indexing ) {
 
@@ -7526,6 +7676,7 @@ namespace decompiler {
 		head.result_var = body_emitter.result_var;
 		head.element = body_emitter.element;
 		head.boolean = body_emitter.boolean;
+		head.vector = body_emitter.vector;
 		head.loop_letter = body_emitter.loop_letter;
 		head.out.r = &out;
 
