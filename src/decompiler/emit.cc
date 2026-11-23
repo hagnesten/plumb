@@ -426,6 +426,7 @@ namespace decompiler {
 	static bool byte_elements = true;
 	static bool void_needs_char = true;
 	static bool void_needs_char_params = false;
+	static bool return_exits = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
 
@@ -4903,6 +4904,34 @@ namespace decompiler {
 			if ( pd >= 0 && pd < count && !members [ static_cast < size_t > ( pd ) ] )
 				exit = pd;
 
+			if ( return_exits && exit >= 0 && exit < count && exit_block ( exit ) && small_block ( exit ) ) {
+
+				int32_t other = -1;
+
+				for ( int32_t v = 0; v < count && other != -2; v++ ) {
+
+					if ( !members [ static_cast < size_t > ( v ) ] )
+						continue;
+
+					for ( int32_t s : succ [ static_cast < size_t > ( v ) ] ) {
+
+						if ( members [ static_cast < size_t > ( s ) ] || s == exit || exit_block ( s ) )
+							continue;
+
+						if ( other == -1 )
+							other = s;
+						else if ( other != s )
+							other = -2;
+
+					}
+
+				}
+
+				if ( other >= 0 )
+					exit = other;
+
+			}
+
 			frame inner;
 
 			inner.loop = start;
@@ -5404,6 +5433,22 @@ namespace decompiler {
 				stack.pop ( );
 
 			}
+
+		}
+
+		bool small_block ( int32_t v ) {
+
+			const block_code& item = b.code [ static_cast < size_t > ( v ) ];
+			int32_t live = 0;
+
+			for ( int32_t s = item.first; s < item.first + item.count && s < b.statements.count ( ); s++ ) {
+
+				if ( b.statements [ static_cast < size_t > ( s ) ].kind != stmt::NOP )
+					live++;
+
+			}
+
+			return live <= 1;
 
 		}
 
