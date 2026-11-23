@@ -419,6 +419,9 @@ namespace decompiler {
 	static bool frame_deepest = true;
 	static bool implicit_narrow = true;
 	static bool split_selects = true;
+	static bool char_split = true;
+	static bool char_address = true;
+	static bool char_calls = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
 
@@ -1493,6 +1496,60 @@ namespace decompiler {
 
 		}
 
+		bool char_terms ( int32_t e, int32_t& var, int32_t& index, int64_t& offset ) const {
+
+			int32_t terms [ 8 ];
+			int32_t count = 0;
+			int32_t stack [ 8 ];
+			int32_t depth = 0;
+			int64_t sum = 0;
+
+			stack [ depth++ ] = e;
+
+			while ( depth ) {
+
+				int32_t at = stack [ --depth ];
+				const expr& node = b.exprs [ static_cast < size_t > ( at ) ];
+
+				if ( node.kind == op::ADD && node.size == 8 && node.a >= 0 && node.b >= 0 && depth + 2 <= 8 ) {
+
+					stack [ depth++ ] = node.b;
+					stack [ depth++ ] = node.a;
+
+				} else if ( node.kind == op::CONST && !( node.bits & POINTER ) )
+					sum += node.value;
+				else if ( count < 8 )
+					terms [ count++ ] = at;
+				else
+					return false;
+
+			}
+
+			if ( count != 2 )
+				return false;
+
+			if ( char_var ( terms [ 0 ] ) >= 0 && char_var ( terms [ 1 ] ) < 0 && pointer_step ( terms [ 1 ] ) == 0 ) {
+
+				var = char_var ( terms [ 0 ] );
+				index = terms [ 1 ];
+
+			} else if ( char_var ( terms [ 1 ] ) >= 0 && char_var ( terms [ 0 ] ) < 0 && pointer_step ( terms [ 0 ] ) == 0 ) {
+
+				var = char_var ( terms [ 1 ] );
+				index = terms [ 0 ];
+
+			} else
+				return false;
+
+			if ( b.exprs [ static_cast < size_t > ( index ) ].bits & POINTER )
+				return false;
+
+			offset = sum;
+
+			return true;
+
+		}
+
 		bool char_load ( const expr& item, int32_t parent ) {
 
 			const expr& where = b.exprs [ static_cast < size_t > ( item.a ) ];
@@ -1528,6 +1585,9 @@ namespace decompiler {
 
 			}
 
+			if ( var < 0 && where.kind == op::ADD && char_split && !char_terms ( item.a, var, index, offset ) )
+				var = -1;
+
 			if ( var < 0 )
 				return false;
 
@@ -1561,7 +1621,7 @@ namespace decompiler {
 				if ( offset ) {
 
 					out.put ( offset < 0 ? L" - " : L" + ", syntax::OPERATOR );
-					number ( offset < 0 ? -offset : offset, 8, !simple_constant ( offset ), false );
+					index_number ( offset < 0 ? -offset : offset );
 
 				}
 
@@ -1910,6 +1970,44 @@ namespace decompiler {
 
 					out.put ( L"!", syntax::OPERATOR );
 					value ( item.a, 14 );
+
+					if ( parent > 14 )
+						out.put ( L")" );
+
+					return;
+
+				}
+
+			}
+
+			if ( char_address && item.kind == op::ADD && item.a >= 0 && item.b >= 0 ) {
+
+				int32_t base_var = -1;
+				int32_t at_index = -1;
+				int64_t at_offset = 0;
+
+				if ( char_terms ( index, base_var, at_index, at_offset ) ) {
+
+					wchar_t base_name [ 64 ];
+
+					var_name ( base_var, base_name );
+
+					if ( parent > 14 )
+						out.put ( L"(" );
+
+					out.put ( L"&", syntax::OPERATOR );
+					out.put ( base_name, b.vars [ static_cast < size_t > ( base_var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
+					out.put ( L"[" );
+					value ( at_index, at_offset ? 12 : 0 );
+
+					if ( at_offset ) {
+
+						out.put ( at_offset < 0 ? L" - " : L" + ", syntax::OPERATOR );
+						index_number ( at_offset < 0 ? -at_offset : at_offset );
+
+					}
+
+					out.put ( L"]" );
 
 					if ( parent > 14 )
 						out.put ( L")" );
@@ -3183,7 +3281,7 @@ namespace decompiler {
 						number ( shown_value, 8, !simple_constant ( shown_value ), false );
 
 					}
-					else if ( flow_casts && left.kind == op::VAR && pointer_step ( item.left ) > 0 && !typed_value ( item.right ) && right.kind != op::CAST && right.kind != op::CALL ) {
+					else if ( flow_casts && left.kind == op::VAR && pointer_step ( item.left ) > 0 && !typed_value ( item.right ) && right.kind != op::CAST && ( right.kind != op::CALL || ( char_calls && element [ static_cast < size_t > ( left.value ) ] == 0x10 && right.value ) ) ) {
 
 						if ( right.kind == op::LOAD && right.size == 8 && !void_element_load ( item.right ) && element [ static_cast < size_t > ( left.value ) ] != 0x10 && !( ( element [ static_cast < size_t > ( left.value ) ] & 0x9F ) == 8 && ( element [ static_cast < size_t > ( left.value ) ] & 0x40 ) ) ) {
 
@@ -6535,10 +6633,14 @@ namespace decompiler {
 		base::list < int32_t > source;
 		base::list < uint8_t > mixed;
 		base::list < uint8_t > based;
+		base::list < uint8_t > void_call;
+		base::list < uint8_t > wide_access;
 
+		wide_access.fill ( static_cast < size_t > ( total ), 0 );
 		source.fill ( static_cast < size_t > ( total ), -1 );
 		mixed.fill ( static_cast < size_t > ( total ), 0 );
 		based.fill ( static_cast < size_t > ( total ), 0 );
+		void_call.fill ( static_cast < size_t > ( total ), 0 );
 
 		auto owner = [ & ] ( int32_t e ) -> int32_t {
 
@@ -6602,7 +6704,11 @@ namespace decompiler {
 					if ( x >= 0 && x < total && v >= 0 )
 						source [ static_cast < size_t > ( x ) ] = v;
 
-					if ( x >= 0 && x < total && v < 0 )
+					const expr& right = b.exprs [ static_cast < size_t > ( item.right ) ];
+
+					if ( x >= 0 && x < total && v < 0 && char_calls && right.kind == op::CALL && right.value && callee_void_result ( *b.db, *b.file, b.names, static_cast < uint64_t > ( right.value ), 0 ) )
+						void_call [ static_cast < size_t > ( x ) ] = 1;
+					else if ( x >= 0 && x < total && v < 0 )
 						mixed [ static_cast < size_t > ( x ) ] = 1;
 
 				}
@@ -6645,8 +6751,12 @@ namespace decompiler {
 					const expr& sum = b.exprs [ static_cast < size_t > ( node.a ) ];
 					bool variable_index = sum.b >= 0 && b.exprs [ static_cast < size_t > ( sum.b ) ].kind != op::CONST;
 
-					if ( x >= 0 && x < total && ( variable_index || b.exprs [ static_cast < size_t > ( sum.a ) ].kind == op::ADD ) )
+					if ( x >= 0 && x < total && ( variable_index || b.exprs [ static_cast < size_t > ( sum.a ) ].kind == op::ADD ) ) {
+
 						based [ static_cast < size_t > ( x ) ] = 1;
+						wide_access [ static_cast < size_t > ( x ) ] |= node.size != 1 || ( node.bits & FLOATING ) ? 1 : 0;
+
+					}
 
 				}
 
@@ -6713,7 +6823,18 @@ namespace decompiler {
 			const variable& item = b.vars [ static_cast < size_t > ( x ) ];
 			int32_t from = source [ static_cast < size_t > ( x ) ];
 
-			if ( item.kind != var_kind::REGISTER || item.size != 8 || item.flags || ( item.bits & FLOATING ) || mixed [ static_cast < size_t > ( x ) ] || !based [ static_cast < size_t > ( x ) ] || from < 0 || element [ static_cast < size_t > ( x ) ] )
+			if ( item.kind != var_kind::REGISTER || item.size != 8 || item.flags || ( item.bits & FLOATING ) || mixed [ static_cast < size_t > ( x ) ] || !based [ static_cast < size_t > ( x ) ] || element [ static_cast < size_t > ( x ) ] )
+				continue;
+
+			if ( from < 0 && void_call [ static_cast < size_t > ( x ) ] && ( x >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( x ) ].empty ( ) ) ) {
+
+				element [ static_cast < size_t > ( x ) ] = wide_access [ static_cast < size_t > ( x ) ] ? 0x10 : 0x01;
+
+				continue;
+
+			}
+
+			if ( from < 0 )
 				continue;
 
 			if ( ( element [ static_cast < size_t > ( from ) ] & 0x40 ) && ( x >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( x ) ].empty ( ) ) )

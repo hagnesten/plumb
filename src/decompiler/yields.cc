@@ -266,6 +266,106 @@ namespace decompiler {
 
 	}
 
+	static bool void_pointer_text ( const wchar_t* text ) {
+
+		return base::same_text ( text, L"LPVOID" ) || base::same_text ( text, L"PVOID" ) || base::same_text ( text, L"void *" ) || base::same_text ( text, L"HLOCAL" ) || base::same_text ( text, L"HGLOBAL" );
+
+	}
+
+	bool callee_void_result ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t target, int32_t depth ) {
+
+		if ( !target || depth > 2 || !names )
+			return false;
+
+		wchar_t name [ 200 ];
+		const wchar_t* api = nullptr;
+
+		if ( const wchar_t* declared = names->prototype ( target ) )
+			api = declared;
+		else if ( names->name ( target, true, name, 200 ) )
+			api = api_prototype ( name );
+
+		int32_t callee = db.function_starting ( target );
+
+		if ( !api && callee >= 0 && ( db.functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK ) && db.functions [ static_cast < size_t > ( callee ) ].import >= 0 && db.functions [ static_cast < size_t > ( callee ) ].import < file.imports.count ( ) )
+			api = api_prototype ( file.imports [ static_cast < size_t > ( db.functions [ static_cast < size_t > ( callee ) ].import ) ].name.get ( ) );
+
+		if ( api ) {
+
+			c_prototype shape;
+			base::writer problem;
+
+			return parse_prototype ( api, true, shape, problem ) && void_pointer_text ( shape.result );
+
+		}
+
+		if ( callee < 0 )
+			return false;
+
+		analysis::function_graph graph;
+
+		if ( !analysis::build_graph ( db, target, graph ) || graph.blocks.count ( ) > 40 )
+			return false;
+
+		bool any = false;
+
+		for ( int32_t i = 0; i < graph.blocks.count ( ); i++ ) {
+
+			const analysis::block& item = graph.blocks [ static_cast < size_t > ( i ) ];
+			uint64_t at = item.start;
+			x86::instruction last;
+			x86::instruction producer;
+			bool produced = false;
+
+			while ( at < item.end ) {
+
+				x86::instruction ins;
+
+				if ( !db.decode ( at, ins ) )
+					return false;
+
+				uint32_t use = 0;
+				uint32_t def = 0;
+
+				effects ( ins, true, use, def, false );
+
+				if ( def & 1u ) {
+
+					producer = ins;
+					produced = true;
+
+				}
+
+				last = ins;
+				at = ins.next ( );
+
+			}
+
+			bool tail = last.control == x86::flow::JUMP && item.out_count == 0;
+
+			if ( last.name != mnemonic::ret && !tail )
+				continue;
+
+			uint64_t source = 0;
+
+			if ( tail )
+				source = call_target ( last );
+			else if ( produced && producer.name == mnemonic::call )
+				source = call_target ( producer );
+			else
+				return false;
+
+			if ( !callee_void_result ( db, file, names, source, depth + 1 ) )
+				return false;
+
+			any = true;
+
+		}
+
+		return any;
+
+	}
+
 	bool stack_probe ( const analysis::database& db, const x86::instruction& ins ) {
 
 		x86::instruction after;

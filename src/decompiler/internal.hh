@@ -298,6 +298,8 @@ namespace decompiler {
 
 	bool stack_probe ( const analysis::database& db, const x86::instruction& ins );
 
+	bool callee_void_result ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t target, int32_t depth );
+
 	uint8_t callee_pointer_shape ( const analysis::database& db, namer* names, uint64_t function, int32_t index, int32_t depth );
 
 	int32_t yields_value ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, bool long_mode, int32_t depth );
