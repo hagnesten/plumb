@@ -356,6 +356,8 @@ namespace decompiler {
 	static bool fold_pointers = true;
 	static bool fold_vector_zero = true;
 	static bool ghost_vector_zero = true;
+	static bool fold_addresses = true;
+	static bool ghost_addresses = false;
 	static bool keep_returned_constants = false;
 
 	void builder::fold_constants ( ) {
@@ -468,10 +470,12 @@ namespace decompiler {
 			statement& line = statements [ static_cast < size_t > ( single [ static_cast < size_t > ( v ) ] ) ];
 			const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
 
-			if ( source.kind != op::CONST || ( source.bits & FLOATING ) || ( ( source.bits & POINTER ) && !fold_pointers ) )
+			bool address_source = fold_addresses && source.kind == op::ADDRESS && source.a < 0 && source.value >= 0;
+
+			if ( !address_source && ( source.kind != op::CONST || ( source.bits & FLOATING ) || ( ( source.bits & POINTER ) && !fold_pointers ) ) )
 				continue;
 
-			if ( source.bits & POINTER ) {
+			if ( !address_source && ( source.bits & POINTER ) ) {
 
 				bool arithmetic = false;
 
@@ -558,7 +562,7 @@ namespace decompiler {
 			}
 
 			line.kind = stmt::NOP;
-			vars [ static_cast < size_t > ( v ) ].ghost = ghost_folds;
+			vars [ static_cast < size_t > ( v ) ].ghost = address_source ? ghost_addresses && uses [ static_cast < size_t > ( v ) ] > 1 : ghost_folds;
 			vars [ static_cast < size_t > ( v ) ].born = line.address;
 
 		}
