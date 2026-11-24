@@ -450,6 +450,7 @@ namespace decompiler {
 	static bool inferred_unsigned = true;
 	static bool widen_assign = true;
 	static bool sext_products = true;
+	static bool collapse_casts = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -3132,6 +3133,21 @@ namespace decompiler {
 					if ( inner.kind == op::LOAD && item.size > inner.size && !float_change && !( item.bits & FLOATING ) ) {
 
 						extended_load ( inner, parent, item.bits & SIGNED ? SIGNED : UNSIGNED );
+
+						break;
+
+					}
+
+					if ( collapse_casts && !no_casts && !float_change && item.size == 8 && inner.kind == op::CAST && inner.size == 4 && inner.a >= 0 && b.exprs [ static_cast < size_t > ( inner.a ) ].size == 8 && !( b.exprs [ static_cast < size_t > ( inner.a ) ].bits & FLOATING ) && !( inner.bits & FLOATING ) ) {
+
+						if ( parent > 14 )
+							out.put ( L"(" );
+
+						out.put ( ( item.bits & SIGNED ) ? L"(int)" : L"(unsigned int)", syntax::TYPE );
+						value ( inner.a, 14 );
+
+						if ( parent > 14 )
+							out.put ( L")" );
 
 						break;
 
