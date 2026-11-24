@@ -1338,6 +1338,17 @@ namespace decompiler {
 
 				}
 
+				if ( ins.count == 3 && ins.operands [ 0 ].type == x86::kind::REG ) {
+
+					int32_t slot = slot_of ( ins.operands [ 0 ].reg );
+					const x86::operand& source = ins.operands [ 1 ];
+					bool reads = source.type == x86::kind::REG ? slot_of ( source.reg ) == slot : ( source.type == x86::kind::MEM && ( slot_of ( source.base ) == slot || slot_of ( source.index ) == slot ) );
+
+					if ( slot >= 0 && !reads )
+						use &= ~( 1u << slot );
+
+				}
+
 				break;
 
 			case mnemonic::cdq:
