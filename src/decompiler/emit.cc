@@ -8038,6 +8038,7 @@ namespace decompiler {
 	static bool callee_shapes = true;
 	static bool element_flavors = true;
 	static bool typed_locals = true;
+	static bool pointer_compares = true;
 	static bool pointer_steps = true;
 	static bool char_locals = true;
 
@@ -9928,6 +9929,9 @@ namespace decompiler {
 			}
 
 			if ( ( node.kind == op::EQ || node.kind == op::NE ) && var_of ( node.a ) >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( node.b ) ].value == 0 )
+				return;
+
+			if ( pointer_compares && node.kind >= op::EQ && node.kind <= op::GE && var_of ( node.a ) >= 0 && var_of ( node.b ) >= 0 )
 				return;
 
 			if ( pointer_steps && node.kind == op::ADD && var_of ( node.a ) >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && !( b.exprs [ static_cast < size_t > ( node.b ) ].bits & POINTER ) ) {
