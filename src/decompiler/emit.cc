@@ -6999,6 +6999,29 @@ namespace decompiler {
 
 		}
 
+		bool usable_step ( int32_t step ) const {
+
+			if ( step < 0 )
+				return false;
+
+			for ( int32_t s = 0; s < fold_at.count ( ) && s < fold_inc.count ( ); s++ ) {
+
+				if ( fold_at [ static_cast < size_t > ( s ) ] >= 0 && fold_inc [ static_cast < size_t > ( s ) ] == step )
+					return false;
+
+			}
+
+			for ( int32_t k = 0; k < fold_cond.count ( ) && k < fold_cond_inc.count ( ); k++ ) {
+
+				if ( fold_cond [ static_cast < size_t > ( k ) ] >= 0 && fold_cond_inc [ static_cast < size_t > ( k ) ] == step )
+					return false;
+
+			}
+
+			return true;
+
+		}
+
 		bool open_for ( uint64_t address, int32_t condition, bool negated, int32_t step, bool need_init ) {
 
 			int32_t var = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( b.statements [ static_cast < size_t > ( step ) ].left ) ].value );
@@ -7172,7 +7195,7 @@ namespace decompiler {
 				int32_t test = back_taken ? item.condition : b.negate ( item.condition );
 				int32_t step = counted_step ( start, test );
 
-				if ( step >= 0 && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
+				if ( usable_step ( step ) && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
 
 					hidden [ static_cast < size_t > ( step ) ] = 1;
 					body ( start );
@@ -7225,7 +7248,7 @@ namespace decompiler {
 					int32_t test = back_taken ? tail.condition : b.negate ( tail.condition );
 					int32_t step = counted_step ( latch, test );
 
-					if ( step >= 0 && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
+					if ( usable_step ( step ) && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
 
 						hidden [ static_cast < size_t > ( step ) ] = 1;
 						emitted [ static_cast < size_t > ( latch ) ] = 1;
@@ -7378,7 +7401,7 @@ namespace decompiler {
 					base::list < uint8_t > saved = loop_body [ static_cast < size_t > ( start ) ];
 
 					int32_t step = counted_step ( outer_latch, test );
-					bool counted = step >= 0 && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true );
+					bool counted = usable_step ( step ) && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true );
 
 					if ( counted )
 						hidden [ static_cast < size_t > ( step ) ] = 1;
@@ -7434,7 +7457,7 @@ namespace decompiler {
 				label ( start );
 				emitted [ static_cast < size_t > ( start ) ] = 1;
 
-				if ( step >= 0 && open_for ( item.last, item.condition, !stay_taken, step, step_needs_init ) )
+				if ( usable_step ( step ) && open_for ( item.last, item.condition, !stay_taken, step, step_needs_init ) )
 					hidden [ static_cast < size_t > ( step ) ] = 1;
 				else
 					open_brace ( item.last, L"while", item.condition, !stay_taken );
