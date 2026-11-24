@@ -453,6 +453,7 @@ namespace decompiler {
 	static bool collapse_casts = true;
 	static bool call_untruncate = true;
 	static bool store_untruncate = true;
+	static bool nested_loops = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -484,6 +485,8 @@ namespace decompiler {
 		bool truth = false;
 		bool in_logic = false;
 		bool untruncate = false;
+		int32_t forced_exit = -1;
+		int32_t nest_depth = 0;
 		base::list < int32_t > array_of;
 		base::list < int32_t > array_step;
 		base::list < int32_t > array_count;
@@ -6039,6 +6042,13 @@ namespace decompiler {
 			if ( pd >= 0 && pd < count && !members [ static_cast < size_t > ( pd ) ] )
 				exit = pd;
 
+			if ( forced_exit >= 0 ) {
+
+				exit = forced_exit;
+				forced_exit = -1;
+
+			}
+
 			if ( return_exits && exit >= 0 && exit < count && exit_block ( exit ) && small_block ( exit ) ) {
 
 				int32_t other = -1;
@@ -6176,6 +6186,134 @@ namespace decompiler {
 					}
 
 					emitted [ static_cast < size_t > ( latch ) ] = 1;
+					close_brace ( );
+					while_tail ( tail.last, test );
+
+					return exit;
+
+				}
+
+			}
+
+			if ( nested_loops && latch == -2 && nest_depth < 3 ) {
+
+				int32_t outer_latch = -1;
+
+				for ( int32_t p : pred [ static_cast < size_t > ( start ) ] ) {
+
+					if ( members [ static_cast < size_t > ( p ) ] && p != start && ( outer_latch < 0 || b.graph.blocks [ static_cast < size_t > ( p ) ].start > b.graph.blocks [ static_cast < size_t > ( outer_latch ) ].start ) )
+						outer_latch = p;
+
+				}
+
+				const block_code& tail = b.code [ static_cast < size_t > ( outer_latch >= 0 ? outer_latch : start ) ];
+				bool usable = outer_latch >= 0 && tail.end == term::BRANCH && ( tail.taken == start ) != ( tail.other == start ) && ( tail.taken == start ? tail.other : tail.taken ) == exit;
+
+				base::list < uint8_t > inner_set;
+
+				if ( usable ) {
+
+					inner_set.fill ( static_cast < size_t > ( count ), 0 );
+
+					base::list < int32_t > work;
+
+					inner_set [ static_cast < size_t > ( start ) ] = 1;
+
+					for ( int32_t p : pred [ static_cast < size_t > ( start ) ] ) {
+
+						if ( members [ static_cast < size_t > ( p ) ] && p != outer_latch && !inner_set [ static_cast < size_t > ( p ) ] ) {
+
+							inner_set [ static_cast < size_t > ( p ) ] = 1;
+							work.push ( p );
+
+						}
+
+					}
+
+					while ( !work.empty ( ) ) {
+
+						int32_t v = work.back ( );
+
+						work.pop ( );
+
+						for ( int32_t p : pred [ static_cast < size_t > ( v ) ] ) {
+
+							if ( members [ static_cast < size_t > ( p ) ] && !inner_set [ static_cast < size_t > ( p ) ] ) {
+
+								inner_set [ static_cast < size_t > ( p ) ] = 1;
+								work.push ( p );
+
+							}
+
+						}
+
+					}
+
+					if ( inner_set [ static_cast < size_t > ( outer_latch ) ] )
+						usable = false;
+
+				}
+
+				int32_t resume = -1;
+
+				if ( usable ) {
+
+					for ( int32_t v = 0; v < count && resume != -2; v++ ) {
+
+						if ( !inner_set [ static_cast < size_t > ( v ) ] )
+							continue;
+
+						for ( int32_t s : succ [ static_cast < size_t > ( v ) ] ) {
+
+							if ( inner_set [ static_cast < size_t > ( s ) ] )
+								continue;
+
+							if ( !members [ static_cast < size_t > ( s ) ] ) {
+
+								if ( !exit_block ( s ) )
+									resume = -2;
+
+								continue;
+
+							}
+
+							if ( resume == -1 )
+								resume = s;
+							else if ( resume != s )
+								resume = -2;
+
+						}
+
+					}
+
+					usable = resume >= 0;
+
+				}
+
+				if ( usable ) {
+
+					bool back_taken = tail.taken == start;
+					int32_t test = back_taken ? tail.condition : b.negate ( tail.condition );
+					base::list < uint8_t > saved = loop_body [ static_cast < size_t > ( start ) ];
+
+					open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
+					loop_body [ static_cast < size_t > ( start ) ] = inner_set;
+					forced_exit = resume;
+					nest_depth++;
+
+					int32_t after = loop ( start, inner );
+
+					nest_depth--;
+					forced_exit = -1;
+					loop_body [ static_cast < size_t > ( start ) ] = saved;
+					emitted [ static_cast < size_t > ( outer_latch ) ] = 1;
+
+					if ( after >= 0 && after != outer_latch && !emitted [ static_cast < size_t > ( after ) ] )
+						region ( after, outer_latch, inner );
+
+					if ( !empty_block ( outer_latch ) )
+						body ( outer_latch );
+
 					close_brace ( );
 					while_tail ( tail.last, test );
 
