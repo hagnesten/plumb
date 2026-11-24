@@ -745,6 +745,7 @@ namespace decompiler {
 	static bool copy_constants = true;
 	static bool zero_registers = true;
 	static bool zero_stack_slots = true;
+	static bool reload_selects = true;
 	static bool dead_stack_stores = true;
 	static int32_t switch_cases = 3;
 	static bool ghost_addresses = false;
@@ -1098,6 +1099,107 @@ namespace decompiler {
 
 		if ( zero_registers )
 			propagate_register_constants ( );
+
+		if ( reload_selects ) {
+
+			base::list < int32_t > def_count;
+
+			def_count.fill ( static_cast < size_t > ( total ), 0 );
+
+			for ( const statement& line : statements ) {
+
+				if ( line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.left ) ].value >= 0 && exprs [ static_cast < size_t > ( line.left ) ].value < total )
+					def_count [ static_cast < size_t > ( exprs [ static_cast < size_t > ( line.left ) ].value ) ]++;
+
+			}
+
+			for ( const block_code& block : code ) {
+
+				for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ ) {
+
+					statement& line = statements [ static_cast < size_t > ( s ) ];
+
+					if ( line.kind != stmt::ASSIGN || line.right < 0 || exprs [ static_cast < size_t > ( line.right ) ].kind != op::TERNARY )
+						continue;
+
+					expr select = exprs [ static_cast < size_t > ( line.right ) ];
+					int32_t arms [ 2 ] = { select.b, select.c };
+					bool moved = false;
+
+					for ( int32_t k = 0; k < 2; k++ ) {
+
+						int32_t arm = arms [ k ];
+						int32_t bare = arm;
+
+						while ( bare >= 0 && exprs [ static_cast < size_t > ( bare ) ].kind == op::CAST )
+							bare = exprs [ static_cast < size_t > ( bare ) ].a;
+
+						if ( bare < 0 || exprs [ static_cast < size_t > ( bare ) ].kind != op::VAR )
+							continue;
+
+						int64_t y = exprs [ static_cast < size_t > ( bare ) ].value;
+
+						if ( y < 0 || y >= total || def_count [ static_cast < size_t > ( y ) ] != 1 )
+							continue;
+
+						int32_t source = -1;
+						base::list < int64_t > changed_vars;
+
+						for ( int32_t t = s - 1; t >= block.first; t-- ) {
+
+							const statement& prior = statements [ static_cast < size_t > ( t ) ];
+
+							if ( prior.kind == stmt::NOP )
+								continue;
+
+							if ( prior.kind == stmt::ASSIGN && prior.left >= 0 && exprs [ static_cast < size_t > ( prior.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( prior.left ) ].value == y ) {
+
+								source = prior.right;
+
+								break;
+
+							}
+
+							if ( prior.kind != stmt::ASSIGN || has_call ( *this, prior.right, 0 ) || prior.left < 0 || exprs [ static_cast < size_t > ( prior.left ) ].kind != op::VAR )
+								break;
+
+							changed_vars.push ( exprs [ static_cast < size_t > ( prior.left ) ].value );
+
+						}
+
+						while ( source >= 0 && exprs [ static_cast < size_t > ( source ) ].kind == op::CAST )
+							source = exprs [ static_cast < size_t > ( source ) ].a;
+
+						bool stale = false;
+
+						for ( int64_t c : changed_vars )
+							stale = stale || ( source >= 0 && mentions ( *this, source, c, 0 ) );
+
+						if ( stale )
+							continue;
+
+						if ( source < 0 || exprs [ static_cast < size_t > ( source ) ].kind != op::LOAD || exprs [ static_cast < size_t > ( source ) ].size != exprs [ static_cast < size_t > ( arm ) ].size )
+							continue;
+
+						arms [ k ] = source;
+						moved = true;
+
+					}
+
+					if ( moved ) {
+
+						int32_t made = make ( op::TERNARY, select.size, select.a, arms [ 0 ], 0, select.bits );
+
+						exprs [ static_cast < size_t > ( made ) ].c = arms [ 1 ];
+						line.right = made;
+
+					}
+
+				}
+
+			}
+
+		}
 
 		if ( copy_constants ) {
 

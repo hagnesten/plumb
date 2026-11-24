@@ -1397,6 +1397,21 @@ namespace decompiler {
 
 		}
 
+		bool char_typed_sum ( int32_t e ) const {
+
+			int32_t var = -1;
+			int32_t index = -1;
+			int64_t offset = 0;
+
+			if ( char_address && char_terms ( e, var, index, offset ) )
+				return true;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			return node.kind == op::ADD && ( pointer_step ( node.a ) > 0 || ( node.b >= 0 && pointer_step ( node.b ) > 0 ) );
+
+		}
+
 		int32_t count_var ( int32_t e, int64_t v, int32_t depth ) const {
 
 			if ( e < 0 || depth > 64 )
@@ -2875,7 +2890,7 @@ namespace decompiler {
 							out.put ( L"(unsigned int)" );
 							value ( argument, 14 );
 
-						} else if ( b.long_mode && !no_casts && target && passed.size == 8 && !( passed.bits & ( FLOATING | POINTER ) ) && ( passed.kind == op::LOAD || passed.kind == op::GLOBAL || passed.kind == op::ADD ) && ( callee_unsigned ( target, i ), !shape_ok ) && !void_element_load ( argument ) && callee_parameter_type ( *b.db, *b.file, b.names, target, i, param_type, 64 ) ) {
+						} else if ( b.long_mode && !no_casts && target && passed.size == 8 && !( passed.bits & ( FLOATING | POINTER ) ) && ( passed.kind == op::LOAD || passed.kind == op::GLOBAL || passed.kind == op::ADD ) && !( passed.kind == op::ADD && char_typed_sum ( argument ) ) && ( callee_unsigned ( target, i ), !shape_ok ) && !void_element_load ( argument ) && callee_parameter_type ( *b.db, *b.file, b.names, target, i, param_type, 64 ) ) {
 
 							if ( passed.kind == op::LOAD ) {
 
