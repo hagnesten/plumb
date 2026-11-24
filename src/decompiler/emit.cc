@@ -464,6 +464,8 @@ namespace decompiler {
 	static bool indexed_arrays = true;
 	static bool bare_tests = true;
 	static bool fall_then_simple = true;
+	static bool fall_then_signs = true;
+	static bool fall_returns_first = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
@@ -5715,6 +5717,26 @@ namespace decompiler {
 
 		}
 
+		bool negative_test ( int32_t condition ) const {
+
+			const expr& test = b.exprs [ static_cast < size_t > ( condition ) ];
+
+			if ( test.kind == op::LNOT )
+				return true;
+
+			if ( ( test.kind != op::EQ && test.kind != op::NE ) || test.b < 0 || ( test.bits & FLOATING ) )
+				return false;
+
+			const expr& right = b.exprs [ static_cast < size_t > ( test.b ) ];
+			bool zero = right.kind == op::CONST && right.value == 0;
+
+			if ( !fall_then_signs )
+				return test.kind == op::EQ;
+
+			return test.kind == op::EQ ? zero : ( right.kind == op::CONST && !zero );
+
+		}
+
 		int32_t branch ( int32_t block, int32_t stop, const frame& context, bool chained ) {
 
 			const block_code& item = b.code [ static_cast < size_t > ( block ) ];
@@ -5925,7 +5947,13 @@ namespace decompiler {
 				else_part = taken;
 				negated = true;
 
-			} else if ( fall_then && follow >= 0 && else_part != follow && other >= 0 && taken >= 0 && item.condition >= 0 && ( b.exprs [ static_cast < size_t > ( item.condition ) ].kind == op::EQ || b.exprs [ static_cast < size_t > ( item.condition ) ].kind == op::LNOT ) && ( !fall_then_simple || ( b.code [ static_cast < size_t > ( other ) ].end == term::FALL && b.code [ static_cast < size_t > ( other ) ].taken == follow && b.code [ static_cast < size_t > ( taken ) ].end == term::FALL && b.code [ static_cast < size_t > ( taken ) ].taken == follow ) ) ) {
+			} else if ( fall_then && follow >= 0 && else_part != follow && other >= 0 && taken >= 0 && item.condition >= 0 && negative_test ( item.condition ) && ( !fall_then_simple || ( b.code [ static_cast < size_t > ( other ) ].end == term::FALL && b.code [ static_cast < size_t > ( other ) ].taken == follow && b.code [ static_cast < size_t > ( taken ) ].end == term::FALL && b.code [ static_cast < size_t > ( taken ) ].taken == follow ) ) ) {
+
+				then_part = other;
+				else_part = taken;
+				negated = true;
+
+			} else if ( fall_returns_first && follow < 0 && other >= 0 && taken >= 0 && item.condition >= 0 && negative_test ( item.condition ) && ( b.exprs [ static_cast < size_t > ( item.condition ) ].kind == op::NE || ( b.code [ static_cast < size_t > ( taken ) ].returned >= 0 && b.exprs [ static_cast < size_t > ( b.code [ static_cast < size_t > ( taken ) ].returned ) ].kind != op::CONST ) ) && b.code [ static_cast < size_t > ( other ) ].end == term::RETURN && b.code [ static_cast < size_t > ( taken ) ].end == term::RETURN && pred [ static_cast < size_t > ( other ) ].count ( ) == 1 && pred [ static_cast < size_t > ( taken ) ].count ( ) == 1 ) {
 
 				then_part = other;
 				else_part = taken;
