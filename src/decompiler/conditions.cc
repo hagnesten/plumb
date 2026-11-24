@@ -744,6 +744,7 @@ namespace decompiler {
 	static bool fold_addresses = true;
 	static bool copy_constants = true;
 	static bool zero_registers = true;
+	static bool zero_stack_slots = true;
 	static bool dead_stack_stores = true;
 	static int32_t switch_cases = 3;
 	static bool ghost_addresses = false;
@@ -1216,7 +1217,7 @@ namespace decompiler {
 
 		for ( const statement& line : statements ) {
 
-			if ( ( line.kind != stmt::ASSIGN && line.kind != stmt::STORE ) || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::LOAD || exprs [ static_cast < size_t > ( line.right ) ].kind != op::VAR )
+			if ( ( line.kind != stmt::ASSIGN && line.kind != stmt::STORE ) || line.left < 0 || line.right < 0 || !( exprs [ static_cast < size_t > ( line.left ) ].kind == op::LOAD || ( zero_stack_slots && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.left ) ].value >= 0 && exprs [ static_cast < size_t > ( line.left ) ].value < total && vars [ static_cast < size_t > ( exprs [ static_cast < size_t > ( line.left ) ].value ) ].kind == var_kind::STACK ) ) || exprs [ static_cast < size_t > ( line.right ) ].kind != op::VAR )
 				continue;
 
 			int64_t v = exprs [ static_cast < size_t > ( line.right ) ].value;
@@ -1242,7 +1243,18 @@ namespace decompiler {
 
 				for ( statement& other : statements ) {
 
-					if ( ( other.kind != stmt::ASSIGN && other.kind != stmt::STORE ) || other.left < 0 || other.right < 0 || exprs [ static_cast < size_t > ( other.right ) ].kind != op::VAR || exprs [ static_cast < size_t > ( other.right ) ].value != v || exprs [ static_cast < size_t > ( other.left ) ].kind != op::LOAD )
+					if ( ( other.kind != stmt::ASSIGN && other.kind != stmt::STORE ) || other.left < 0 || other.right < 0 || exprs [ static_cast < size_t > ( other.right ) ].kind != op::VAR || exprs [ static_cast < size_t > ( other.right ) ].value != v )
+						continue;
+
+					if ( exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR ) {
+
+						other.right = make ( op::CONST, exprs [ static_cast < size_t > ( other.left ) ].size, -1, -1, 0, 0 );
+
+						continue;
+
+					}
+
+					if ( exprs [ static_cast < size_t > ( other.left ) ].kind != op::LOAD )
 						continue;
 
 					const expr target = exprs [ static_cast < size_t > ( other.left ) ];
