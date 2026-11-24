@@ -605,6 +605,7 @@ namespace decompiler {
 	static bool low_writes = true;
 	static bool brace_before_else = true;
 	static bool power_hex = true;
+	static bool unsigned_results = true;
 	static bool raw_float_copies = true;
 	static bool scalar_lanes = true;
 	static bool float_zero = true;
@@ -11066,8 +11067,14 @@ namespace decompiler {
 			if ( !declared && item.kind == var_kind::PARAMETER && b.has_prototype && item.position >= 0 && item.position < b.prototype.count )
 				declared = b.prototype.types [ item.position ];
 
-			if ( !declared && !( item.kind == var_kind::PARAMETER && b.has_prototype ) && v < inferred.count ( ) && !inferred [ static_cast < size_t > ( v ) ].empty ( ) )
+			if ( !declared && !( item.kind == var_kind::PARAMETER && b.has_prototype ) && v < inferred.count ( ) && !inferred [ static_cast < size_t > ( v ) ].empty ( ) ) {
+
 				declared = inferred [ static_cast < size_t > ( v ) ].get ( );
+
+				if ( unsigned_results && ( item.bits & UNSIGNED ) && base::same_text ( declared, L"int" ) )
+					declared = L"unsigned int";
+
+			}
 
 			if ( !declared || !parse_type ( declared, b.long_mode, shape, clean, 64 ) || shape.empty )
 				continue;
