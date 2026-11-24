@@ -255,6 +255,8 @@ namespace decompiler {
 
 		void infer_signs ( );
 
+		void guard_expressions ( );
+
 		void fold_switches ( );
 
 		void chain_switches ( );

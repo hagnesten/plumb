@@ -4978,6 +4978,7 @@ namespace decompiler {
 		merge_conditions ( );
 		fold_switches ( );
 		infer_signs ( );
+		guard_expressions ( );
 
 		return true;
 
