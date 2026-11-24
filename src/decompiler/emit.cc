@@ -461,6 +461,7 @@ namespace decompiler {
 	static bool zero_ranges = true;
 	static bool array_min_step = true;
 	static bool hex_divisors = true;
+	static bool indexed_arrays = true;
 	static bool fall_then_simple = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
@@ -2300,7 +2301,65 @@ namespace decompiler {
 
 		}
 
+		bool indexed_element ( const expr& item ) {
+
+			if ( !indexed_arrays || item.a < 0 || ( item.bits & FLOATING ) )
+				return false;
+
+			const expr& sum = b.exprs [ static_cast < size_t > ( item.a ) ];
+
+			if ( sum.kind != op::ADD || sum.a < 0 || sum.b < 0 )
+				return false;
+
+			for ( int32_t k = 0; k < 2; k++ ) {
+
+				const expr& base_side = b.exprs [ static_cast < size_t > ( k ? sum.b : sum.a ) ];
+				int32_t scaled_index = k ? sum.a : sum.b;
+				const expr& scaled = b.exprs [ static_cast < size_t > ( scaled_index ) ];
+
+				if ( base_side.kind != op::ADDRESS )
+					continue;
+
+				int64_t v = base_side.a < 0 ? base_side.value : ( b.exprs [ static_cast < size_t > ( base_side.a ) ].kind == op::VAR ? b.exprs [ static_cast < size_t > ( base_side.a ) ].value : -1 );
+
+				if ( v < 0 || v >= array_of.count ( ) || array_of [ static_cast < size_t > ( v ) ] != v )
+					continue;
+
+				int32_t step = array_step [ static_cast < size_t > ( v ) ];
+
+				if ( step != item.size )
+					continue;
+
+				int32_t index = -1;
+
+				if ( step == 1 && scaled.kind != op::CONST )
+					index = scaled_index;
+				else if ( scaled.kind == op::MUL && scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value == step )
+					index = scaled.a;
+
+				if ( index < 0 )
+					continue;
+
+				wchar_t name [ 64 ];
+
+				var_name ( static_cast < int32_t > ( v ), name );
+				out.put ( name, syntax::LOCAL );
+				out.put ( L"[" );
+				value ( index, 0 );
+				out.put ( L"]" );
+
+				return true;
+
+			}
+
+			return false;
+
+		}
+
 		void lvalue_or_load ( const expr& item, int32_t parent ) {
+
+			if ( indexed_element ( item ) )
+				return;
 
 			const expr& where = b.exprs [ static_cast < size_t > ( item.a ) ];
 			wchar_t name [ 64 ];
@@ -7669,6 +7728,57 @@ namespace decompiler {
 
 		};
 
+		base::list < int32_t > index_step;
+
+		index_step.fill ( static_cast < size_t > ( total ), 0 );
+
+		auto note_index = [ & ] ( int32_t load ) {
+
+			if ( !indexed_arrays || load < 0 )
+				return;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( load ) ];
+
+			if ( node.kind != op::LOAD || node.a < 0 || ( node.bits & FLOATING ) )
+				return;
+
+			const expr& sum = b.exprs [ static_cast < size_t > ( node.a ) ];
+
+			if ( sum.kind != op::ADD || sum.a < 0 || sum.b < 0 )
+				return;
+
+			for ( int32_t k = 0; k < 2; k++ ) {
+
+				int32_t base_side = k ? sum.b : sum.a;
+				int32_t scaled_side = k ? sum.a : sum.b;
+				int32_t v = slot_of ( base_side );
+
+				if ( v < 0 )
+					continue;
+
+				const expr& scaled = b.exprs [ static_cast < size_t > ( scaled_side ) ];
+				int64_t scale = 0;
+
+				if ( scaled.kind == op::MUL && scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST )
+					scale = b.exprs [ static_cast < size_t > ( scaled.b ) ].value;
+				else if ( scaled.kind == op::SHL && scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value < 4 )
+					scale = 1ll << b.exprs [ static_cast < size_t > ( scaled.b ) ].value;
+				else if ( scaled.kind != op::CONST && node.size == 1 )
+					scale = 1;
+
+				int32_t& slot = index_step [ static_cast < size_t > ( v ) ];
+
+				if ( scale != node.size || ( scale != 1 && scale != 2 && scale != 4 && scale != 8 ) )
+					slot = -1;
+				else if ( slot == 0 )
+					slot = static_cast < int32_t > ( scale );
+				else if ( slot != scale )
+					slot = -1;
+
+			}
+
+		};
+
 		auto walk = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
 
 			if ( e < 0 || depth > 96 )
@@ -7693,6 +7803,9 @@ namespace decompiler {
 				return;
 
 			}
+
+			if ( node.kind == op::LOAD )
+				note_index ( e );
 
 			if ( node.kind == op::ADDRESS && slot_of ( e ) >= 0 ) {
 
@@ -7734,8 +7847,14 @@ namespace decompiler {
 					accessed [ static_cast < size_t > ( left.value ) ] = 1;
 				else if ( left.kind == op::LOAD && slot_of ( left.a ) >= 0 )
 					accessed [ static_cast < size_t > ( slot_of ( left.a ) ) ] = 1;
-				else
+				else {
+
+					if ( left.kind == op::LOAD )
+						note_index ( line.left );
+
 					walk ( walk, line.left, 0 );
+
+				}
 
 			}
 
@@ -7819,6 +7938,29 @@ namespace decompiler {
 
 			if ( head < b.call_names.count ( ) && !b.call_names [ static_cast < size_t > ( head ) ].empty ( ) )
 				continue;
+
+			if ( indexed_arrays && index_step [ static_cast < size_t > ( head ) ] > 1 && ( !step || !accessed [ static_cast < size_t > ( head ) ] ) ) {
+
+				int32_t wanted = index_step [ static_cast < size_t > ( head ) ];
+				bool fits = !accessed [ static_cast < size_t > ( head ) ] || item.size % wanted == 0;
+
+				for ( int32_t j = i + 1; j <= last && fits; j++ ) {
+
+					const variable& other = b.vars [ static_cast < size_t > ( stack [ static_cast < size_t > ( j ) ] ) ];
+
+					if ( ( other.offset - item.offset ) % wanted != 0 || other.size % wanted != 0 )
+						fits = false;
+
+				}
+
+				if ( fits ) {
+
+					step = wanted;
+					uniform = true;
+
+				}
+
+			}
 
 			if ( !uniform && array_min_step ) {
 
