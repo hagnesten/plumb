@@ -3169,6 +3169,14 @@ namespace decompiler {
 						int32_t argument = b.args [ static_cast < size_t > ( item.first_arg + i ) ];
 						int32_t flavor = simd_types ? packed_flavor ( called, false ) : 0;
 
+						if ( simd_types && i == 1 && b.exprs [ static_cast < size_t > ( argument ) ].kind == op::CONST && called [ 0 ] == L'_' && called [ 4 ] == L's' && ( called [ 5 ] == L'r' || called [ 5 ] == L'l' ) && called [ 7 ] == L'i' && called [ 8 ] == L'_' && called [ 9 ] == L'e' && called [ 10 ] == L'p' ) {
+
+							out.put ( base::writer ( ).number ( b.exprs [ static_cast < size_t > ( argument ) ].value ).add ( L"u" ).text ( ), syntax::NUMBER );
+
+							continue;
+
+						}
+
 						if ( flavor == 2 && b.exprs [ static_cast < size_t > ( argument ) ].kind == op::LOAD && b.exprs [ static_cast < size_t > ( argument ) ].size == 16 ) {
 
 							vector_load ( b.exprs [ static_cast < size_t > ( argument ) ].a, static_cast < uint8_t > ( flavor ) );
