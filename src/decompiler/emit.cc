@@ -454,6 +454,8 @@ namespace decompiler {
 	static bool call_untruncate = true;
 	static bool store_untruncate = true;
 	static bool nested_loops = true;
+	static bool simd_types = true;
+	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
@@ -934,6 +936,44 @@ namespace decompiler {
 
 		}
 
+		void vector_load ( int32_t address, uint8_t flavor ) {
+
+			bool aligned = false;
+
+			if ( simd_types && address >= 0 ) {
+
+				const expr& where = b.exprs [ static_cast < size_t > ( address ) ];
+
+				aligned = where.kind == op::GLOBAL || ( where.kind == op::CONST && ( where.bits & POINTER ) );
+
+			}
+
+			if ( flavor == 3 ) {
+
+				out.put ( aligned ? L"_mm_load_ps" : L"_mm_loadu_ps", syntax::FUNCTION );
+				out.put ( L"((" );
+				out.put ( L"const float", syntax::TYPE );
+
+			} else if ( flavor == 4 ) {
+
+				out.put ( aligned ? L"_mm_load_pd" : L"_mm_loadu_pd", syntax::FUNCTION );
+				out.put ( L"((" );
+				out.put ( L"const double", syntax::TYPE );
+
+			} else {
+
+				out.put ( aligned ? L"_mm_load_si128" : L"_mm_loadu_si128", syntax::FUNCTION );
+				out.put ( L"((" );
+				out.put ( L"const __m128i", syntax::TYPE );
+
+			}
+
+			out.put ( L" *)" );
+			value ( address, 14 );
+			out.put ( L")" );
+
+		}
+
 		void var_type ( int32_t index ) {
 
 			const variable& item = b.vars [ static_cast < size_t > ( index ) ];
@@ -948,7 +988,9 @@ namespace decompiler {
 
 			if ( index < vector.count ( ) && vector [ static_cast < size_t > ( index ) ] ) {
 
-				out.put ( L"__m128i", syntax::TYPE );
+				uint8_t flavor = vector [ static_cast < size_t > ( index ) ];
+
+				out.put ( flavor == 3 ? L"__m128" : ( flavor == 4 ? L"__m128d" : L"__m128i" ), syntax::TYPE );
 
 				return;
 
@@ -3116,7 +3158,18 @@ namespace decompiler {
 
 						}
 
-						value ( b.args [ static_cast < size_t > ( item.first_arg + i ) ], 2 );
+						int32_t argument = b.args [ static_cast < size_t > ( item.first_arg + i ) ];
+						int32_t flavor = simd_types ? packed_flavor ( called, false ) : 0;
+
+						if ( flavor == 2 && b.exprs [ static_cast < size_t > ( argument ) ].kind == op::LOAD && b.exprs [ static_cast < size_t > ( argument ) ].size == 16 ) {
+
+							vector_load ( b.exprs [ static_cast < size_t > ( argument ) ].a, static_cast < uint8_t > ( flavor ) );
+
+							continue;
+
+						}
+
+						value ( argument, 2 );
 
 					}
 
@@ -4070,16 +4123,11 @@ namespace decompiler {
 
 					}
 
-					if ( left.kind == op::VAR && right.kind == op::LOAD && right.size == 16 && left.value >= 0 && left.value < vector.count ( ) && vector [ static_cast < size_t > ( left.value ) ] ) {
+					if ( left.kind == op::VAR && right.kind == op::LOAD && right.size == 16 && left.value >= 0 && left.value < vector.count ( ) && ( vector [ static_cast < size_t > ( left.value ) ] == 1 || vector [ static_cast < size_t > ( left.value ) ] == 2 ) ) {
 
 						value ( item.left, 0 );
 						out.put ( L" = ", syntax::OPERATOR );
-						out.put ( L"_mm_loadu_si128", syntax::FUNCTION );
-						out.put ( L"((" );
-						out.put ( L"const __m128i", syntax::TYPE );
-						out.put ( L" *)" );
-						value ( right.a, 14 );
-						out.put ( L")" );
+						vector_load ( right.a, vector [ static_cast < size_t > ( left.value ) ] );
 						semicolon ( );
 
 						break;
@@ -7852,6 +7900,155 @@ namespace decompiler {
 
 	}
 
+	static bool text_has ( const wchar_t* text, const wchar_t* part ) {
+
+		for ( int32_t i = 0; text [ i ]; i++ ) {
+
+			int32_t k = 0;
+
+			while ( part [ k ] && text [ i + k ] == part [ k ] )
+				k++;
+
+			if ( !part [ k ] )
+				return true;
+
+		}
+
+		return false;
+
+	}
+
+	static bool text_ends ( const wchar_t* text, const wchar_t* part ) {
+
+		int32_t n = 0;
+		int32_t m = 0;
+
+		while ( text [ n ] )
+			n++;
+
+		while ( part [ m ] )
+			m++;
+
+		if ( m > n )
+			return false;
+
+		for ( int32_t k = 0; k < m; k++ ) {
+
+			if ( text [ n - m + k ] != part [ k ] )
+				return false;
+
+		}
+
+		return true;
+
+	}
+
+	static int32_t packed_flavor ( const wchar_t* name, bool result ) {
+
+		if ( !( name [ 0 ] == L'_' && name [ 1 ] == L'm' && name [ 2 ] == L'm' && name [ 3 ] == L'_' ) )
+			return 0;
+
+		bool scalar = text_has ( name, L"movemask" ) || text_has ( name, L"extract" ) || text_has ( name, L"cvtsi128" );
+
+		if ( result && scalar )
+			return 0;
+
+		if ( text_has ( name, L"cvt" ) ) {
+
+			if ( !result )
+				return 0;
+
+		}
+
+		if ( text_ends ( name, L"_ps" ) )
+			return 3;
+
+		if ( text_ends ( name, L"_pd" ) )
+			return 4;
+
+		if ( text_has ( name, L"epi" ) || text_has ( name, L"epu" ) || text_has ( name, L"si128" ) )
+			return 2;
+
+		return 0;
+
+	}
+
+	static void simd_vars ( builder& b, base::list < uint8_t >& vector ) {
+
+		if ( !simd_types )
+			return;
+
+		int32_t total = b.vars.count ( );
+
+		auto mark = [ & ] ( int32_t e, int32_t flavor ) {
+
+			if ( e < 0 || !flavor )
+				return;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind != op::VAR || node.value < 0 || node.value >= total || node.value >= vector.count ( ) )
+				return;
+
+			const variable& item = b.vars [ static_cast < size_t > ( node.value ) ];
+
+			if ( item.kind != var_kind::REGISTER || !( item.bits & FLOATING ) || ( item.family < 16 && item.family >= 0 ) )
+				return;
+
+			uint8_t& slot = vector [ static_cast < size_t > ( node.value ) ];
+
+			if ( !slot )
+				slot = static_cast < uint8_t > ( flavor );
+
+		};
+
+		auto scan = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+			if ( e < 0 || depth > 96 )
+				return;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind == op::INTRINSIC ) {
+
+				int32_t flavor = packed_flavor ( intrinsic_name ( static_cast < int32_t > ( node.value ) ), false );
+
+				for ( int32_t i = 0; i < node.arg_count; i++ )
+					mark ( b.args [ static_cast < size_t > ( node.first_arg + i ) ], flavor );
+
+			}
+
+			self ( self, node.a, depth + 1 );
+			self ( self, node.b, depth + 1 );
+			self ( self, node.c, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+		};
+
+		for ( const statement& line : b.statements ) {
+
+			if ( line.kind == stmt::NOP )
+				continue;
+
+			if ( line.kind == stmt::ASSIGN && line.left >= 0 && line.right >= 0 && b.exprs [ static_cast < size_t > ( line.right ) ].kind == op::INTRINSIC )
+				mark ( line.left, packed_flavor ( intrinsic_name ( static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( line.right ) ].value ) ), true ) );
+
+			scan ( scan, line.left, 0 );
+			scan ( scan, line.right, 0 );
+
+		}
+
+		for ( const block_code& block : b.code ) {
+
+			scan ( scan, block.condition, 0 );
+			scan ( scan, block.returned, 0 );
+
+		}
+
+	}
+
 	static void vector_vars ( builder& b, base::list < uint8_t >& vector ) {
 
 		int32_t total = b.vars.count ( );
@@ -9485,6 +9682,7 @@ namespace decompiler {
 		typed_pointers ( b, body_emitter.element );
 		boolean_vars ( b, body_emitter.boolean );
 		vector_vars ( b, body_emitter.vector );
+		simd_vars ( b, body_emitter.vector );
 		stack_arrays ( b, body_emitter.array_of, body_emitter.array_step, body_emitter.array_count );
 		stack_memsets ( b, body_emitter.array_of );
 		body_emitter.plan_increments ( );
