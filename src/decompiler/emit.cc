@@ -471,6 +471,7 @@ namespace decompiler {
 	static bool literal_floats = true;
 	static bool ida_reals = true;
 	static bool abs_masks = true;
+	static bool wide_internal_args = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
@@ -3340,6 +3341,8 @@ namespace decompiler {
 						if ( passed.kind == op::CONST && ( !( passed.bits & POINTER ) || passed.value < 0x10000 ) && passed.value > 0 && callee_unsigned ( target, i ) )
 							number ( passed.value, callee_wide ( target, i ) && b.long_mode ? 8 : 4, passed.value > 9, true );
 						else if ( passed.kind == op::CONST && !( passed.bits & POINTER ) && b.long_mode && callee_wide ( target, i ) )
+							number ( passed.value, 8, !simple_constant ( passed.value ), false );
+						else if ( wide_internal_args && passed.kind == op::CONST && !( passed.bits & POINTER ) && b.long_mode && target && !shape_ok && i < 4 && b.db->function_starting ( target ) >= 0 && callee_argument_width ( *b.db, target, i, 0 ) == 8 )
 							number ( passed.value, 8, !simple_constant ( passed.value ), false );
 						else if ( b.long_mode && !no_casts && target && passed.kind != op::CONST && passed.size == 4 && !( passed.bits & FLOATING ) && ( callee_unsigned ( target, i ), !shape_ok ) && !( i < 4 && callee_argument_width ( *b.db, target, i, 0 ) == 4 ) && !( passed.kind == op::VAR && passed.value >= 0 && passed.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( passed.value ) ].bits & UNSIGNED ) && b.vars [ static_cast < size_t > ( passed.value ) ].size == 4 ) ) {
 
