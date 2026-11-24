@@ -432,6 +432,8 @@ namespace decompiler {
 	static bool intrinsic_types = true;
 	static bool global_arrays = true;
 	static bool empty_then = true;
+	static bool api_types = true;
+	static bool double_pointees = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -6092,7 +6094,7 @@ namespace decompiler {
 		while ( length && type [ length - 1 ] == L' ' )
 			length--;
 
-		if ( !length || type [ length - 1 ] == L'*' || length >= room )
+		if ( !length || ( type [ length - 1 ] == L'*' && !double_pointees ) || length >= room )
 			return false;
 
 		int32_t start = 0;
@@ -6107,7 +6109,7 @@ namespace decompiler {
 
 		out [ k ] = 0;
 
-		return k > 0 && !base::same_text ( out, L"void" );
+		return k > 0 && !base::same_text ( out, L"void" ) && !base::same_text ( out, L"void *" ) && !base::same_text ( out, L"void*" );
 
 	}
 
@@ -6133,6 +6135,10 @@ namespace decompiler {
 
 			const wchar_t* declared = target ? b.names->prototype ( target ) : nullptr;
 			base::writer problem;
+			wchar_t callee [ 200 ];
+
+			if ( !declared && api_types && target && b.names->name ( target, true, callee, 200 ) )
+				declared = api_prototype ( callee );
 
 			if ( declared && parse_prototype ( declared, b.long_mode, *shape, problem ) )
 				cached_ok = true;
@@ -6184,6 +6190,9 @@ namespace decompiler {
 
 				int32_t index = b.args [ static_cast < size_t > ( item.first_arg + i ) ];
 
+				while ( api_types && index >= 0 && b.exprs [ static_cast < size_t > ( index ) ].kind == op::CAST && b.exprs [ static_cast < size_t > ( index ) ].a >= 0 && b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( index ) ].a ) ].kind == op::ADDRESS )
+					index = b.exprs [ static_cast < size_t > ( index ) ].a;
+
 				if ( index < 0 )
 					continue;
 
@@ -6210,12 +6219,13 @@ namespace decompiler {
 						offer ( static_cast < int32_t > ( passed.value ), shape->types [ i ] );
 
 				}
-				else if ( passed.kind == op::ADDRESS && passed.a < 0 ) {
+				else if ( passed.kind == op::ADDRESS && ( passed.a < 0 || ( api_types && b.exprs [ static_cast < size_t > ( passed.a ) ].kind == op::VAR ) ) ) {
 
 					wchar_t inner [ 64 ];
+					int64_t target_var = passed.a < 0 ? passed.value : b.exprs [ static_cast < size_t > ( passed.a ) ].value;
 
 					if ( pointee_of ( shape->types [ i ], inner, 64 ) )
-						offer ( static_cast < int32_t > ( passed.value ), inner );
+						offer ( static_cast < int32_t > ( target_var ), inner );
 
 				}
 
