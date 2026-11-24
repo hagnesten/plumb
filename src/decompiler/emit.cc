@@ -439,6 +439,7 @@ namespace decompiler {
 	static bool return_var_casts = false;
 	static bool unsigned_narrow = true;
 	static bool bit_tests = true;
+	static bool base_first = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -2874,6 +2875,22 @@ namespace decompiler {
 					const expr& right = b.exprs [ static_cast < size_t > ( item.b ) ];
 
 					operand = true;
+
+					if ( base_first && item.kind == op::ADD && item.a >= 0 && !( item.bits & FLOATING ) && right.kind != op::CONST && right.kind != op::MUL && right.kind != op::SHL ) {
+
+						const expr& scaled = b.exprs [ static_cast < size_t > ( item.a ) ];
+
+						if ( ( scaled.kind == op::MUL || scaled.kind == op::SHL ) && scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && ( right.kind == op::LOAD || right.kind == op::VAR || right.kind == op::GLOBAL || right.kind == op::CAST || ( right.bits & POINTER ) ) ) {
+
+							value ( item.b, mine, bitwise );
+							out.put ( symbol, syntax::OPERATOR );
+							value ( item.a, mine + 1, bitwise );
+
+							break;
+
+						}
+
+					}
 
 					if ( item.kind == op::ADD && right.kind == op::CONST && right.value < 0 && !( right.bits & POINTER ) ) {
 
