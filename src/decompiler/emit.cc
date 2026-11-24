@@ -435,6 +435,7 @@ namespace decompiler {
 	static bool api_types = true;
 	static bool double_pointees = true;
 	static bool low_writes = true;
+	static bool scalar_lanes = true;
 	static bool defer_later = true;
 	static bool return_casts = true;
 	static bool return_var_casts = false;
@@ -863,6 +864,35 @@ namespace decompiler {
 			}
 
 			return distinct >= 2;
+
+		}
+
+		int32_t lane_var ( int32_t e ) const {
+
+			if ( !scalar_lanes || e < 0 )
+				return -1;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.size >= 16 || !( node.bits & FLOATING ) )
+				return -1;
+
+			int32_t at = e;
+
+			if ( node.kind == op::CAST && node.a >= 0 )
+				at = node.a;
+
+			const expr& inner = b.exprs [ static_cast < size_t > ( at ) ];
+
+			if ( inner.kind != op::VAR || inner.value < 0 || inner.value >= vector.count ( ) )
+				return -1;
+
+			uint8_t flavor = vector [ static_cast < size_t > ( inner.value ) ];
+
+			if ( !( flavor == 3 && node.size == 4 ) && !( flavor == 4 && node.size == 8 ) )
+				return -1;
+
+			return static_cast < int32_t > ( inner.value );
 
 		}
 
@@ -2979,6 +3009,21 @@ namespace decompiler {
 
 			const expr& node = b.exprs [ static_cast < size_t > ( index ) ];
 
+			int32_t lane = lane_var ( index );
+
+			if ( lane >= 0 ) {
+
+				wchar_t lane_name [ 80 ];
+
+				var_name ( lane, lane_name );
+				out.put ( lane_name, syntax::LOCAL );
+				out.put ( node.size == 8 ? L".m128d_f64[0]" : L".m128_f32[0]" );
+				in_logic = saved;
+
+				return;
+
+			}
+
 			in_logic = bit_tests && ( node.kind == op::LAND || node.kind == op::LOR || ( ( node.kind == op::AND || node.kind == op::OR ) && logical_pair ( node ) ) );
 
 			uint8_t saved_size = holder_size;
@@ -4878,7 +4923,22 @@ namespace decompiler {
 
 					}
 
-					if ( low_write ( item.left, item.right, b.statements.count ( ) && &item >= &b.statements [ 0 ] && &item < &b.statements [ 0 ] + b.statements.count ( ) ? static_cast < int32_t > ( &item - &b.statements [ 0 ] ) : -1 ) ) {
+					if ( scalar_lanes && left.kind == op::VAR && right.size < 16 && ( right.bits & FLOATING ) && right.kind != op::LOAD && left.value >= 0 && left.value < vector.count ( ) && ( ( vector [ static_cast < size_t > ( left.value ) ] == 3 && right.size == 4 ) || ( vector [ static_cast < size_t > ( left.value ) ] == 4 && right.size == 8 ) ) ) {
+
+						wchar_t lane_name [ 80 ];
+
+						var_name ( static_cast < int32_t > ( left.value ), lane_name );
+						out.put ( lane_name, syntax::LOCAL );
+						out.put ( right.size == 8 ? L".m128d_f64[0]" : L".m128_f32[0]" );
+						out.put ( L" = ", syntax::OPERATOR );
+						value ( item.right, 2 );
+						semicolon ( );
+
+						break;
+
+					}
+
+					if ( low_write ( item.left, item.right,b.statements.count ( ) && &item >= &b.statements [ 0 ] && &item < &b.statements [ 0 ] + b.statements.count ( ) ? static_cast < int32_t > ( &item - &b.statements [ 0 ] ) : -1 ) ) {
 
 						out.put ( L"LODWORD(", syntax::FUNCTION );
 						value ( item.left, 0 );

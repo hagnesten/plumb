@@ -1634,6 +1634,7 @@ namespace decompiler {
 	}
 
 	static bool rescue_flags = true;
+	static bool scalar_packs = true;
 	static bool sized_shield = true;
 
 	struct machine {
@@ -4347,6 +4348,21 @@ namespace decompiler {
 
 				if ( from.operands [ at ].type == x86::kind::IMM )
 					return k.constant ( from.operands [ at ].value & 0xFF, 4 );
+
+				if ( scalar_packs && from.operands [ at ].type == x86::kind::REG ) {
+
+					int32_t slot = slot_of ( from.operands [ at ].reg );
+
+					if ( slot >= 16 && slot < 32 && regs [ slot ] >= 0 ) {
+
+						const expr& held = k.exprs [ static_cast < size_t > ( regs [ slot ] ) ];
+
+						if ( packed_forms [ index ].floating && held.size < 16 && ( held.bits & FLOATING ) && ( held.kind == op::ADD || held.kind == op::SUB || held.kind == op::MUL || held.kind == op::DIV || held.kind == op::NEG ) )
+							materialize ( slot, from.address );
+
+					}
+
+				}
 
 				return this->read ( from, at );
 
