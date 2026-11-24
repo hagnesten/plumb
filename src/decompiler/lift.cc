@@ -1873,7 +1873,34 @@ namespace decompiler {
 
 		void flush ( uint32_t keep, int32_t where = 0, int64_t target = 0, uint8_t size = 0 ) {
 
-			for ( int32_t slot = 0; slot < 32; slot++ ) {
+			int32_t ordered [ 32 ];
+
+			for ( int32_t slot = 0; slot < 32; slot++ )
+				ordered [ slot ] = slot;
+
+			if ( flush_by_definition ) {
+
+				for ( int32_t i = 1; i < 32; i++ ) {
+
+					int32_t moving = ordered [ i ];
+					int32_t j = i - 1;
+
+					while ( j >= 0 && reg_at [ ordered [ j ] ] > reg_at [ moving ] ) {
+
+						ordered [ j + 1 ] = ordered [ j ];
+						j--;
+
+					}
+
+					ordered [ j + 1 ] = moving;
+
+				}
+
+			}
+
+			for ( int32_t k = 0; k < 32; k++ ) {
+
+				int32_t slot = ordered [ k ];
 
 				if ( regs [ slot ] < 0 || !( keep & ( 1u << slot ) ) )
 					continue;
