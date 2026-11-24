@@ -1,4 +1,5 @@
 #include "decompiler/internal.hh"
+#include "base/files.hh"
 
 namespace decompiler {
 
@@ -1131,7 +1132,7 @@ namespace decompiler {
 			if ( ghost_param_copies ) {
 
 				vars [ static_cast < size_t > ( copy ) ].ghost = true;
-				vars [ static_cast < size_t > ( copy ) ].born = line.address;
+				vars [ static_cast < size_t > ( copy ) ].born = line.address ? line.address : line.origin;
 
 			}
 

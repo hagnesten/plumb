@@ -1403,6 +1403,8 @@ namespace decompiler {
 
 		builder* b = nullptr;
 		int32_t regs [ 32 ];
+		uint64_t reg_at [ 32 ] = { };
+		uint64_t now = 0;
 		int32_t flag_kind = 0;
 		int32_t flag_result = -1;
 		int32_t flag_a = -1;
@@ -1511,6 +1513,7 @@ namespace decompiler {
 				return;
 
 			regs [ slot ] = value;
+			reg_at [ slot ] = now;
 
 			if ( b->exprs [ static_cast < size_t > ( value ) ].depth > 12 )
 				materialize ( slot, 0 );
@@ -2020,7 +2023,12 @@ namespace decompiler {
 			}
 
 			protect ( var, source, address );
-			emit ( stmt::ASSIGN, b->make ( op::VAR, b->vars [ static_cast < size_t > ( var ) ].size, -1, -1, var ), source, address );
+
+			int32_t made_line = emit ( stmt::ASSIGN, b->make ( op::VAR, b->vars [ static_cast < size_t > ( var ) ].size, -1, -1, var ), source, address );
+
+			if ( !address && slot >= 0 && slot < 32 && reg_at [ slot ] )
+				b->statements [ static_cast < size_t > ( made_line ) ].origin = reg_at [ slot ];
+
 			b->vars [ static_cast < size_t > ( var ) ].assigned = true;
 
 			if ( flag_kind && value.kind != op::CONST && value.kind != op::VAR ) {
@@ -2933,6 +2941,7 @@ namespace decompiler {
 			uint8_t size = ins.count ? ins.operands [ 0 ].size : 0;
 
 			live = live_after;
+			now = ins.address;
 
 			if ( ins.control != x86::flow::NONE && ins.name != mnemonic::call )
 				return;

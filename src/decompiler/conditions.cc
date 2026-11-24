@@ -740,7 +740,7 @@ namespace decompiler {
 
 	static bool fold_pointers = true;
 	static bool fold_vector_zero = true;
-	static bool ghost_vector_zero = true;
+	static bool ghost_vector_zero = false;
 	static bool fold_addresses = true;
 	static bool copy_constants = true;
 	static bool dead_stack_stores = true;
