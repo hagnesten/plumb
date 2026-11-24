@@ -455,6 +455,7 @@ namespace decompiler {
 	static bool store_untruncate = true;
 	static bool nested_loops = true;
 	static bool simd_types = true;
+	static bool plain_copies = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
@@ -993,7 +994,15 @@ namespace decompiler {
 
 				uint8_t flavor = vector [ static_cast < size_t > ( index ) ];
 
-				out.put ( flavor == 3 ? L"__m128" : ( flavor == 4 ? L"__m128d" : L"__m128i" ), syntax::TYPE );
+				out.put ( flavor == 3 ? L"__m128" : ( flavor == 4 ? L"__m128d" : ( flavor == 1 && plain_copies ? L"__int128" : L"__m128i" ) ), syntax::TYPE );
+
+				return;
+
+			}
+
+			if ( plain_copies && item.kind == var_kind::STACK && item.size == 16 && !( index < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( index ) ].empty ( ) ) ) {
+
+				out.put ( L"__int128", syntax::TYPE );
 
 				return;
 
@@ -4155,7 +4164,7 @@ namespace decompiler {
 
 					}
 
-					if ( left.kind == op::VAR && right.kind == op::LOAD && right.size == 16 && left.value >= 0 && left.value < vector.count ( ) && ( vector [ static_cast < size_t > ( left.value ) ] == 1 || vector [ static_cast < size_t > ( left.value ) ] == 2 ) ) {
+					if ( left.kind == op::VAR && right.kind == op::LOAD && right.size == 16 && left.value >= 0 && left.value < vector.count ( ) && ( ( vector [ static_cast < size_t > ( left.value ) ] == 1 && !plain_copies ) || vector [ static_cast < size_t > ( left.value ) ] == 2 ) ) {
 
 						value ( item.left, 0 );
 						out.put ( L" = ", syntax::OPERATOR );
@@ -4166,7 +4175,7 @@ namespace decompiler {
 
 					}
 
-					if ( left.kind == op::LOAD && left.size == 16 && right.kind == op::VAR && right.value >= 0 && right.value < vector.count ( ) && vector [ static_cast < size_t > ( right.value ) ] ) {
+					if ( left.kind == op::LOAD && left.size == 16 && right.kind == op::VAR && right.value >= 0 && right.value < vector.count ( ) && vector [ static_cast < size_t > ( right.value ) ] && !( plain_copies && vector [ static_cast < size_t > ( right.value ) ] == 1 ) ) {
 
 						vector_store = true;
 						value ( item.left, 0 );
