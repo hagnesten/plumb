@@ -434,6 +434,7 @@ namespace decompiler {
 	static bool empty_then = true;
 	static bool api_types = true;
 	static bool double_pointees = true;
+	static bool defer_later = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -474,7 +475,7 @@ namespace decompiler {
 		bool by_address = true;
 		bool indexing = true;
 		wchar_t param_type [ 64 ] = { };
-		bool defer_joins = false;
+		bool defer_joins = true;
 		bool rotate_guards = false;
 		base::list < int8_t > loop_letter;
 		int32_t next_letter = 0;
@@ -4661,7 +4662,7 @@ namespace decompiler {
 
 			for ( int32_t p : pred [ static_cast < size_t > ( target ) ] ) {
 
-				if ( p != from && !emitted [ static_cast < size_t > ( p ) ] && b.graph.blocks [ static_cast < size_t > ( p ) ].end == start && b.code [ static_cast < size_t > ( p ) ].reachable && !dominates ( target, p ) )
+				if ( p != from && !emitted [ static_cast < size_t > ( p ) ] && ( b.graph.blocks [ static_cast < size_t > ( p ) ].end == start || ( defer_later && b.graph.blocks [ static_cast < size_t > ( p ) ].start < start ) ) && b.code [ static_cast < size_t > ( p ) ].reachable && !dominates ( target, p ) )
 					return true;
 
 			}
