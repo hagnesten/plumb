@@ -481,6 +481,7 @@ namespace decompiler {
 		base::list < uint8_t > referenced;
 		int32_t next_number = 0;
 		int32_t result_var = -1;
+		int32_t si128_var = -1;
 		bool inline_mode = false;
 		bool ended = false;
 		bool bare_unsigned = false;
@@ -800,6 +801,8 @@ namespace decompiler {
 
 				if ( index == result_var )
 					add ( L"result" );
+				else if ( index == si128_var )
+					add ( L"si128" );
 				else {
 
 					add ( L"v" );
@@ -4117,6 +4120,22 @@ namespace decompiler {
 						out.put ( L" = ", syntax::OPERATOR );
 						out.put ( L"(unsigned int)", syntax::TYPE );
 						value ( right.a, 14 );
+						semicolon ( );
+
+						break;
+
+					}
+
+					if ( simd_types && left.kind == op::VAR && right.kind == op::GLOBAL && right.size == 16 && left.value >= 0 && left.value < vector.count ( ) && vector [ static_cast < size_t > ( left.value ) ] == 2 ) {
+
+						value ( item.left, 0 );
+						out.put ( L" = ", syntax::OPERATOR );
+						out.put ( L"_mm_load_si128", syntax::FUNCTION );
+						out.put ( L"((" );
+						out.put ( L"const __m128i", syntax::TYPE );
+						out.put ( L" *)&" );
+						value ( item.right, 15 );
+						out.put ( L")" );
 						semicolon ( );
 
 						break;
@@ -7973,7 +7992,9 @@ namespace decompiler {
 
 	}
 
-	static void simd_vars ( builder& b, base::list < uint8_t >& vector ) {
+	static void simd_vars ( builder& b, base::list < uint8_t >& vector, int32_t& si128 ) {
+
+		si128 = -1;
 
 		if ( !simd_types )
 			return;
@@ -8044,6 +8065,24 @@ namespace decompiler {
 
 			scan ( scan, block.condition, 0 );
 			scan ( scan, block.returned, 0 );
+
+		}
+
+		for ( const statement& line : b.statements ) {
+
+			if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 )
+				continue;
+
+			const expr& left = b.exprs [ static_cast < size_t > ( line.left ) ];
+			const expr& right = b.exprs [ static_cast < size_t > ( line.right ) ];
+
+			if ( left.kind == op::VAR && right.kind == op::GLOBAL && right.size == 16 && left.value >= 0 && left.value < vector.count ( ) && vector [ static_cast < size_t > ( left.value ) ] == 2 ) {
+
+				si128 = static_cast < int32_t > ( left.value );
+
+				break;
+
+			}
 
 		}
 
@@ -9682,7 +9721,7 @@ namespace decompiler {
 		typed_pointers ( b, body_emitter.element );
 		boolean_vars ( b, body_emitter.boolean );
 		vector_vars ( b, body_emitter.vector );
-		simd_vars ( b, body_emitter.vector );
+		simd_vars ( b, body_emitter.vector, body_emitter.si128_var );
 		stack_arrays ( b, body_emitter.array_of, body_emitter.array_step, body_emitter.array_count );
 		stack_memsets ( b, body_emitter.array_of );
 		body_emitter.plan_increments ( );

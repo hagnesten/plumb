@@ -657,6 +657,8 @@ namespace decompiler {
 	static bool indexed_stack = true;
 	static bool narrow_lea = true;
 	static bool shared_products = true;
+	static bool shared_vectors = true;
+	static bool shared_vector_reads = false;
 	static bool flush_by_definition = true;
 	static bool sized_regs = true;
 	static bool same_guards = true;
@@ -1499,6 +1501,14 @@ namespace decompiler {
 
 		}
 
+		bool shared_vector ( int32_t value ) {
+
+			const expr& node = b->exprs [ static_cast < size_t > ( value ) ];
+
+			return node.size == 16 && ( node.kind == op::LOAD || ( node.kind == op::INTRINSIC && node.value >= 1000 ) );
+
+		}
+
 		bool real_product ( int32_t value ) {
 
 			const expr& node = b->exprs [ static_cast < size_t > ( value ) ];
@@ -1526,7 +1536,7 @@ namespace decompiler {
 
 		int32_t family_value ( int32_t slot ) {
 
-			if ( regs [ slot ] >= 0 && shared_products && slot < 16 && real_product ( regs [ slot ] ) && !( busy & ( 1u << slot ) ) ) {
+			if ( regs [ slot ] >= 0 && shared_products && ( ( slot < 16 && real_product ( regs [ slot ] ) ) || ( shared_vector_reads && slot >= 16 && shared_vector ( regs [ slot ] ) ) ) && !( busy & ( 1u << slot ) ) ) {
 
 				if ( read_at [ slot ] != now ) {
 
@@ -3782,6 +3792,15 @@ namespace decompiler {
 						unhandled ( ins, def );
 
 						return;
+
+					}
+
+					if ( shared_vectors && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::REG ) {
+
+						int32_t from = slot_of ( ins.operands [ 1 ].reg );
+
+						if ( from >= 16 && regs [ from ] >= 0 && shared_vector ( regs [ from ] ) && !( busy & ( 1u << from ) ) )
+							materialize ( from, 0 );
 
 					}
 
