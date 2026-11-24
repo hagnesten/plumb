@@ -431,6 +431,7 @@ namespace decompiler {
 	static bool unnamed_results = true;
 	static bool intrinsic_types = true;
 	static bool global_arrays = true;
+	static bool empty_then = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -4727,7 +4728,39 @@ namespace decompiler {
 			int32_t then_part = taken;
 			int32_t else_part = other;
 
-			if ( then_part == follow ) {
+			auto leads = [ & ] ( int32_t x, int32_t target ) {
+
+				for ( int32_t hops = 0; hops < 8 && x >= 0 && x < count; hops++ ) {
+
+					if ( x == target )
+						return true;
+
+					const block_code& step = b.code [ static_cast < size_t > ( x ) ];
+
+					if ( !empty_block ( x ) || step.end != term::FALL || header [ static_cast < size_t > ( x ) ] || wanted_label [ static_cast < size_t > ( x ) ] )
+						return false;
+
+					x = step.taken;
+
+				}
+
+				return x == target;
+
+			};
+
+			if ( empty_then && then_part != follow && else_part != follow && stop >= 0 && ( leads ( then_part, stop ) || ( follow >= 0 && leads ( then_part, follow ) ) ) && !leads ( else_part, stop ) ) {
+
+				then_part = other;
+				else_part = taken;
+				negated = true;
+
+				if ( follow < 0 || leads ( else_part, stop ) )
+					follow = stop;
+
+				if ( leads ( else_part, follow ) )
+					else_part = follow;
+
+			} else if ( then_part == follow ) {
 
 				then_part = other;
 				else_part = taken;
