@@ -6309,7 +6309,14 @@ namespace decompiler {
 					int32_t test = back_taken ? tail.condition : b.negate ( tail.condition );
 					base::list < uint8_t > saved = loop_body [ static_cast < size_t > ( start ) ];
 
-					open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
+					int32_t step = counted_step ( outer_latch, test );
+					bool counted = step >= 0 && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true );
+
+					if ( counted )
+						hidden [ static_cast < size_t > ( step ) ] = 1;
+					else
+						open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
+
 					loop_body [ static_cast < size_t > ( start ) ] = inner_set;
 					forced_exit = resume;
 					forced_outer = exit;
@@ -6325,11 +6332,25 @@ namespace decompiler {
 					if ( after >= 0 && after != outer_latch && !emitted [ static_cast < size_t > ( after ) ] )
 						region ( after, outer_latch, inner );
 
+					int32_t moved = counted ? -1 : sinkable_step ( outer_latch, test );
+
+					if ( moved >= 0 )
+						hidden [ static_cast < size_t > ( moved ) ] = 1;
+
 					if ( !empty_block ( outer_latch ) )
 						body ( outer_latch );
 
+					if ( moved >= 0 ) {
+
+						hidden [ static_cast < size_t > ( moved ) ] = 0;
+						statement_line ( b.statements [ static_cast < size_t > ( moved ) ] );
+
+					}
+
 					close_brace ( );
-					while_tail ( tail.last, test );
+
+					if ( !counted )
+						while_tail ( tail.last, test );
 
 					return exit;
 
