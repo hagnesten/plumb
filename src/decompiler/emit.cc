@@ -437,6 +437,7 @@ namespace decompiler {
 	static bool low_writes = true;
 	static bool brace_before_else = true;
 	static bool power_hex = true;
+	static bool raw_float_copies = true;
 	static bool scalar_lanes = true;
 	static bool float_zero = true;
 	static bool chain_rest = true;
@@ -1471,6 +1472,7 @@ namespace decompiler {
 
 			if ( power_hex && magnitude >= 0x2000 && ( magnitude & ( magnitude - 1 ) ) == 0 )
 				hex_form = true;
+
 
 			if ( form == L'h' )
 				hex_form = true;
@@ -4689,6 +4691,28 @@ namespace decompiler {
 
 					const expr left = b.exprs [ static_cast < size_t > ( item.left ) ];
 					const expr right = b.exprs [ static_cast < size_t > ( item.right ) ];
+
+					if ( raw_float_copies && literal_floats && left.kind == op::LOAD && right.kind == op::GLOBAL && ( right.bits & FLOATING ) && ( right.size == 4 || right.size == 8 ) && left.size == right.size ) {
+
+						int32_t section = b.file->section_at ( static_cast < uint64_t > ( right.value ) );
+						uint64_t offset = 0;
+
+						if ( section >= 0 && section < b.file->sections.count ( ) && !b.file->sections [ static_cast < size_t > ( section ) ].write && !b.file->sections [ static_cast < size_t > ( section ) ].execute && b.file->offset_of ( static_cast < uint64_t > ( right.value ), offset ) && offset + right.size <= b.file->size ) {
+
+							int64_t raw = right.size == 4 ? static_cast < int64_t > ( b.file->read32 ( offset ) ) : static_cast < int64_t > ( b.file->read64 ( offset ) );
+							expr plain_left = left;
+
+							plain_left.bits = static_cast < uint8_t > ( plain_left.bits & ~FLOATING );
+							lvalue_or_load ( plain_left, 0 );
+							out.put ( L" = ", syntax::OPERATOR );
+							number ( raw, right.size, !simple_constant ( raw ), false );
+							semicolon ( );
+
+							break;
+
+						}
+
+					}
 
 					if ( right.kind == op::ADD && right.a >= 0 && left.kind == op::VAR && b.exprs [ static_cast < size_t > ( right.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( right.a ) ].value == left.value && b.exprs [ static_cast < size_t > ( right.b ) ].kind == op::CONST && !( right.bits & FLOATING ) ) {
 
