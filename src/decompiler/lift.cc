@@ -648,6 +648,7 @@ namespace decompiler {
 	}
 
 	static bool merge_slots = true;
+	static bool no_phantom_stack = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -1142,6 +1143,9 @@ namespace decompiler {
 		for ( const expr& node : exprs ) {
 
 			if ( node.kind == op::ADDRESS && node.a < 0 && node.value >= 0 && node.value < vars.count ( ) && vars [ static_cast < size_t > ( node.value ) ].kind == var_kind::STACK )
+				escaped = true;
+
+			if ( node.kind == op::ADDRESS && node.a >= 0 && node.a < exprs.count ( ) && exprs [ static_cast < size_t > ( node.a ) ].kind == op::VAR && exprs [ static_cast < size_t > ( node.a ) ].value >= 0 && exprs [ static_cast < size_t > ( node.a ) ].value < vars.count ( ) && vars [ static_cast < size_t > ( exprs [ static_cast < size_t > ( node.a ) ].value ) ].kind == var_kind::STACK )
 				escaped = true;
 
 		}
@@ -2756,7 +2760,7 @@ namespace decompiler {
 					int32_t inner = internal_arguments ( *k.db, direct, true, 0 );
 
 					if ( inner >= 0 )
-						highest = base::max ( inner - 1, stacked );
+						highest = inner < 4 && no_phantom_stack ? inner - 1 : base::max ( inner - 1, stacked );
 
 				}
 
