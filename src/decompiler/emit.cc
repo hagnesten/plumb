@@ -490,6 +490,9 @@ namespace decompiler {
 		base::list < int8_t > fold_cond_how;
 		int32_t active_var = -1;
 		int8_t active_how = 0;
+		int64_t active_unit = 1;
+		base::list < int64_t > fold_unit;
+		base::list < int64_t > fold_cond_unit;
 		int32_t active_slot = -1;
 		bool active_cond = false;
 		base::list < int32_t > fold_inc;
@@ -1397,6 +1400,47 @@ namespace decompiler {
 
 		}
 
+		bool put_folded ( int32_t var, const wchar_t* name ) {
+
+			if ( active_var < 0 || var != active_var || var_step ( var ) != active_unit )
+				return false;
+
+			if ( active_how <= 2 )
+				out.put ( active_how == 1 ? L"++" : L"--", syntax::OPERATOR );
+
+			out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
+
+			if ( active_how >= 3 )
+				out.put ( active_how == 3 ? L"++" : L"--", syntax::OPERATOR );
+
+			if ( active_cond && active_slot >= 0 && active_slot < fold_cond_done.count ( ) )
+				fold_cond_done [ static_cast < size_t > ( active_slot ) ] = 1;
+			else if ( !active_cond && active_slot >= 0 && active_slot < fold_done.count ( ) )
+				fold_done [ static_cast < size_t > ( active_slot ) ] = 1;
+
+			active_var = -1;
+
+			return true;
+
+		}
+
+		int64_t var_step ( int32_t v ) const {
+
+			if ( v < 0 || v >= element.count ( ) || !element [ static_cast < size_t > ( v ) ] )
+				return 1;
+
+			uint8_t shape = element [ static_cast < size_t > ( v ) ];
+
+			if ( shape == 0x10 )
+				return 1;
+
+			if ( ( shape & 0x9F ) == 8 && ( shape & 0x40 ) )
+				return 8;
+
+			return shape & 0x0F ? shape & 0x0F : 1;
+
+		}
+
 		bool char_typed_sum ( int32_t e ) const {
 
 			int32_t var = -1;
@@ -1458,12 +1502,58 @@ namespace decompiler {
 			fold_cond_done.clear ( );
 			fold_inc.fill ( b.statements.size ( ), -1 );
 			fold_done.fill ( b.statements.size ( ), 0 );
+			fold_unit.clear ( );
+			fold_cond_unit.clear ( );
+			fold_unit.fill ( b.statements.size ( ), 1 );
 
 			if ( !fold_increments )
 				return;
 
 			if ( hidden.count ( ) < b.statements.count ( ) )
 				hidden.fill ( b.statements.size ( ) - hidden.size ( ), 0 );
+
+			base::list < uint8_t > flag_read;
+
+			flag_read.fill ( b.vars.size ( ), 0 );
+
+			auto mark_reads = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+				if ( e < 0 || depth > 64 )
+					return;
+
+				const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+				if ( node.kind == op::VAR && node.value >= 0 && node.value < b.vars.count ( ) )
+					flag_read [ static_cast < size_t > ( node.value ) ] = 1;
+
+				self ( self, node.a, depth + 1 );
+				self ( self, node.b, depth + 1 );
+				self ( self, node.c, depth + 1 );
+
+				for ( int32_t i = 0; i < node.arg_count; i++ )
+					self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+			};
+
+			for ( const statement& line : b.statements ) {
+
+				if ( line.kind == stmt::NOP )
+					continue;
+
+				mark_reads ( mark_reads, line.right, 0 );
+
+				if ( !( line.kind == stmt::ASSIGN && line.left >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR ) )
+					mark_reads ( mark_reads, line.left, 0 );
+
+			}
+
+			for ( const block_code& block : b.code ) {
+
+				mark_reads ( mark_reads, block.condition, 0 );
+				mark_reads ( mark_reads, block.selector, 0 );
+				mark_reads ( mark_reads, block.returned, 0 );
+
+			}
 
 			for ( int32_t k = 0; k < count; k++ ) {
 
@@ -1476,8 +1566,15 @@ namespace decompiler {
 
 				for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
 
-					if ( b.statements [ static_cast < size_t > ( s ) ].kind != stmt::NOP )
-						lines.push ( s );
+					const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+					if ( line.kind == stmt::NOP )
+						continue;
+
+					if ( line.kind == stmt::ASSIGN && line.left >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( line.left ) ].value >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].value < b.vars.count ( ) && b.vars [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( line.left ) ].value ) ].flags && !flag_read [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( line.left ) ].value ) ] )
+						continue;
+
+					lines.push ( s );
 
 				}
 
@@ -1511,9 +1608,9 @@ namespace decompiler {
 					if ( self_node.kind != op::VAR || self_node.value != x || amount.kind != op::CONST )
 						continue;
 
-					int64_t unit = pointer_step ( line.left ) > 1 ? pointer_step ( line.left ) : 1;
+					int64_t unit = amount.value < 0 ? -amount.value : amount.value;
 
-					if ( amount.value != unit && amount.value != -unit )
+					if ( unit != 1 && unit != 2 && unit != 4 && unit != 8 && unit != 16 )
 						continue;
 
 					bool up = amount.value > 0;
@@ -1525,7 +1622,12 @@ namespace decompiler {
 						const statement& prior = b.statements [ static_cast < size_t > ( before ) ];
 						bool defines = prior.kind == stmt::ASSIGN && prior.left >= 0 && b.exprs [ static_cast < size_t > ( prior.left ) ].kind == op::VAR;
 						int32_t uses = count_var ( prior.right, x, 0 ) + ( defines ? 0 : count_var ( prior.left, x, 0 ) );
-						bool memory = !defines || ( prior.right >= 0 && b.exprs [ static_cast < size_t > ( prior.right ) ].kind == op::LOAD );
+						int32_t loaded = prior.right;
+
+						while ( loaded >= 0 && b.exprs [ static_cast < size_t > ( loaded ) ].kind == op::CAST )
+							loaded = b.exprs [ static_cast < size_t > ( loaded ) ].a;
+
+						bool memory = !defines || ( loaded >= 0 && b.exprs [ static_cast < size_t > ( loaded ) ].kind == op::LOAD );
 						bool calls = prior.right < 0 || count_call ( prior.right, 0 ) || ( !defines && count_call ( prior.left, 0 ) );
 
 						if ( ( !( last_line && latch ) || ( memory && latch_folds ) ) && !calls && ( prior.kind == stmt::ASSIGN || prior.kind == stmt::STORE ) && uses == 1 && fold_at [ static_cast < size_t > ( before ) ] < 0 && !hidden [ static_cast < size_t > ( before ) ] && !( defines && b.exprs [ static_cast < size_t > ( prior.left ) ].value == x ) ) {
@@ -1533,6 +1635,7 @@ namespace decompiler {
 							fold_at [ static_cast < size_t > ( before ) ] = static_cast < int32_t > ( x );
 							fold_how [ static_cast < size_t > ( before ) ] = up ? 3 : 4;
 							fold_inc [ static_cast < size_t > ( before ) ] = at;
+							fold_unit [ static_cast < size_t > ( before ) ] = unit;
 							hidden [ static_cast < size_t > ( at ) ] = 1;
 
 							continue;
@@ -1547,6 +1650,7 @@ namespace decompiler {
 						fold_cond_var.push ( static_cast < int32_t > ( x ) );
 						fold_cond_how.push ( up ? 1 : 2 );
 						fold_cond_inc.push ( at );
+						fold_cond_unit.push ( unit );
 						fold_cond_done.push ( 0 );
 						hidden [ static_cast < size_t > ( at ) ] = 1;
 
@@ -1555,6 +1659,7 @@ namespace decompiler {
 				}
 
 			}
+
 
 		}
 
@@ -2298,14 +2403,18 @@ namespace decompiler {
 						out.put ( L"(" );
 
 					out.put ( L"*", syntax::OPERATOR );
-					out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
+
+					if ( !put_folded ( var, name ) )
+						out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
 
 					if ( parent > 14 )
 						out.put ( L")" );
 
 				} else {
 
-					out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
+					if ( !put_folded ( var, name ) )
+						out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
+
 					out.put ( L"[" );
 					index_number ( offset / item.size );
 					out.put ( L"]" );
@@ -2680,7 +2789,7 @@ namespace decompiler {
 					if ( array_element ( var, b.vars [ static_cast < size_t > ( var ) ].size, b.vars [ static_cast < size_t > ( var ) ].bits, false ) )
 						break;
 
-					if ( active_var >= 0 && var == active_var ) {
+					if ( active_var >= 0 && var == active_var && var_step ( var ) == active_unit ) {
 
 						var_name ( var, name );
 
@@ -3780,6 +3889,7 @@ namespace decompiler {
 				active_how = fold_how [ static_cast < size_t > ( index ) ];
 				active_slot = index;
 				active_cond = false;
+				active_unit = fold_unit [ static_cast < size_t > ( index ) ];
 
 			}
 
@@ -4423,6 +4533,7 @@ namespace decompiler {
 								active_how = fold_cond_how [ static_cast < size_t > ( k ) ];
 								active_slot = k;
 								active_cond = true;
+								active_unit = fold_cond_unit [ static_cast < size_t > ( k ) ];
 
 							}
 
