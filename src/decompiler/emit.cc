@@ -466,6 +466,7 @@ namespace decompiler {
 	static bool fall_then_simple = true;
 	static bool fall_then_signs = true;
 	static bool fall_returns_first = true;
+	static bool else_returns = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
@@ -5717,6 +5718,19 @@ namespace decompiler {
 
 		}
 
+		bool branch_fed ( int32_t block ) const {
+
+			for ( int32_t p : pred [ static_cast < size_t > ( block ) ] ) {
+
+				if ( b.code [ static_cast < size_t > ( p ) ].end == term::BRANCH )
+					return true;
+
+			}
+
+			return false;
+
+		}
+
 		bool negative_test ( int32_t condition ) const {
 
 			const expr& test = b.exprs [ static_cast < size_t > ( condition ) ];
@@ -5953,7 +5967,7 @@ namespace decompiler {
 				else_part = taken;
 				negated = true;
 
-			} else if ( fall_returns_first && follow < 0 && other >= 0 && taken >= 0 && item.condition >= 0 && negative_test ( item.condition ) && ( b.exprs [ static_cast < size_t > ( item.condition ) ].kind == op::NE || ( b.code [ static_cast < size_t > ( taken ) ].returned >= 0 && b.exprs [ static_cast < size_t > ( b.code [ static_cast < size_t > ( taken ) ].returned ) ].kind != op::CONST ) ) && b.code [ static_cast < size_t > ( other ) ].end == term::RETURN && b.code [ static_cast < size_t > ( taken ) ].end == term::RETURN && pred [ static_cast < size_t > ( other ) ].count ( ) == 1 && pred [ static_cast < size_t > ( taken ) ].count ( ) == 1 ) {
+			} else if ( fall_returns_first && follow < 0 && other >= 0 && taken >= 0 && item.condition >= 0 && negative_test ( item.condition ) && ( b.exprs [ static_cast < size_t > ( item.condition ) ].kind == op::NE || ( b.code [ static_cast < size_t > ( taken ) ].returned >= 0 && b.exprs [ static_cast < size_t > ( b.code [ static_cast < size_t > ( taken ) ].returned ) ].kind != op::CONST ) || ( else_returns && !chained && empty_block ( taken ) && empty_block ( other ) && !branch_fed ( block ) ) ) && b.code [ static_cast < size_t > ( other ) ].end == term::RETURN && b.code [ static_cast < size_t > ( taken ) ].end == term::RETURN && pred [ static_cast < size_t > ( other ) ].count ( ) == 1 && pred [ static_cast < size_t > ( taken ) ].count ( ) == 1 ) {
 
 				then_part = other;
 				else_part = taken;
@@ -6085,7 +6099,7 @@ namespace decompiler {
 				brace ( L"}" );
 				ended = false;
 
-			} else if ( then_ends && else_part != follow && else_part >= 0 ) {
+			} else if ( then_ends && else_part != follow && else_part >= 0 && !( else_returns && !chained && follow < 0 && then_part >= 0 && b.code [ static_cast < size_t > ( then_part ) ].end == term::RETURN && b.code [ static_cast < size_t > ( else_part ) ].end == term::RETURN && pred [ static_cast < size_t > ( then_part ) ].count ( ) == 1 && pred [ static_cast < size_t > ( else_part ) ].count ( ) == 1 && !emitted [ static_cast < size_t > ( else_part ) ] && empty_block ( then_part ) && empty_block ( else_part ) && !branch_fed ( block ) ) ) {
 
 				brace ( L"}" );
 				ended = false;
