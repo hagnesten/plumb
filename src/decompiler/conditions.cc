@@ -557,6 +557,7 @@ namespace decompiler {
 	static bool fold_addresses = true;
 	static bool copy_constants = true;
 	static bool dead_stack_stores = true;
+	static int32_t switch_cases = 3;
 	static bool ghost_addresses = false;
 	static bool keep_returned_constants = false;
 
@@ -1473,7 +1474,24 @@ namespace decompiler {
 
 			}
 
-			if ( broken || fallback < 0 || cases.count ( ) < 4 )
+			if ( broken || fallback < 0 || cases.count ( ) < switch_cases )
+				continue;
+
+			int32_t distinct = 0;
+
+			for ( int32_t i = 0; i < cases.count ( ); i++ ) {
+
+				bool again = false;
+
+				for ( int32_t j = 0; j < i; j++ )
+					again = again || cases [ static_cast < size_t > ( j ) ].to == cases [ static_cast < size_t > ( i ) ].to;
+
+				if ( !again )
+					distinct++;
+
+			}
+
+			if ( distinct < switch_cases && cases.count ( ) < 4 )
 				continue;
 
 			bool clash = false;
