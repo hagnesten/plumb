@@ -451,6 +451,7 @@ namespace decompiler {
 	static bool widen_assign = true;
 	static bool sext_products = true;
 	static bool collapse_casts = true;
+	static bool call_untruncate = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -2999,7 +3000,11 @@ namespace decompiler {
 						else if ( b.long_mode && !no_casts && target && passed.kind != op::CONST && passed.size == 4 && !( passed.bits & FLOATING ) && ( callee_unsigned ( target, i ), !shape_ok ) && !( i < 4 && callee_argument_width ( *b.db, target, i, 0 ) == 4 ) && !( passed.kind == op::VAR && passed.value >= 0 && passed.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( passed.value ) ].bits & UNSIGNED ) && b.vars [ static_cast < size_t > ( passed.value ) ].size == 4 ) ) {
 
 							out.put ( L"(unsigned int)" );
-							value ( argument, 14 );
+
+							if ( call_untruncate && passed.kind == op::CAST && passed.a >= 0 && b.exprs [ static_cast < size_t > ( passed.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( passed.a ) ].size == 8 )
+								value ( passed.a, 14 );
+							else
+								value ( argument, 14 );
 
 						} else if ( b.long_mode && !no_casts && target && passed.size == 8 && !( passed.bits & ( FLOATING | POINTER ) ) && ( passed.kind == op::LOAD || passed.kind == op::GLOBAL || passed.kind == op::ADD ) && !( passed.kind == op::ADD && char_typed_sum ( argument ) ) && ( callee_unsigned ( target, i ), !shape_ok ) && !void_element_load ( argument ) && callee_parameter_type ( *b.db, *b.file, b.names, target, i, param_type, 64 ) ) {
 
@@ -3031,8 +3036,16 @@ namespace decompiler {
 							out.put ( L"(__int64)" );
 							value ( argument, 14 );
 
-						} else
+						} else {
+
+							bool narrow_arg = call_untruncate && passed.size == 4 && !( passed.bits & FLOATING );
+							bool held = untruncate;
+
+							untruncate = untruncate || narrow_arg;
 							value ( argument, 2 );
+							untruncate = held;
+
+						}
 
 						bare_unsigned = false;
 
