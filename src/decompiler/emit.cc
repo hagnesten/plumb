@@ -538,8 +538,6 @@ namespace decompiler {
 		base::list < uint8_t > element;
 		base::list < uint8_t > boolean;
 		base::list < uint8_t > vector;
-		base::list < uint8_t > full_defs;
-		bool full_defs_ready = false;
 		bool inline_returns = true;
 		bool call_unused = false;
 		bool fall_returns = true;
@@ -887,9 +885,125 @@ namespace decompiler {
 
 		}
 
-		bool low_write ( int32_t left, int32_t right ) {
+		int32_t wide_reads ( int32_t e, int64_t var, int32_t depth ) const {
 
-			if ( !low_writes || left < 0 || !zero_widened ( right ) )
+			if ( e < 0 || depth > 64 )
+				return 0;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind == op::VAR )
+				return node.value == var && node.size == 8 ? 1 : 0;
+
+			if ( node.kind == op::CAST && node.size <= 4 && node.a >= 0 && b.exprs [ static_cast < size_t > ( node.a ) ].kind == op::VAR )
+				return 0;
+
+			if ( node.kind == op::ADDRESS && node.a < 0 && node.value == var )
+				return 1;
+
+			int32_t total = wide_reads ( node.a, var, depth + 1 ) + wide_reads ( node.b, var, depth + 1 ) + wide_reads ( node.c, var, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				total += wide_reads ( b.args [ static_cast < size_t > ( node.first_arg + i ) ], var, depth + 1 );
+
+			return total;
+
+		}
+
+		bool upper_dead ( int32_t at, int64_t var ) const {
+
+			int32_t home = -1;
+
+			for ( int32_t k = 0; k < b.code.count ( ) && home < 0; k++ ) {
+
+				const block_code& block = b.code [ static_cast < size_t > ( k ) ];
+
+				if ( at >= block.first && at < block.first + block.count )
+					home = k;
+
+			}
+
+			if ( home < 0 )
+				return false;
+
+			base::list < uint8_t > seen;
+			base::list < int32_t > work;
+			base::list < int32_t > starts;
+
+			seen.fill ( b.code.size ( ), 0 );
+			work.push ( home );
+			starts.push ( at + 1 );
+
+			while ( work.count ( ) ) {
+
+				int32_t k = work [ static_cast < size_t > ( work.count ( ) - 1 ) ];
+				int32_t from = starts [ static_cast < size_t > ( starts.count ( ) - 1 ) ];
+
+				work.pop ( );
+				starts.pop ( );
+
+				const block_code& block = b.code [ static_cast < size_t > ( k ) ];
+				bool killed = false;
+
+				for ( int32_t s = from; s < block.first + block.count && s < b.statements.count ( ) && !killed; s++ ) {
+
+					const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+					if ( line.kind == stmt::NOP )
+						continue;
+
+					if ( line.kind == stmt::ASM )
+						return false;
+
+					bool direct = line.kind == stmt::ASSIGN && line.left >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+
+					if ( wide_reads ( line.right, var, 0 ) || ( !direct && wide_reads ( line.left, var, 0 ) ) )
+						return false;
+
+					if ( direct && b.exprs [ static_cast < size_t > ( line.left ) ].value == var && b.exprs [ static_cast < size_t > ( line.left ) ].size == 8 )
+						killed = true;
+
+				}
+
+				if ( killed )
+					continue;
+
+				if ( wide_reads ( block.condition, var, 0 ) || wide_reads ( block.selector, var, 0 ) )
+					return false;
+
+				if ( block.end == term::RETURN || block.end == term::TAIL ) {
+
+					if ( wide_reads ( block.returned, var, 0 ) )
+						return false;
+
+					continue;
+
+				}
+
+				if ( k < succ.count ( ) ) {
+
+					for ( int32_t next : succ [ static_cast < size_t > ( k ) ] ) {
+
+						if ( next < 0 || next >= b.code.count ( ) || seen [ static_cast < size_t > ( next ) ] )
+							continue;
+
+						seen [ static_cast < size_t > ( next ) ] = 1;
+						work.push ( next );
+						starts.push ( b.code [ static_cast < size_t > ( next ) ].first );
+
+					}
+
+				}
+
+			}
+
+			return true;
+
+		}
+
+		bool low_write ( int32_t left, int32_t right, int32_t at ) {
+
+			if ( !low_writes || left < 0 || at < 0 || !zero_widened ( right ) )
 				return false;
 
 			const expr& target = b.exprs [ static_cast < size_t > ( left ) ];
@@ -902,40 +1016,7 @@ namespace decompiler {
 			if ( item.kind != var_kind::REGISTER || item.size != 8 || ( item.bits & FLOATING ) || item.flags || ( target.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( target.value ) ].empty ( ) ) )
 				return false;
 
-			if ( !full_defs_ready ) {
-
-				full_defs.clear ( );
-				full_defs.fill ( b.vars.size ( ), 0 );
-
-				for ( int32_t s = 0; s < b.statements.count ( ); s++ ) {
-
-					const statement& line = b.statements [ static_cast < size_t > ( s ) ];
-					bool live = false;
-
-					for ( const block_code& block : b.code )
-						live = live || ( block.reachable && s >= block.first && s < block.first + block.count );
-
-					if ( !live || line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
-						continue;
-
-					int64_t v = b.exprs [ static_cast < size_t > ( line.left ) ].value;
-					const expr& source = b.exprs [ static_cast < size_t > ( line.right ) ];
-
-					if ( v < 0 || v >= b.vars.count ( ) || zero_widened ( line.right ) )
-						continue;
-
-					if ( source.kind == op::CONST || source.size < 8 || ( source.kind == op::CAST && source.a >= 0 && b.exprs [ static_cast < size_t > ( source.a ) ].size < 8 && !( source.bits & SIGNED ) ) )
-						continue;
-
-					full_defs [ static_cast < size_t > ( v ) ] = 1;
-
-				}
-
-				full_defs_ready = true;
-
-			}
-
-			return full_defs [ static_cast < size_t > ( target.value ) ] != 0;
+			return upper_dead ( at, target.value );
 
 		}
 
@@ -4797,7 +4878,7 @@ namespace decompiler {
 
 					}
 
-					if ( low_write ( item.left, item.right ) ) {
+					if ( low_write ( item.left, item.right, b.statements.count ( ) && &item >= &b.statements [ 0 ] && &item < &b.statements [ 0 ] + b.statements.count ( ) ? static_cast < int32_t > ( &item - &b.statements [ 0 ] ) : -1 ) ) {
 
 						out.put ( L"LODWORD(", syntax::FUNCTION );
 						value ( item.left, 0 );
