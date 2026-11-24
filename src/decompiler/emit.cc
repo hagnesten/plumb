@@ -437,6 +437,7 @@ namespace decompiler {
 	static bool defer_later = true;
 	static bool return_casts = true;
 	static bool return_var_casts = false;
+	static bool unsigned_narrow = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -2845,6 +2846,11 @@ namespace decompiler {
 						out.put ( lhs.size == 1 ? L"(unsigned __int8)" : ( lhs.size == 2 ? L"(unsigned __int16)" : ( lhs.size == 4 ? L"(unsigned int)" : L"(unsigned __int64)" ) ), syntax::TYPE );
 						value ( item.a, 14, bitwise );
 						unsigned_compare = false;
+
+					} else if ( unsigned_narrow && unsigned_compare && !no_casts && lhs.kind == op::CAST && lhs.a >= 0 && lhs.size < b.exprs [ static_cast < size_t > ( lhs.a ) ].size && lhs.size <= 4 && !( lhs.bits & FLOATING ) && !( b.exprs [ static_cast < size_t > ( lhs.a ) ].bits & FLOATING ) ) {
+
+						out.put ( lhs.size == 1 ? L"(unsigned __int8)" : ( lhs.size == 2 ? L"(unsigned __int16)" : L"(unsigned int)" ), syntax::TYPE );
+						value ( lhs.a, 14, bitwise );
 
 					} else if ( signed_compare && !no_casts && lhs.kind == op::CAST && lhs.a >= 0 && lhs.size < b.exprs [ static_cast < size_t > ( lhs.a ) ].size && lhs.size <= 4 && !( lhs.bits & FLOATING ) && b.exprs [ static_cast < size_t > ( lhs.a ) ].kind == op::VAR ) {
 
