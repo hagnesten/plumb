@@ -2175,6 +2175,7 @@ namespace decompiler {
 	}
 
 	static bool assign_in_tests = true;
+	static bool comma_uses = true;
 
 	static bool bare_var ( const builder& b, int32_t e, int64_t v ) {
 
@@ -2470,13 +2471,17 @@ namespace decompiler {
 						seen.fill ( vars.size ( ), 0 );
 						count_vars ( *this, next.condition, seen, 0 );
 
-						if ( v < 0 || v >= seen.count ( ) || seen [ static_cast < size_t > ( v ) ] != 1 )
+						if ( v < 0 || v >= seen.count ( ) || seen [ static_cast < size_t > ( v ) ] < 1 || ( seen [ static_cast < size_t > ( v ) ] != 1 && !comma_uses ) )
 							continue;
 
-						if ( !tests_directly ( *this, next.condition, v ) )
+						bool direct = seen [ static_cast < size_t > ( v ) ] == 1 && tests_directly ( *this, next.condition, v );
+
+						if ( !direct && !comma_uses )
 							continue;
 
-						if ( exprs [ static_cast < size_t > ( line.right ) ].kind == op::CALL )
+						if ( !direct )
+							next.condition = comma_test ( *this, next.condition, v, line.left, line.right );
+						else if ( exprs [ static_cast < size_t > ( line.right ) ].kind == op::CALL )
 							next.condition = comma_test ( *this, explicit_test ( *this, next.condition, v ), v, line.left, line.right );
 						else {
 
