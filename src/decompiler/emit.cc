@@ -4054,6 +4054,22 @@ namespace decompiler {
 
 					}
 
+					if ( widened_halves && left.size == 8 && !( left.bits & FLOATING ) && right.kind == op::CAST && right.size == 4 && !( right.bits & ( SIGNED | FLOATING | POINTER ) ) && right.a >= 0 && b.exprs [ static_cast < size_t > ( right.a ) ].size == 8 && !( b.exprs [ static_cast < size_t > ( right.a ) ].bits & FLOATING ) && ( left.kind == op::LOAD || ( left.kind == op::VAR && left.value >= 0 && left.value < b.vars.count ( ) && !( b.vars [ static_cast < size_t > ( left.value ) ].bits & ( FLOATING | POINTER ) ) && ( left.value >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( left.value ) ].empty ( ) ) ) ) ) {
+
+						if ( left.kind == op::LOAD )
+							lvalue_or_load ( left, 0 );
+						else
+							value ( item.left, 0 );
+
+						out.put ( L" = ", syntax::OPERATOR );
+						out.put ( L"(unsigned int)", syntax::TYPE );
+						value ( right.a, 14 );
+						semicolon ( );
+
+						break;
+
+					}
+
 					if ( left.kind == op::VAR && right.kind == op::LOAD && right.size == 16 && left.value >= 0 && left.value < vector.count ( ) && vector [ static_cast < size_t > ( left.value ) ] ) {
 
 						value ( item.left, 0 );
