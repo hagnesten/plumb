@@ -588,6 +588,7 @@ namespace decompiler {
 
 	static bool negate_pairs = true;
 	static bool float_flips = true;
+	static bool joined_sets = true;
 	static bool sse_extras = true;
 
 	int32_t builder::negate ( int32_t condition ) {
@@ -1646,6 +1647,8 @@ namespace decompiler {
 		uint8_t reads [ 32 ] = { };
 		uint64_t read_at [ 32 ] = { };
 		uint64_t now = 0;
+		int32_t entry_flag_var = -1;
+		uint8_t entry_flag_code = 0;
 		int32_t flag_kind = 0;
 		int32_t flag_result = -1;
 		int32_t flag_a = -1;
@@ -1693,6 +1696,8 @@ namespace decompiler {
 			}
 
 			flag_kind = 0;
+			entry_flag_var = -1;
+			entry_flag_code = 0;
 			arg_written = 0;
 			pushes.clear ( );
 			push_stmts.clear ( );
@@ -2672,6 +2677,16 @@ namespace decompiler {
 
 			builder& k = *b;
 			uint8_t size = flag_size;
+
+			if ( ( flag_kind == 0 || flag_a < 0 ) && entry_flag_var >= 0 ) {
+
+				if ( code == entry_flag_code )
+					return k.var_expr ( entry_flag_var, 1 );
+
+				if ( ( code ^ 1 ) == entry_flag_code )
+					return k.make ( op::LNOT, 1, k.var_expr ( entry_flag_var, 1 ) );
+
+			}
 
 			if ( flag_kind == 0 || flag_a < 0 )
 				return k.make ( op::INTRINSIC, 1, -1, -1, I_FLAGS );
@@ -4893,6 +4908,73 @@ namespace decompiler {
 
 		}
 
+		base::list < int32_t > set_joined;
+		base::list < uint8_t > set_code;
+
+		set_joined.fill ( static_cast < size_t > ( count ), -1 );
+		set_code.fill ( static_cast < size_t > ( count ), 0 );
+
+		for ( int32_t i = 1; i < count && joined_sets; i++ ) {
+
+			const base::list < x86::instruction >& list = listings [ static_cast < size_t > ( i ) ];
+
+			if ( joined [ static_cast < size_t > ( i ) ] >= 0 || list.empty ( ) || code [ static_cast < size_t > ( i ) ].preds < 2 )
+				continue;
+
+			int32_t found = -1;
+
+			for ( int32_t k = 0; k < list.count ( ); k++ ) {
+
+				const x86::instruction& ins = list [ static_cast < size_t > ( k ) ];
+
+				if ( static_cast < int32_t > ( ins.name ) >= static_cast < int32_t > ( mnemonic::seto ) && static_cast < int32_t > ( ins.name ) <= static_cast < int32_t > ( mnemonic::setg ) && ins.condition != 0xFF ) {
+
+					found = k;
+
+					break;
+
+				}
+
+				mnemonic name = ins.name;
+
+				if ( !( name == mnemonic::mov || name == mnemonic::lea || name == mnemonic::movzx || name == mnemonic::movsx || name == mnemonic::movsxd || name == mnemonic::nop ) )
+					break;
+
+			}
+
+			if ( found < 0 )
+				continue;
+
+			bool all_set = true;
+
+			for ( const analysis::edge& link : graph.edges ) {
+
+				if ( link.to != i )
+					continue;
+
+				const base::list < x86::instruction >& before = listings [ static_cast < size_t > ( link.from ) ];
+
+				if ( before.empty ( ) || before [ before.size ( ) - 1 ].control == x86::flow::CALL || before [ before.size ( ) - 1 ].control == x86::flow::BRANCH )
+					all_set = false;
+
+			}
+
+			if ( !all_set )
+				continue;
+
+			uint8_t wanted = list [ static_cast < size_t > ( found ) ].condition;
+			uint8_t stored = wanted == 5 ? 4 : wanted;
+			variable& made = vars.emplace ( );
+
+			made.kind = var_kind::REGISTER;
+			made.size = 1;
+			made.flags = true;
+			made.offset = stored;
+			set_joined [ static_cast < size_t > ( i ) ] = vars.count ( ) - 1;
+			set_code [ static_cast < size_t > ( i ) ] = stored;
+
+		}
+
 		machine state;
 
 		state.b = this;
@@ -4932,6 +5014,14 @@ namespace decompiler {
 				state.flag_size = out_block.flag_size;
 
 			}
+
+			if ( set_joined [ static_cast < size_t > ( index ) ] >= 0 ) {
+
+				state.entry_flag_var = set_joined [ static_cast < size_t > ( index ) ];
+				state.entry_flag_code = set_code [ static_cast < size_t > ( index ) ];
+
+			}
+
 			out_block.first = statements.count ( );
 			out_block.reachable = true;
 
@@ -4991,6 +5081,15 @@ namespace decompiler {
 			const x86::instruction* last = list.empty ( ) ? nullptr : &list.back ( );
 
 			out_block.last = item.last;
+
+			for ( int32_t e = 0; e < item.out_count; e++ ) {
+
+				int32_t to = graph.edges [ static_cast < size_t > ( item.first_out + e ) ].to;
+
+				if ( to != index && set_joined [ static_cast < size_t > ( to ) ] >= 0 )
+					state.emit ( stmt::ASSIGN, var_expr ( set_joined [ static_cast < size_t > ( to ) ], 1 ), state.condition ( set_code [ static_cast < size_t > ( to ) ] ), item.last );
+
+			}
 
 			if ( joined [ static_cast < size_t > ( index ) ] < 0 ) {
 
