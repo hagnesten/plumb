@@ -457,6 +457,8 @@ namespace decompiler {
 	static bool simd_types = true;
 	static bool plain_copies = true;
 	static bool shift_products = true;
+	static bool fall_then = true;
+	static bool fall_then_simple = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
@@ -5818,6 +5820,12 @@ namespace decompiler {
 					else_part = follow;
 
 			} else if ( then_part == follow ) {
+
+				then_part = other;
+				else_part = taken;
+				negated = true;
+
+			} else if ( fall_then && follow >= 0 && else_part != follow && other >= 0 && taken >= 0 && item.condition >= 0 && ( b.exprs [ static_cast < size_t > ( item.condition ) ].kind == op::EQ || b.exprs [ static_cast < size_t > ( item.condition ) ].kind == op::LNOT ) && ( !fall_then_simple || ( b.code [ static_cast < size_t > ( other ) ].end == term::FALL && b.code [ static_cast < size_t > ( other ) ].taken == follow && b.code [ static_cast < size_t > ( taken ) ].end == term::FALL && b.code [ static_cast < size_t > ( taken ) ].taken == follow ) ) ) {
 
 				then_part = other;
 				else_part = taken;
