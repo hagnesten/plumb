@@ -434,6 +434,7 @@ namespace decompiler {
 	static bool empty_then = true;
 	static bool api_types = true;
 	static bool double_pointees = true;
+	static bool low_writes = true;
 	static bool defer_later = true;
 	static bool return_casts = true;
 	static bool return_var_casts = false;
@@ -537,6 +538,8 @@ namespace decompiler {
 		base::list < uint8_t > element;
 		base::list < uint8_t > boolean;
 		base::list < uint8_t > vector;
+		base::list < uint8_t > full_defs;
+		bool full_defs_ready = false;
 		bool inline_returns = true;
 		bool call_unused = false;
 		bool fall_returns = true;
@@ -862,6 +865,77 @@ namespace decompiler {
 			}
 
 			return distinct >= 2;
+
+		}
+
+		bool zero_widened ( int32_t e ) const {
+
+			if ( e < 0 )
+				return false;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.size == 4 && ( node.kind == op::LOAD || node.kind == op::CALL ) && !( node.bits & FLOATING ) )
+				return true;
+
+			if ( node.kind != op::CAST || node.size != 8 || ( node.bits & ( SIGNED | FLOATING | POINTER ) ) || node.a < 0 )
+				return false;
+
+			const expr& inner = b.exprs [ static_cast < size_t > ( node.a ) ];
+
+			return inner.size == 4 && ( inner.kind == op::LOAD || inner.kind == op::CALL ) && !( inner.bits & FLOATING );
+
+		}
+
+		bool low_write ( int32_t left, int32_t right ) {
+
+			if ( !low_writes || left < 0 || !zero_widened ( right ) )
+				return false;
+
+			const expr& target = b.exprs [ static_cast < size_t > ( left ) ];
+
+			if ( target.kind != op::VAR || target.size != 8 || target.value < 0 || target.value >= b.vars.count ( ) || target.value == result_var )
+				return false;
+
+			const variable& item = b.vars [ static_cast < size_t > ( target.value ) ];
+
+			if ( item.kind != var_kind::REGISTER || item.size != 8 || ( item.bits & FLOATING ) || item.flags || ( target.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( target.value ) ].empty ( ) ) )
+				return false;
+
+			if ( !full_defs_ready ) {
+
+				full_defs.clear ( );
+				full_defs.fill ( b.vars.size ( ), 0 );
+
+				for ( int32_t s = 0; s < b.statements.count ( ); s++ ) {
+
+					const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+					bool live = false;
+
+					for ( const block_code& block : b.code )
+						live = live || ( block.reachable && s >= block.first && s < block.first + block.count );
+
+					if ( !live || line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+						continue;
+
+					int64_t v = b.exprs [ static_cast < size_t > ( line.left ) ].value;
+					const expr& source = b.exprs [ static_cast < size_t > ( line.right ) ];
+
+					if ( v < 0 || v >= b.vars.count ( ) || zero_widened ( line.right ) )
+						continue;
+
+					if ( source.kind == op::CONST || source.size < 8 || ( source.kind == op::CAST && source.a >= 0 && b.exprs [ static_cast < size_t > ( source.a ) ].size < 8 && !( source.bits & SIGNED ) ) )
+						continue;
+
+					full_defs [ static_cast < size_t > ( v ) ] = 1;
+
+				}
+
+				full_defs_ready = true;
+
+			}
+
+			return full_defs [ static_cast < size_t > ( target.value ) ] != 0;
 
 		}
 
@@ -4717,6 +4791,19 @@ namespace decompiler {
 
 						out.put ( L" = ", syntax::OPERATOR );
 						value ( right.a, 2 );
+						semicolon ( );
+
+						break;
+
+					}
+
+					if ( low_write ( item.left, item.right ) ) {
+
+						out.put ( L"LODWORD(", syntax::FUNCTION );
+						value ( item.left, 0 );
+						out.put ( L")" );
+						out.put ( L" = ", syntax::OPERATOR );
+						value ( right.kind == op::CAST ? right.a : item.right, 2 );
 						semicolon ( );
 
 						break;
