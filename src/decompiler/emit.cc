@@ -472,6 +472,7 @@ namespace decompiler {
 	static bool ida_reals = true;
 	static bool abs_masks = true;
 	static bool wide_internal_args = true;
+	static bool early_returns = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
@@ -6331,6 +6332,16 @@ namespace decompiler {
 			}
 
 			bool skip_else = false;
+
+			if ( early_returns && follow < 0 && !chained && then_part >= 0 && else_part >= 0 && then_part != else_part && b.code [ static_cast < size_t > ( else_part ) ].end == term::RETURN && empty_block ( else_part ) && pred [ static_cast < size_t > ( else_part ) ].count ( ) == 1 && b.code [ static_cast < size_t > ( then_part ) ].end != term::RETURN && b.code [ static_cast < size_t > ( then_part ) ].end != term::STOP && !exit_block ( then_part ) && !( b.code [ static_cast < size_t > ( else_part ) ].returned >= 0 && b.exprs [ static_cast < size_t > ( b.code [ static_cast < size_t > ( else_part ) ].returned ) ].kind == op::VAR ) && !emitted [ static_cast < size_t > ( else_part ) ] && then_part != context.loop && then_part != context.exit && else_part != context.loop && else_part != context.exit ) {
+
+				int32_t held = then_part;
+
+				then_part = else_part;
+				else_part = held;
+				negated = !negated;
+
+			}
 
 			if ( follow < 0 && context.loop < 0 && silent_return ( then_part ) && !silent_return ( else_part ) && else_part >= 0 ) {
 
