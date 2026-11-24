@@ -4,6 +4,8 @@ namespace decompiler {
 
 	using x86::mnemonic;
 
+	static bool string_params = true;
+
 	static bool starts_with ( const wchar_t* text, const wchar_t* head ) {
 
 		for ( ; *head; head++, text++ ) {
@@ -235,6 +237,39 @@ namespace decompiler {
 				uint32_t def = 0;
 
 				effects ( ins, true, use, def, false );
+
+				bool filling = ins.name == mnemonic::stosb || ins.name == mnemonic::stosw || ins.name == mnemonic::stosd || ins.name == mnemonic::stosq;
+				bool copying = ins.name == mnemonic::movsb || ins.name == mnemonic::movsw || ins.name == mnemonic::movsq;
+
+				if ( string_params && ( filling || copying ) ) {
+
+					const wchar_t* text = nullptr;
+
+					if ( holds [ 7 ] == index )
+						text = L"void *";
+					else if ( copying && holds [ 6 ] == index )
+						text = L"const void *";
+					else if ( holds [ 1 ] == index )
+						text = L"unsigned __int64";
+
+					if ( text ) {
+
+						int32_t length = 0;
+
+						while ( text [ length ] && length < room - 1 ) {
+
+							out [ length ] = text [ length ];
+							length++;
+
+						}
+
+						out [ length ] = 0;
+
+						return true;
+
+					}
+
+				}
 
 				if ( ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::REG && x86::register_size ( ins.operands [ 0 ].reg ) == 8 ) {
 

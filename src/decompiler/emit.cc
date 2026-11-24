@@ -447,6 +447,7 @@ namespace decompiler {
 	static bool wrapped_unsigned = true;
 	static bool mask_forms = true;
 	static bool latch_folds = true;
+	static bool inferred_unsigned = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -2853,6 +2854,15 @@ namespace decompiler {
 						bool unsigned_slot = passed.kind == op::CONST && passed.value < -9 && passed.size <= 4 && callee_unsigned ( target, i );
 
 						bare_unsigned = unsigned_slot;
+
+						if ( inferred_unsigned && passed.kind == op::CONST && !( passed.bits & POINTER ) && passed.value > 0 && target && b.long_mode && i < 4 && ( callee_unsigned ( target, i ), !shape_ok ) && callee_parameter_type ( *b.db, *b.file, b.names, target, i, param_type, 64 ) && base::same_text ( param_type, L"unsigned __int64" ) ) {
+
+							number ( passed.value, 8, passed.value > 9, true );
+							bare_unsigned = false;
+
+							continue;
+
+						}
 
 						if ( passed.kind == op::CONST && ( !( passed.bits & POINTER ) || passed.value < 0x10000 ) && passed.value > 0 && callee_unsigned ( target, i ) )
 							number ( passed.value, callee_wide ( target, i ) && b.long_mode ? 8 : 4, passed.value > 9, true );
