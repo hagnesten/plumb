@@ -607,6 +607,7 @@ namespace decompiler {
 	static bool power_hex = true;
 	static bool unsigned_results = true;
 	static bool step_carriers = true;
+	static bool default_cases = true;
 	static bool expand_strings = true;
 	static bool raw_float_copies = true;
 	static bool scalar_lanes = true;
@@ -7625,7 +7626,36 @@ namespace decompiler {
 
 			inner.exit = follow;
 
+			int32_t default_to = -1;
+
+			for ( int32_t e = 0; e < node.out_count; e++ ) {
+
+				const analysis::edge& link = b.graph.edges [ static_cast < size_t > ( node.first_out + e ) ];
+
+				if ( link.kind == analysis::edge_kind::JUMP )
+					default_to = link.to;
+
+			}
+
 			for ( int32_t target : targets ) {
+
+				if ( default_cases && target == default_to ) {
+
+					bool labeled = false;
+
+					for ( int32_t e = 0; e < node.out_count; e++ ) {
+
+						const analysis::edge& link = b.graph.edges [ static_cast < size_t > ( node.first_out + e ) ];
+
+						if ( link.to == target && link.kind == analysis::edge_kind::JUMP )
+							labeled = true;
+
+					}
+
+					if ( !labeled || target == follow )
+						continue;
+
+				}
 
 				if ( !dry ) {
 
@@ -7634,6 +7664,9 @@ namespace decompiler {
 						const analysis::edge& link = b.graph.edges [ static_cast < size_t > ( node.first_out + e ) ];
 
 						if ( link.to != target )
+							continue;
+
+						if ( default_cases && link.kind != analysis::edge_kind::JUMP && target == default_to )
 							continue;
 
 						out.begin ( b.graph.blocks [ static_cast < size_t > ( target ) ].start );

@@ -1607,6 +1607,7 @@ namespace decompiler {
 
 	static bool sign_ops = true;
 	static bool sign_copies = true;
+	static bool inline_switches = true;
 	static bool sign_pointers = true;
 
 	static void note_signs ( const builder& b, int32_t e, base::list < uint8_t >& marks, int32_t depth ) {
@@ -1818,13 +1819,30 @@ namespace decompiler {
 				tested = strip_casts ( *this, test.a );
 
 			int32_t picked = strip_casts ( *this, table.selector );
+			int64_t inline_shift = 0;
+			int32_t inline_selector = -1;
 
-			if ( tested < 0 || picked < 0 || exprs [ static_cast < size_t > ( tested ) ].kind != op::VAR || exprs [ static_cast < size_t > ( picked ) ].kind != op::VAR || exprs [ static_cast < size_t > ( tested ) ].value != exprs [ static_cast < size_t > ( picked ) ].value )
+			if ( inline_switches && tested >= 0 && picked >= 0 && ( exprs [ static_cast < size_t > ( picked ) ].kind == op::ADD || exprs [ static_cast < size_t > ( picked ) ].kind == op::SUB ) && same ( tested, picked ) ) {
+
+				const expr& offset_expr = exprs [ static_cast < size_t > ( picked ) ];
+
+				if ( offset_expr.a >= 0 && offset_expr.b >= 0 && exprs [ static_cast < size_t > ( offset_expr.b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( strip_casts ( *this, offset_expr.a ) ) ].kind == op::VAR ) {
+
+					int64_t k = exprs [ static_cast < size_t > ( offset_expr.b ) ].value;
+
+					inline_shift = offset_expr.kind == op::SUB ? k : -k;
+					inline_selector = offset_expr.a;
+
+				}
+
+			}
+
+			if ( inline_selector < 0 && ( tested < 0 || picked < 0 || exprs [ static_cast < size_t > ( tested ) ].kind != op::VAR || exprs [ static_cast < size_t > ( picked ) ].kind != op::VAR || exprs [ static_cast < size_t > ( tested ) ].value != exprs [ static_cast < size_t > ( picked ) ].value ) )
 				continue;
 
-			int64_t v = exprs [ static_cast < size_t > ( picked ) ].value;
-			int32_t selector = table.selector;
-			int64_t shift = 0;
+			int64_t v = inline_selector >= 0 ? -1 : exprs [ static_cast < size_t > ( picked ) ].value;
+			int32_t selector = inline_selector >= 0 ? inline_selector : table.selector;
+			int64_t shift = inline_shift;
 
 			for ( int32_t k = head.first + head.count - 1; k >= head.first && k < statements.count ( ); k-- ) {
 
