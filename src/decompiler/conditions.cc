@@ -82,6 +82,7 @@ namespace decompiler {
 	static bool copy_into = true;
 	static bool calls_forward = true;
 	static bool swap_copies = true;
+	static bool copy_local = true;
 
 	static bool has_call ( const builder& b, int32_t e, int32_t depth ) {
 
@@ -187,6 +188,150 @@ namespace decompiler {
 
 			};
 
+			base::list < int32_t > owner;
+			base::list < int32_t > entering;
+
+			owner.fill ( statements.size ( ), -1 );
+			entering.fill ( code.size ( ), 0 );
+
+			for ( int32_t k = 0; k < code.count ( ); k++ ) {
+
+				const block_code& block = code [ static_cast < size_t > ( k ) ];
+
+				for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ )
+					owner [ static_cast < size_t > ( s ) ] = k;
+
+				if ( !block.reachable )
+					continue;
+
+				if ( block.taken >= 0 && block.taken < code.count ( ) )
+					entering [ static_cast < size_t > ( block.taken ) ]++;
+
+				if ( block.end == term::BRANCH && block.other >= 0 && block.other < code.count ( ) && block.other != block.taken )
+					entering [ static_cast < size_t > ( block.other ) ]++;
+
+			}
+
+			auto local_only = [ & ] ( int64_t v, int32_t at, int64_t source_var, int32_t wanted ) -> bool {
+
+				if ( at < 0 || owner [ static_cast < size_t > ( at ) ] < 0 )
+					return false;
+
+				const block_code& home = code [ static_cast < size_t > ( owner [ static_cast < size_t > ( at ) ] ) ];
+				base::list < int32_t > here;
+				int32_t found = 0;
+				bool barrier = false;
+
+				here.fill ( static_cast < size_t > ( total ), 0 );
+
+				auto seen = [ & ] ( int32_t e ) {
+
+					here [ static_cast < size_t > ( v ) ] = 0;
+					count_vars ( *this, e, here, 0 );
+
+					return here [ static_cast < size_t > ( v ) ];
+
+				};
+
+				auto blocks = [ & ] ( const statement& line ) {
+
+					return line.kind == stmt::STORE || line.kind == stmt::EXPR || has_call ( *this, line.right, 0 ) || ( line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.left ) ].value == source_var );
+
+				};
+
+				for ( int32_t s = at + 1; s < home.first + home.count && s < statements.count ( ); s++ ) {
+
+					const statement& line = statements [ static_cast < size_t > ( s ) ];
+
+					if ( line.kind == stmt::NOP )
+						continue;
+
+					if ( line.kind == stmt::ASM )
+						return false;
+
+					bool defines = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+					int32_t n = seen ( line.right ) + ( defines ? 0 : seen ( line.left ) );
+
+					if ( defines && exprs [ static_cast < size_t > ( line.left ) ].value == v )
+						return false;
+
+					if ( n ) {
+
+						if ( barrier )
+							return false;
+
+						found += n;
+
+					}
+
+					if ( blocks ( line ) )
+						barrier = true;
+
+				}
+
+				int32_t tail = seen ( home.condition ) + seen ( home.selector ) + seen ( home.returned );
+
+				if ( tail ) {
+
+					if ( barrier )
+						return false;
+
+					found += tail;
+
+				}
+
+				int32_t next [ 2 ] = { home.taken, home.end == term::BRANCH && home.other != home.taken ? home.other : -1 };
+
+				for ( int32_t t : next ) {
+
+					if ( t < 0 || t >= code.count ( ) || found == wanted )
+						continue;
+
+					const block_code& after = code [ static_cast < size_t > ( t ) ];
+					bool first = true;
+					bool stopped = barrier;
+
+					for ( int32_t s = after.first; s < after.first + after.count && s < statements.count ( ); s++ ) {
+
+						const statement& line = statements [ static_cast < size_t > ( s ) ];
+
+						if ( line.kind == stmt::NOP )
+							continue;
+
+						bool defines = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+						int32_t n = seen ( line.right ) + ( defines ? 0 : seen ( line.left ) );
+
+						if ( n ) {
+
+							if ( !first || stopped || entering [ static_cast < size_t > ( t ) ] != 1 )
+								return false;
+
+							found += n;
+
+						}
+
+						first = false;
+						stopped = stopped || blocks ( line );
+
+					}
+
+					int32_t end_uses = seen ( after.condition ) + seen ( after.selector ) + seen ( after.returned );
+
+					if ( end_uses ) {
+
+						if ( !first || stopped || entering [ static_cast < size_t > ( t ) ] != 1 )
+							return false;
+
+						found += end_uses;
+
+					}
+
+				}
+
+				return found == wanted;
+
+			};
+
 			for ( int32_t v = 0; v < total && copy_fixed; v++ ) {
 
 				if ( !plain ( v ) || defs [ static_cast < size_t > ( v ) ] != 1 || single [ static_cast < size_t > ( v ) ] < 0 || returned [ static_cast < size_t > ( v ) ] )
@@ -230,7 +375,10 @@ namespace decompiler {
 
 				}
 
-				if ( source.kind != op::VAR || source.value == v || !fixed ( source.value ) || source.size != exprs [ static_cast < size_t > ( line.left ) ].size || vars [ static_cast < size_t > ( source.value ) ].size != vars [ static_cast < size_t > ( v ) ].size || ( ( vars [ static_cast < size_t > ( source.value ) ].bits ^ vars [ static_cast < size_t > ( v ) ].bits ) & FLOATING ) )
+				if ( source.kind != op::VAR || source.value == v || source.size != exprs [ static_cast < size_t > ( line.left ) ].size || vars [ static_cast < size_t > ( source.value ) ].size != vars [ static_cast < size_t > ( v ) ].size || ( ( vars [ static_cast < size_t > ( source.value ) ].bits ^ vars [ static_cast < size_t > ( v ) ].bits ) & FLOATING ) )
+					continue;
+
+				if ( !fixed ( source.value ) && !( copy_local && local_only ( v, single [ static_cast < size_t > ( v ) ], source.value, uses [ static_cast < size_t > ( v ) ] ) ) )
 					continue;
 
 				int32_t value = line.right;
