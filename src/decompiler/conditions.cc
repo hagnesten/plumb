@@ -556,12 +556,79 @@ namespace decompiler {
 	static bool ghost_vector_zero = true;
 	static bool fold_addresses = true;
 	static bool copy_constants = true;
+	static bool dead_stack_stores = true;
 	static bool ghost_addresses = false;
 	static bool keep_returned_constants = false;
+
+	static bool mentions ( const builder& b, int32_t e, int64_t var, int32_t depth ) {
+
+		if ( e < 0 || depth > 64 )
+			return false;
+
+		const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+		if ( ( node.kind == op::VAR || node.kind == op::ADDRESS ) && node.value == var )
+			return true;
+
+		if ( mentions ( b, node.a, var, depth + 1 ) || mentions ( b, node.b, var, depth + 1 ) || mentions ( b, node.c, var, depth + 1 ) )
+			return true;
+
+		for ( int32_t i = 0; i < node.arg_count; i++ ) {
+
+			if ( mentions ( b, b.args [ static_cast < size_t > ( node.first_arg + i ) ], var, depth + 1 ) )
+				return true;
+
+		}
+
+		return false;
+
+	}
 
 	void builder::fold_constants ( ) {
 
 		int32_t total = vars.count ( );
+
+		if ( dead_stack_stores ) {
+
+			for ( const block_code& block : code ) {
+
+				for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ ) {
+
+					statement& line = statements [ static_cast < size_t > ( s ) ];
+
+					if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+						continue;
+
+					int64_t slot = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+					if ( slot < 0 || slot >= total || vars [ static_cast < size_t > ( slot ) ].kind != var_kind::STACK || has_call ( *this, line.right, 0 ) )
+						continue;
+
+					for ( int32_t t = s + 1; t < block.first + block.count && t < statements.count ( ); t++ ) {
+
+						const statement& next = statements [ static_cast < size_t > ( t ) ];
+
+						if ( next.kind == stmt::NOP )
+							continue;
+
+						if ( next.kind == stmt::ASSIGN && next.left >= 0 && exprs [ static_cast < size_t > ( next.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( next.left ) ].value == slot && !mentions ( *this, next.right, slot, 0 ) && exprs [ static_cast < size_t > ( next.left ) ].size >= exprs [ static_cast < size_t > ( line.left ) ].size ) {
+
+							line.kind = stmt::NOP;
+
+							break;
+
+						}
+
+						if ( next.kind != stmt::ASSIGN || has_call ( *this, next.right, 0 ) || mentions ( *this, next.right, slot, 0 ) || mentions ( *this, next.left, slot, 0 ) || exprs [ static_cast < size_t > ( next.left ) ].kind != op::VAR )
+							break;
+
+					}
+
+				}
+
+			}
+
+		}
 
 		if ( copy_constants ) {
 
