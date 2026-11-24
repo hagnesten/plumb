@@ -649,6 +649,7 @@ namespace decompiler {
 
 	static bool merge_slots = true;
 	static bool no_phantom_stack = true;
+	static bool indexed_stack = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -1611,9 +1612,16 @@ namespace decompiler {
 
 			int64_t base_offset = 0;
 
+			bool stack_indexed = false;
+
 			if ( m.base != x86::NONE && stack_base ( m.base, base_offset ) && m.index == x86::NONE ) {
 
 				result = b->make ( op::ADDRESS, 8, -1, -1, b->stack_var ( base_offset + m.value, 8 ), POINTER );
+
+			} else if ( indexed_stack && m.base != x86::NONE && m.index != x86::NONE && stack_base ( m.base, base_offset ) ) {
+
+				result = b->make ( op::ADDRESS, 8, -1, -1, b->stack_var ( base_offset + m.value, 8 ), POINTER );
+				stack_indexed = true;
 
 			} else if ( m.base != x86::NONE ) {
 
@@ -1639,6 +1647,7 @@ namespace decompiler {
 			}
 
 			( void ) slot;
+			( void ) stack_indexed;
 
 			return result < 0 ? b->constant ( m.value, 8 ) : result;
 

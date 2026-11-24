@@ -440,6 +440,7 @@ namespace decompiler {
 	static bool unsigned_narrow = true;
 	static bool bit_tests = true;
 	static bool base_first = true;
+	static bool array_vars = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -470,6 +471,9 @@ namespace decompiler {
 		bool vector_store = false;
 		bool truth = false;
 		bool in_logic = false;
+		base::list < int32_t > array_of;
+		base::list < int32_t > array_step;
+		base::list < int32_t > array_count;
 		bool explicit_zero = false;
 		base::list < uint8_t > hidden;
 		base::list < uint8_t > element;
@@ -1368,6 +1372,90 @@ namespace decompiler {
 
 		}
 
+		bool array_element ( int32_t v, uint8_t size, uint8_t bits, bool address ) {
+
+			if ( v < 0 || v >= array_of.count ( ) || array_of [ static_cast < size_t > ( v ) ] < 0 )
+				return false;
+
+			int32_t head = array_of [ static_cast < size_t > ( v ) ];
+			int64_t k = b.vars [ static_cast < size_t > ( v ) ].offset - b.vars [ static_cast < size_t > ( head ) ].offset;
+			int32_t step = array_step [ static_cast < size_t > ( head ) ];
+			wchar_t name [ 64 ];
+
+			var_name ( head, name );
+
+			if ( address ) {
+
+				if ( k == 0 ) {
+
+					out.put ( name, syntax::LOCAL );
+
+					return true;
+
+				}
+
+				out.put ( L"&", syntax::OPERATOR );
+				out.put ( name, syntax::LOCAL );
+				out.put ( L"[" );
+				index_number ( k % step == 0 ? k / step : k );
+				out.put ( L"]" );
+
+				return true;
+
+			}
+
+			if ( step > 1 && k % step == 0 && size == step ) {
+
+				out.put ( name, syntax::LOCAL );
+				out.put ( L"[" );
+				index_number ( k / step );
+				out.put ( L"]" );
+
+				return true;
+
+			}
+
+			if ( step == 1 && size == 1 ) {
+
+				out.put ( name, syntax::LOCAL );
+				out.put ( L"[" );
+				index_number ( k );
+				out.put ( L"]" );
+
+				return true;
+
+			}
+
+			out.put ( L"*(", syntax::OPERATOR );
+			type_name ( size, bits, false, true );
+
+			if ( step == 1 ) {
+
+				out.put ( k ? L" *)&" : L" *)" );
+				out.put ( name, syntax::LOCAL );
+
+				if ( k ) {
+
+					out.put ( L"[" );
+					index_number ( k );
+					out.put ( L"]" );
+
+				}
+
+			} else {
+
+				out.put ( L" *)((char *)" );
+				out.put ( name, syntax::LOCAL );
+				out.put ( L" + ", syntax::OPERATOR );
+				index_number ( k );
+				out.put ( L")" );
+
+			}
+
+			return true;
+
+		}
+
 		int32_t bit_operand ( int32_t e ) const {
 
 			while ( e >= 0 && b.exprs [ static_cast < size_t > ( e ) ].kind == op::CAST && b.exprs [ static_cast < size_t > ( e ) ].a >= 0 && b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( e ) ].a ) ].kind == op::AND )
@@ -1840,6 +1928,9 @@ namespace decompiler {
 			}
 
 			if ( where.kind == op::ADDRESS && where.value >= 0 ) {
+
+				if ( array_element ( static_cast < int32_t > ( where.value ), item.size, item.bits, false ) )
+					return;
 
 				var_name ( static_cast < int32_t > ( where.value ), name );
 				out.put ( name, syntax::LOCAL );
@@ -2370,6 +2461,9 @@ namespace decompiler {
 
 					int32_t var = static_cast < int32_t > ( item.value );
 
+					if ( array_element ( var, b.vars [ static_cast < size_t > ( var ) ].size, b.vars [ static_cast < size_t > ( var ) ].bits, false ) )
+						break;
+
 					var_name ( var, name );
 					out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
 
@@ -2397,6 +2491,12 @@ namespace decompiler {
 					break;
 
 				case op::ADDRESS:
+
+					if ( item.a < 0 && item.value >= 0 && array_element ( static_cast < int32_t > ( item.value ), 0, 0, true ) )
+						break;
+
+					if ( item.a >= 0 && b.exprs [ static_cast < size_t > ( item.a ) ].kind == op::VAR && array_element ( static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( item.a ) ].value ), 0, 0, true ) )
+						break;
 
 					if ( item.value >= 0 && item.a < 0 ) {
 
@@ -6551,6 +6651,210 @@ namespace decompiler {
 	static bool untype_passed = true;
 	static bool detect_bools = true;
 
+	static void stack_arrays ( builder& b, base::list < int32_t >& array_of, base::list < int32_t >& array_step, base::list < int32_t >& array_count ) {
+
+		int32_t total = b.vars.count ( );
+		base::list < int32_t > reads;
+		base::list < uint8_t > addressed;
+		base::list < uint8_t > accessed;
+
+		array_of.clear ( );
+		array_step.clear ( );
+		array_count.clear ( );
+		array_of.fill ( static_cast < size_t > ( total ), -1 );
+		array_step.fill ( static_cast < size_t > ( total ), 0 );
+		array_count.fill ( static_cast < size_t > ( total ), 0 );
+
+		if ( !array_vars )
+			return;
+
+		reads.fill ( static_cast < size_t > ( total ), 0 );
+		addressed.fill ( static_cast < size_t > ( total ), 0 );
+		accessed.fill ( static_cast < size_t > ( total ), 0 );
+
+		auto slot_of = [ & ] ( int32_t e ) -> int32_t {
+
+			if ( e < 0 )
+				return -1;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind != op::ADDRESS )
+				return -1;
+
+			int64_t v = node.a < 0 ? node.value : ( b.exprs [ static_cast < size_t > ( node.a ) ].kind == op::VAR ? b.exprs [ static_cast < size_t > ( node.a ) ].value : -1 );
+
+			return v >= 0 && v < total ? static_cast < int32_t > ( v ) : -1;
+
+		};
+
+		auto walk = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+			if ( e < 0 || depth > 96 )
+				return;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind == op::VAR && node.value >= 0 && node.value < total ) {
+
+				reads [ static_cast < size_t > ( node.value ) ]++;
+				accessed [ static_cast < size_t > ( node.value ) ] = 1;
+
+				return;
+
+			}
+
+			if ( node.kind == op::LOAD && slot_of ( node.a ) >= 0 ) {
+
+				reads [ static_cast < size_t > ( slot_of ( node.a ) ) ]++;
+				accessed [ static_cast < size_t > ( slot_of ( node.a ) ) ] = 1;
+
+				return;
+
+			}
+
+			if ( node.kind == op::ADDRESS && slot_of ( e ) >= 0 ) {
+
+				addressed [ static_cast < size_t > ( slot_of ( e ) ) ] = 1;
+
+				return;
+
+			}
+
+			self ( self, node.a, depth + 1 );
+			self ( self, node.b, depth + 1 );
+			self ( self, node.c, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+		};
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( line.kind == stmt::NOP )
+					continue;
+
+				walk ( walk, line.right, 0 );
+
+				if ( line.left < 0 )
+					continue;
+
+				const expr& left = b.exprs [ static_cast < size_t > ( line.left ) ];
+
+				if ( left.kind == op::VAR && left.value >= 0 && left.value < total )
+					accessed [ static_cast < size_t > ( left.value ) ] = 1;
+				else if ( left.kind == op::LOAD && slot_of ( left.a ) >= 0 )
+					accessed [ static_cast < size_t > ( slot_of ( left.a ) ) ] = 1;
+				else
+					walk ( walk, line.left, 0 );
+
+			}
+
+			walk ( walk, block.condition, 0 );
+			walk ( walk, block.selector, 0 );
+			walk ( walk, block.returned, 0 );
+
+		}
+
+		base::list < int32_t > stack;
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			if ( b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::STACK && ( accessed [ static_cast < size_t > ( v ) ] || addressed [ static_cast < size_t > ( v ) ] ) )
+				stack.push ( v );
+
+		}
+
+		base::sort ( stack.data ( ), stack.count ( ), [ & ] ( int32_t x, int32_t y ) { return b.vars [ static_cast < size_t > ( x ) ].offset < b.vars [ static_cast < size_t > ( y ) ].offset; } );
+
+		for ( int32_t i = 0; i < stack.count ( ); i++ ) {
+
+			int32_t head = stack [ static_cast < size_t > ( i ) ];
+			const variable& item = b.vars [ static_cast < size_t > ( head ) ];
+
+			if ( !addressed [ static_cast < size_t > ( head ) ] || item.cookie || item.saved || head == b.va_var || array_of [ static_cast < size_t > ( head ) ] >= 0 || ( head < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( head ) ].empty ( ) ) )
+				continue;
+
+			int64_t from_rbp = frame_deepest ? ( b.has_frame ? item.offset - b.frame_at : item.offset ) : item.offset + b.pushed;
+			int64_t end = item.offset - from_rbp;
+
+			if ( from_rbp >= 0 )
+				continue;
+
+			int32_t last = i;
+
+			for ( int32_t j = i + 1; j < stack.count ( ); j++ ) {
+
+				const variable& other = b.vars [ static_cast < size_t > ( stack [ static_cast < size_t > ( j ) ] ) ];
+
+				if ( other.offset >= end )
+					break;
+
+				if ( reads [ static_cast < size_t > ( stack [ static_cast < size_t > ( j ) ] ) ] || addressed [ static_cast < size_t > ( stack [ static_cast < size_t > ( j ) ] ) ] || other.offset + other.size > end ) {
+
+					end = other.offset;
+
+					break;
+
+				}
+
+				last = j;
+
+			}
+
+			int64_t span = end - item.offset;
+
+			if ( span <= item.size || span > 0x10000 )
+				continue;
+
+			int32_t step = accessed [ static_cast < size_t > ( head ) ] ? item.size : 0;
+			bool uniform = true;
+
+			for ( int32_t j = i + 1; j <= last; j++ ) {
+
+				const variable& other = b.vars [ static_cast < size_t > ( stack [ static_cast < size_t > ( j ) ] ) ];
+
+				if ( !step )
+					step = other.size;
+
+				if ( other.size != step || ( other.offset - item.offset ) % step != 0 )
+					uniform = false;
+
+			}
+
+			if ( !uniform && accessed [ static_cast < size_t > ( head ) ] )
+				continue;
+
+			if ( last == i && accessed [ static_cast < size_t > ( head ) ] && item.size == 16 )
+				continue;
+
+			if ( head < b.call_names.count ( ) && !b.call_names [ static_cast < size_t > ( head ) ].empty ( ) )
+				continue;
+
+			if ( !uniform || !step || ( step != 1 && step != 2 && step != 4 && step != 8 && step != 16 ) || ( ( item.bits & FLOATING ) && step != 16 ) )
+				step = 1;
+
+			span -= span % step;
+
+			array_of [ static_cast < size_t > ( head ) ] = head;
+			array_step [ static_cast < size_t > ( head ) ] = step;
+			array_count [ static_cast < size_t > ( head ) ] = static_cast < int32_t > ( span / step );
+
+			for ( int32_t j = i + 1; j <= last; j++ )
+				array_of [ static_cast < size_t > ( stack [ static_cast < size_t > ( j ) ] ) ] = head;
+
+		}
+
+	}
+
 	static void vector_vars ( builder& b, base::list < uint8_t >& vector ) {
 
 		int32_t total = b.vars.count ( );
@@ -8184,6 +8488,7 @@ namespace decompiler {
 		typed_pointers ( b, body_emitter.element );
 		boolean_vars ( b, body_emitter.boolean );
 		vector_vars ( b, body_emitter.vector );
+		stack_arrays ( b, body_emitter.array_of, body_emitter.array_step, body_emitter.array_count );
 
 		if ( !body_emitter.indexing ) {
 
@@ -8274,6 +8579,9 @@ namespace decompiler {
 		head.element = body_emitter.element;
 		head.boolean = body_emitter.boolean;
 		head.vector = body_emitter.vector;
+		head.array_of = body_emitter.array_of;
+		head.array_step = body_emitter.array_step;
+		head.array_count = body_emitter.array_count;
 		head.loop_letter = body_emitter.loop_letter;
 		head.out.r = &out;
 
@@ -8503,10 +8811,29 @@ namespace decompiler {
 			wchar_t var [ 64 ];
 
 			head.out.begin ( 0 );
-			head.var_type ( v );
-			head.name_after_type ( );
+
+			bool is_array = v < head.array_of.count ( ) && head.array_of [ static_cast < size_t > ( v ) ] == v;
+
+			if ( is_array ) {
+
+				int32_t step = head.array_step [ static_cast < size_t > ( v ) ];
+
+				head.out.put ( step == 8 ? L"__int64" : ( step == 4 ? L"int" : ( step == 2 ? L"__int16" : ( step == 16 ? L"__int128" : L"char" ) ) ), syntax::TYPE );
+				head.out.put ( L" " );
+
+			} else {
+
+				head.var_type ( v );
+				head.name_after_type ( );
+
+			}
+
 			head.var_name ( v, var );
 			head.out.put ( var, syntax::LOCAL );
+
+			if ( is_array )
+				head.out.put ( base::writer ( ).add ( L"[" ).number ( head.array_count [ static_cast < size_t > ( v ) ] ).add ( L"]" ).text ( ) );
+
 			head.out.put ( L";" );
 
 			if ( item.kind == var_kind::REGISTER && item.family >= 0 ) {
