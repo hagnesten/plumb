@@ -81,6 +81,7 @@ namespace decompiler {
 	static bool copy_fixed = true;
 	static bool copy_into = true;
 	static bool calls_forward = true;
+	static bool swap_copies = true;
 
 	static bool has_call ( const builder& b, int32_t e, int32_t depth ) {
 
@@ -295,6 +296,55 @@ namespace decompiler {
 							previous = -1;
 
 							continue;
+
+						}
+
+						if ( calls_forward && swap_copies && feed.kind == op::CALL && line.kind == stmt::ASSIGN && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && !has_call ( *this, line.right, 0 ) ) {
+
+							int32_t after = -1;
+
+							for ( int32_t t = s + 1; t < block.first + block.count && t < statements.count ( ); t++ ) {
+
+								if ( statements [ static_cast < size_t > ( t ) ].kind != stmt::NOP ) {
+
+									after = t;
+
+									break;
+
+								}
+
+							}
+
+							base::list < int32_t > mine;
+							base::list < int32_t > theirs;
+
+							mine.fill ( static_cast < size_t > ( total ), 0 );
+							theirs.fill ( static_cast < size_t > ( total ), 0 );
+							count_vars ( *this, line.right, mine, 0 );
+
+							if ( after >= 0 && mine [ static_cast < size_t > ( x ) ] == 0 ) {
+
+								statement& next = statements [ static_cast < size_t > ( after ) ];
+
+								if ( next.kind == stmt::ASSIGN && exprs [ static_cast < size_t > ( next.left ) ].kind == op::VAR && next.address == line.address && !has_call ( *this, next.right, 0 ) ) {
+
+									count_vars ( *this, next.right, theirs, 0 );
+
+									int64_t a = exprs [ static_cast < size_t > ( line.left ) ].value;
+									int64_t c = exprs [ static_cast < size_t > ( next.left ) ].value;
+
+									if ( a != c && theirs [ static_cast < size_t > ( x ) ] == 1 && theirs [ static_cast < size_t > ( a ) ] == 0 && mine [ static_cast < size_t > ( c ) ] == 0 ) {
+
+										statement held = line;
+
+										line = next;
+										next = held;
+
+									}
+
+								}
+
+							}
 
 						}
 

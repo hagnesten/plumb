@@ -3381,7 +3381,17 @@ namespace decompiler {
 								value ( item.left, 0 );
 
 							out.put ( compound, syntax::OPERATOR );
-							value ( right.b, 2 );
+
+							int32_t operand_value = right.b;
+
+							if ( implicit_narrow && left.size <= 4 && !( right.bits & FLOATING ) && right.kind != op::SHL && right.kind != op::SHR ) {
+
+								while ( operand_value >= 0 && b.exprs [ static_cast < size_t > ( operand_value ) ].kind == op::CAST && b.exprs [ static_cast < size_t > ( operand_value ) ].a >= 0 && b.exprs [ static_cast < size_t > ( operand_value ) ].size == left.size && b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( operand_value ) ].a ) ].size > left.size && !( b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( operand_value ) ].a ) ].bits & FLOATING ) )
+									operand_value = b.exprs [ static_cast < size_t > ( operand_value ) ].a;
+
+							}
+
+							value ( operand_value, 2 );
 							semicolon ( );
 
 							break;
