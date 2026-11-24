@@ -449,6 +449,7 @@ namespace decompiler {
 	static bool latch_folds = true;
 	static bool inferred_unsigned = true;
 	static bool widen_assign = true;
+	static bool sext_products = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -3453,11 +3454,32 @@ namespace decompiler {
 
 						bool held = operand;
 						bool widened = item.size == 8 && item.a >= 0 && b.exprs [ static_cast < size_t > ( item.a ) ].size < 8;
+						const expr& factor = b.exprs [ static_cast < size_t > ( item.a ) ];
+						bool extended = sext_products && item.size == 8 && factor.kind == op::CAST && factor.size == 8 && ( factor.bits & SIGNED ) && factor.a >= 0 && b.exprs [ static_cast < size_t > ( factor.a ) ].size == 4 && !( b.exprs [ static_cast < size_t > ( factor.a ) ].bits & FLOATING );
 
-						operand = !widened && held;
+						operand = !( widened || extended ) && held;
 						number ( right.value, item.size == 8 ? 8 : right.size, !simple_constant ( right.value ), false );
 						operand = held;
 						out.put ( symbol, syntax::OPERATOR );
+
+						if ( extended ) {
+
+							const expr& inner = b.exprs [ static_cast < size_t > ( factor.a ) ];
+
+							if ( inner.kind == op::CAST && inner.a >= 0 && b.exprs [ static_cast < size_t > ( inner.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( inner.a ) ].size > 4 ) {
+
+								out.put ( L"(int)", syntax::TYPE );
+								value ( inner.a, 14, bitwise );
+
+							} else if ( inner.kind == op::LOAD )
+								extended_load ( inner, mine + 1, SIGNED );
+							else
+								value ( factor.a, mine + 1, bitwise );
+
+							break;
+
+						}
+
 						value ( item.a, mine + 1, bitwise );
 
 						break;
