@@ -436,6 +436,7 @@ namespace decompiler {
 	static bool double_pointees = true;
 	static bool low_writes = true;
 	static bool scalar_lanes = true;
+	static bool float_zero = true;
 	static bool defer_later = true;
 	static bool return_casts = true;
 	static bool return_var_casts = false;
@@ -3749,6 +3750,14 @@ namespace decompiler {
 
 					const expr& inner = b.exprs [ static_cast < size_t > ( item.a ) ];
 					bool float_change = ( inner.bits & FLOATING ) != ( item.bits & FLOATING );
+
+					if ( float_zero && ( item.bits & FLOATING ) && !( item.bits & POINTER ) && ( item.size == 4 || item.size == 8 ) && inner.kind == op::CONST && inner.value == 0 ) {
+
+						out.put ( L"0.0", syntax::NUMBER );
+
+						break;
+
+					}
 
 					if ( abs_masks && ( item.bits & FLOATING ) && inner.kind == op::INTRINSIC && inner.arg_count == 2 && inner.size == 16 ) {
 

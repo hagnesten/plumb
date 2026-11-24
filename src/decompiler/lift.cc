@@ -587,6 +587,7 @@ namespace decompiler {
 	}
 
 	static bool negate_pairs = true;
+	static bool float_flips = true;
 	static bool sse_extras = true;
 
 	int32_t builder::negate ( int32_t condition ) {
@@ -619,16 +620,16 @@ namespace decompiler {
 				return make ( op::EQ, 1, item.a, item.b, 0, item.bits );
 
 			case op::LT:
-				return ( item.bits & FLOATING ) ? make ( op::LNOT, 1, condition ) : make ( op::GE, 1, item.a, item.b, 0, item.bits );
+				return ( item.bits & FLOATING ) && !float_flips ? make ( op::LNOT, 1, condition ) : make ( op::GE, 1, item.a, item.b, 0, item.bits );
 
 			case op::GE:
-				return ( item.bits & FLOATING ) ? make ( op::LNOT, 1, condition ) : make ( op::LT, 1, item.a, item.b, 0, item.bits );
+				return ( item.bits & FLOATING ) && !float_flips ? make ( op::LNOT, 1, condition ) : make ( op::LT, 1, item.a, item.b, 0, item.bits );
 
 			case op::LE:
-				return ( item.bits & FLOATING ) ? make ( op::LNOT, 1, condition ) : make ( op::GT, 1, item.a, item.b, 0, item.bits );
+				return ( item.bits & FLOATING ) && !float_flips ? make ( op::LNOT, 1, condition ) : make ( op::GT, 1, item.a, item.b, 0, item.bits );
 
 			case op::GT:
-				return ( item.bits & FLOATING ) ? make ( op::LNOT, 1, condition ) : make ( op::LE, 1, item.a, item.b, 0, item.bits );
+				return ( item.bits & FLOATING ) && !float_flips ? make ( op::LNOT, 1, condition ) : make ( op::LE, 1, item.a, item.b, 0, item.bits );
 
 			case op::LNOT:
 				return item.a;
