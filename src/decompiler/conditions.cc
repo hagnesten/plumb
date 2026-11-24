@@ -357,12 +357,72 @@ namespace decompiler {
 	static bool fold_vector_zero = true;
 	static bool ghost_vector_zero = true;
 	static bool fold_addresses = true;
+	static bool copy_constants = true;
 	static bool ghost_addresses = false;
 	static bool keep_returned_constants = false;
 
 	void builder::fold_constants ( ) {
 
 		int32_t total = vars.count ( );
+
+		if ( copy_constants ) {
+
+			base::list < int32_t > known;
+
+			known.fill ( static_cast < size_t > ( total ), -1 );
+
+			for ( const block_code& block : code ) {
+
+				for ( int32_t v = 0; v < total; v++ )
+					known [ static_cast < size_t > ( v ) ] = -1;
+
+				for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ ) {
+
+					statement& line = statements [ static_cast < size_t > ( s ) ];
+
+					if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+						continue;
+
+					if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR ) {
+
+						if ( line.kind == stmt::EXPR || line.kind == stmt::STORE ) {
+
+							for ( int32_t v = 0; v < total; v++ ) {
+
+								if ( vars [ static_cast < size_t > ( v ) ].kind != var_kind::REGISTER )
+									known [ static_cast < size_t > ( v ) ] = -1;
+
+							}
+
+						}
+
+						continue;
+
+					}
+
+					int64_t target = exprs [ static_cast < size_t > ( line.left ) ].value;
+					const expr& right = exprs [ static_cast < size_t > ( line.right ) ];
+
+					if ( right.kind == op::VAR && right.value >= 0 && right.value < total && known [ static_cast < size_t > ( right.value ) ] >= 0 && vars [ static_cast < size_t > ( right.value ) ].kind == var_kind::REGISTER && !( right.bits & FLOATING ) ) {
+
+						const expr& constant = exprs [ static_cast < size_t > ( known [ static_cast < size_t > ( right.value ) ] ) ];
+
+						line.right = make ( op::CONST, right.size, -1, -1, constant.value, constant.bits );
+
+					}
+
+					if ( target < 0 || target >= total )
+						continue;
+
+					const expr& now = exprs [ static_cast < size_t > ( line.right ) ];
+
+					known [ static_cast < size_t > ( target ) ] = now.kind == op::CONST && !( now.bits & ( FLOATING | POINTER ) ) ? line.right : -1;
+
+				}
+
+			}
+
+		}
 		base::list < int32_t > defs;
 		base::list < int32_t > single;
 		base::list < int32_t > uses;

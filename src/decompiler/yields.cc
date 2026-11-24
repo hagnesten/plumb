@@ -366,6 +366,130 @@ namespace decompiler {
 
 	}
 
+	int32_t callee_argument_width ( const analysis::database& db, uint64_t function, int32_t index, int32_t depth ) {
+
+		int32_t callee = db.function_starting ( function );
+
+		if ( callee < 0 || ( db.functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK ) || index < 0 || index > 3 || depth > 2 )
+			return 0;
+
+		analysis::function_graph graph;
+
+		if ( !analysis::build_graph ( db, function, graph ) || graph.blocks.count ( ) == 0 )
+			return 0;
+
+		static const int32_t gpr [ 4 ] = { 1, 2, 8, 9 };
+		uint32_t mask = 1u << gpr [ index ];
+		uint64_t at = graph.blocks [ 0 ].start;
+		uint64_t end = graph.blocks [ 0 ].end;
+		int32_t steps = 0;
+
+		while ( at < end && steps++ < 64 ) {
+
+			x86::instruction ins;
+
+			if ( !db.decode ( at, ins ) )
+				return 0;
+
+			at = ins.next ( );
+
+			if ( ins.name == mnemonic::call || ( ins.control == x86::flow::JUMP && ins.next ( ) >= end ) ) {
+
+				uint64_t target = call_target ( ins );
+
+				for ( int32_t j = 0; j < 4; j++ ) {
+
+					if ( mask & ( 1u << gpr [ j ] ) )
+						return target ? callee_argument_width ( db, target, j, depth + 1 ) : 0;
+
+				}
+
+				return 0;
+
+			}
+
+			if ( ins.name == mnemonic::push || ins.name == mnemonic::pop )
+				continue;
+
+			if ( ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::MEM && ins.operands [ 0 ].base && x86::register_family ( ins.operands [ 0 ].base ) == 4 && ins.operands [ 0 ].index == x86::NONE && ins.operands [ 1 ].type == x86::kind::REG )
+				continue;
+
+			if ( ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::REG && x86::register_size ( ins.operands [ 0 ].reg ) == 8 && x86::register_size ( ins.operands [ 1 ].reg ) == 8 ) {
+
+				int32_t to = x86::register_family ( ins.operands [ 0 ].reg );
+				int32_t from = x86::register_family ( ins.operands [ 1 ].reg );
+
+				if ( to >= 0 && to < 16 && from >= 0 && from < 16 ) {
+
+					if ( mask & ( 1u << from ) )
+						mask |= 1u << to;
+					else
+						mask &= ~( 1u << to );
+
+					continue;
+
+				}
+
+			}
+
+			bool zero = ins.name == mnemonic::xor_ && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::REG && ins.operands [ 0 ].reg == ins.operands [ 1 ].reg;
+
+			for ( int32_t k = 0; k < ins.count && !zero; k++ ) {
+
+				const x86::operand& o = ins.operands [ k ];
+
+				if ( o.type != x86::kind::MEM )
+					continue;
+
+				int32_t base = o.base ? x86::register_family ( o.base ) : -1;
+				int32_t index_reg = o.index ? x86::register_family ( o.index ) : -1;
+
+				if ( ( base >= 0 && base < 16 && ( mask & ( 1u << base ) ) ) || ( index_reg >= 0 && index_reg < 16 && ( mask & ( 1u << index_reg ) ) ) )
+					return 8;
+
+			}
+
+			bool pure_write = ins.name == mnemonic::mov || ins.name == mnemonic::movzx || ins.name == mnemonic::movsx || ins.name == mnemonic::movsxd || ins.name == mnemonic::lea;
+
+			for ( int32_t k = 0; k < ins.count && !zero; k++ ) {
+
+				const x86::operand& o = ins.operands [ k ];
+
+				if ( o.type != x86::kind::REG || ( k == 0 && pure_write ) )
+					continue;
+
+				int32_t f = x86::register_family ( o.reg );
+
+				if ( f < 0 || f >= 16 || !( mask & ( 1u << f ) ) )
+					continue;
+
+				uint32_t use = 0;
+				uint32_t def = 0;
+
+				effects ( ins, true, use, def, false );
+
+				if ( !( use & ( 1u << f ) ) )
+					continue;
+
+				return x86::register_size ( o.reg );
+
+			}
+
+			uint32_t use = 0;
+			uint32_t def = 0;
+
+			effects ( ins, true, use, def, false );
+			mask &= ~def;
+
+			if ( !mask )
+				return 0;
+
+		}
+
+		return 0;
+
+	}
+
 	bool stack_probe ( const analysis::database& db, const x86::instruction& ins ) {
 
 		x86::instruction after;

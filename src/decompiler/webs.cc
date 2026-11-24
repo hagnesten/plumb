@@ -589,6 +589,9 @@ namespace decompiler {
 
 	}
 
+	static bool narrow_by_callee = true;
+	static bool narrow_copies = true;
+
 	void builder::narrow_webs ( ) {
 
 		int32_t total = vars.count ( );
@@ -681,6 +684,14 @@ namespace decompiler {
 
 					if ( shaped && i < shape.count && !shape.params [ i ].pointer && !( shape.params [ i ].bits & FLOATING ) && shape.params [ i ].size > 0 && shape.params [ i ].size <= 4 )
 						width = shape.params [ i ].size;
+					else if ( !shaped && narrow_by_callee && node.kind == op::CALL && node.value && db && i < 4 ) {
+
+						int32_t read = callee_argument_width ( *db, static_cast < uint64_t > ( node.value ), i, 0 );
+
+						if ( read > 0 && read <= 4 )
+							width = read;
+
+					}
 
 					note_use ( args [ static_cast < size_t > ( node.first_arg + i ) ], width );
 
@@ -715,6 +726,9 @@ namespace decompiler {
 
 		}
 
+		base::list < int32_t > copy_to;
+		base::list < int32_t > copy_from;
+
 		for ( const statement& line : statements ) {
 
 			if ( line.kind == stmt::NOP )
@@ -725,6 +739,16 @@ namespace decompiler {
 			if ( defines ) {
 
 				int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+				if ( v >= 0 && v < total && line.right >= 0 && narrow_copies && exprs [ static_cast < size_t > ( line.right ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.right ) ].value >= 0 && exprs [ static_cast < size_t > ( line.right ) ].value < total && exprs [ static_cast < size_t > ( line.right ) ].value != v && !blocked [ static_cast < size_t > ( v ) ] ) {
+
+					defined [ static_cast < size_t > ( v ) ] = 1;
+					copy_to.push ( static_cast < int32_t > ( v ) );
+					copy_from.push ( static_cast < int32_t > ( exprs [ static_cast < size_t > ( line.right ) ].value ) );
+
+					continue;
+
+				}
 
 				if ( v >= 0 && v < total && line.right >= 0 ) {
 
@@ -759,6 +783,35 @@ namespace decompiler {
 			note_use ( block.selector, 0 );
 			if ( block.reachable )
 				note_use ( block.returned, returns_value && !returns_float && return_size && return_size <= 4 ? return_size : 0 );
+
+		}
+
+		for ( bool moved = true; moved; ) {
+
+			moved = false;
+
+			for ( int32_t k = 0; k < copy_to.count ( ); k++ ) {
+
+				size_t to = static_cast < size_t > ( copy_to [ static_cast < size_t > ( k ) ] );
+				size_t from = static_cast < size_t > ( copy_from [ static_cast < size_t > ( k ) ] );
+
+				if ( blocked [ to ] != blocked [ from ] ) {
+
+					blocked [ to ] = blocked [ from ] = 1;
+					moved = true;
+
+				}
+
+				uint8_t wide = base::max ( widest [ to ], widest [ from ] );
+
+				if ( widest [ to ] != wide || widest [ from ] != wide ) {
+
+					widest [ to ] = widest [ from ] = wide;
+					moved = true;
+
+				}
+
+			}
 
 		}
 
