@@ -461,7 +461,7 @@ namespace decompiler {
 
 				line.kind = stmt::NOP;
 				vars [ static_cast < size_t > ( v ) ].ghost = true;
-				vars [ static_cast < size_t > ( v ) ].born = line.address;
+				vars [ static_cast < size_t > ( v ) ].born = line.address ? line.address : line.origin;
 
 				for ( statement& other : statements ) {
 
@@ -572,7 +572,7 @@ namespace decompiler {
 
 				line.kind = stmt::NOP;
 				vars [ static_cast < size_t > ( v ) ].ghost = true;
-				vars [ static_cast < size_t > ( v ) ].born = line.address;
+				vars [ static_cast < size_t > ( v ) ].born = line.address ? line.address : line.origin;
 
 				for ( statement& other : statements ) {
 
@@ -623,7 +623,7 @@ namespace decompiler {
 						if ( copy_into && line.kind == stmt::ASSIGN && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.right ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.right ) ].value == x && exprs [ static_cast < size_t > ( line.right ) ].size == exprs [ static_cast < size_t > ( head.left ) ].size && exprs [ static_cast < size_t > ( line.left ) ].size == exprs [ static_cast < size_t > ( head.left ) ].size && plain ( exprs [ static_cast < size_t > ( line.left ) ].value ) && !( ( vars [ static_cast < size_t > ( exprs [ static_cast < size_t > ( line.left ) ].value ) ].bits ^ vars [ static_cast < size_t > ( x ) ].bits ) & FLOATING ) ) {
 
 							vars [ static_cast < size_t > ( x ) ].ghost = true;
-							vars [ static_cast < size_t > ( x ) ].born = head.address;
+							vars [ static_cast < size_t > ( x ) ].born = head.address ? head.address : head.origin;
 							head.left = line.left;
 							line.kind = stmt::NOP;
 							uses [ static_cast < size_t > ( x ) ] = 0;
@@ -704,7 +704,7 @@ namespace decompiler {
 
 								head.kind = stmt::NOP;
 								vars [ static_cast < size_t > ( x ) ].ghost = true;
-								vars [ static_cast < size_t > ( x ) ].born = head.address;
+								vars [ static_cast < size_t > ( x ) ].born = head.address ? head.address : head.origin;
 								changed = true;
 								previous = -1;
 
@@ -974,7 +974,7 @@ namespace decompiler {
 
 				line.kind = stmt::NOP;
 				vars [ static_cast < size_t > ( v ) ].ghost = ghost_vector_zero;
-				vars [ static_cast < size_t > ( v ) ].born = line.address;
+				vars [ static_cast < size_t > ( v ) ].born = line.address ? line.address : line.origin;
 
 				continue;
 
@@ -1085,7 +1085,7 @@ namespace decompiler {
 
 			line.kind = stmt::NOP;
 			vars [ static_cast < size_t > ( v ) ].ghost = address_source ? ghost_addresses && uses [ static_cast < size_t > ( v ) ] > 1 : ghost_folds;
-			vars [ static_cast < size_t > ( v ) ].born = line.address;
+			vars [ static_cast < size_t > ( v ) ].born = line.address ? line.address : line.origin;
 
 		}
 
@@ -1186,7 +1186,7 @@ namespace decompiler {
 			if ( ghost_sinks && !owner.flags && exprs [ static_cast < size_t > ( line.right ) ].kind == op::CALL ) {
 
 				vars [ static_cast < size_t > ( v ) ].ghost = true;
-				vars [ static_cast < size_t > ( v ) ].born = line.address;
+				vars [ static_cast < size_t > ( v ) ].born = line.address ? line.address : line.origin;
 
 			}
 
