@@ -2024,6 +2024,8 @@ namespace decompiler {
 
 			busy |= 1u << slot;
 
+			int32_t first_made = b->statements.count ( );
+
 			for ( int32_t other = 0; other < 32; other++ ) {
 
 				if ( other == slot || regs [ other ] < 0 || !b->references ( regs [ other ], var, -1 ) )
@@ -2033,6 +2035,38 @@ namespace decompiler {
 					regs [ other ] = spill ( regs [ other ], address );
 				else
 					materialize ( other, address );
+
+			}
+
+			bool stale = false;
+
+			for ( int32_t i = first_made; i < b->statements.count ( ) && !stale; i++ ) {
+
+				const statement& made = b->statements [ static_cast < size_t > ( i ) ];
+
+				if ( made.kind != stmt::ASSIGN || made.left < 0 )
+					continue;
+
+				const expr& target = b->exprs [ static_cast < size_t > ( made.left ) ];
+
+				if ( target.kind == op::VAR && target.value != var && b->references ( source, target.value, -1 ) )
+					stale = true;
+
+			}
+
+			if ( stale && regs [ slot ] != source ) {
+
+				source = regs [ slot ];
+				value = b->exprs [ static_cast < size_t > ( source ) ];
+
+				if ( value.kind == op::VAR && value.value == var ) {
+
+					regs [ slot ] = -1;
+					busy &= ~( 1u << slot );
+
+					return;
+
+				}
 
 			}
 
