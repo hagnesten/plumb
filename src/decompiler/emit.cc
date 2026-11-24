@@ -8038,6 +8038,7 @@ namespace decompiler {
 	static bool callee_shapes = true;
 	static bool element_flavors = true;
 	static bool typed_locals = true;
+	static bool pointer_steps = true;
 	static bool char_locals = true;
 
 	static bool untype_passed = true;
@@ -9842,9 +9843,12 @@ namespace decompiler {
 
 		base::list < uint8_t > direct;
 		base::list < uint8_t > passed_on;
+		base::list < uint8_t > stepped;
+		base::list < int32_t > steps;
 
 		direct.fill ( static_cast < size_t > ( total ), 0 );
 		passed_on.fill ( static_cast < size_t > ( total ), 0 );
+		stepped.fill ( static_cast < size_t > ( total ), 0 );
 
 		auto record = [ & ] ( int32_t v, const expr& load, int64_t offset ) {
 
@@ -9926,6 +9930,22 @@ namespace decompiler {
 			if ( ( node.kind == op::EQ || node.kind == op::NE ) && var_of ( node.a ) >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( node.b ) ].value == 0 )
 				return;
 
+			if ( pointer_steps && node.kind == op::ADD && var_of ( node.a ) >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && !( b.exprs [ static_cast < size_t > ( node.b ) ].bits & POINTER ) ) {
+
+				int32_t v = var_of ( node.a );
+
+				if ( v < total ) {
+
+					stepped [ static_cast < size_t > ( v ) ] = 1;
+					steps.push ( v );
+					steps.push ( static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( node.b ) ].value ) );
+
+				}
+
+				return;
+
+			}
+
 			if ( pass_typed && node.kind == op::CALL && node.value && !b.names->prototype ( static_cast < uint64_t > ( node.value ) ) ) {
 
 				wchar_t callee [ 200 ];
@@ -10006,6 +10026,17 @@ namespace decompiler {
 
 			if ( b.returns_value || block.end == term::TAIL )
 				walk ( walk, block.returned, 0 );
+
+		}
+
+		for ( int32_t k = 0; k + 1 < steps.count ( ); k += 2 ) {
+
+			int32_t v = steps [ static_cast < size_t > ( k ) ];
+			int32_t amount = steps [ static_cast < size_t > ( k + 1 ) ];
+			int32_t unit = element [ static_cast < size_t > ( v ) ] & 0x1F;
+
+			if ( !unit || amount % unit != 0 )
+				bad [ static_cast < size_t > ( v ) ] = 1;
 
 		}
 
