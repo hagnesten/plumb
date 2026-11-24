@@ -1036,6 +1036,45 @@ namespace decompiler {
 
 	}
 
+	static bool pure_intrinsics = true;
+
+	static bool pure_intrinsic ( int32_t id ) {
+
+		switch ( id ) {
+
+			case I_TZCNT:
+			case I_LZCNT:
+			case I_POPCNT:
+			case I_BYTESWAP:
+			case I_ROTL:
+			case I_ROTR:
+			case I_UMULH:
+			case I_MULH:
+			case I_SQRTF:
+			case I_SQRT:
+			case I_FMINF:
+			case I_FMAXF:
+			case I_FMIN:
+			case I_FMAX:
+			case I_OVERFLOW:
+			case I_PARITY:
+			case I_UNORDERED:
+			case I_BITTEST:
+			case I_AND:
+			case I_OR:
+			case I_XOR:
+			case I_ANDNOT:
+			case I_SHLD:
+			case I_SHRD:
+				return true;
+
+			default:
+				return false;
+
+		}
+
+	}
+
 	static bool has_effects ( const builder& b, int32_t e ) {
 
 		if ( e < 0 )
@@ -1043,7 +1082,7 @@ namespace decompiler {
 
 		const expr& item = b.exprs [ static_cast < size_t > ( e ) ];
 
-		if ( item.kind == op::CALL || ( item.kind == op::INTRINSIC && item.value < packed_base ) )
+		if ( item.kind == op::CALL || ( item.kind == op::INTRINSIC && item.value < packed_base && !( pure_intrinsics && pure_intrinsic ( static_cast < int32_t > ( item.value ) ) ) ) )
 			return true;
 
 		if ( has_effects ( b, item.a ) || has_effects ( b, item.b ) || has_effects ( b, item.c ) )
