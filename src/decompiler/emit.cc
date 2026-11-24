@@ -470,6 +470,7 @@ namespace decompiler {
 	static bool keep_step_order = true;
 	static bool literal_floats = true;
 	static bool ida_reals = true;
+	static bool abs_masks = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
@@ -952,6 +953,26 @@ namespace decompiler {
 
 			if ( out.last ( ) != L'*' )
 				out.put ( L" " );
+
+		}
+
+		bool abs_mask ( int32_t e, bool doubles ) const {
+
+			if ( e < 0 )
+				return false;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind != op::GLOBAL || node.size < 8 )
+				return false;
+
+			int32_t section = b.file->section_at ( static_cast < uint64_t > ( node.value ) );
+			uint64_t offset = 0;
+
+			if ( section < 0 || section >= b.file->sections.count ( ) || b.file->sections [ static_cast < size_t > ( section ) ].write || !b.file->offset_of ( static_cast < uint64_t > ( node.value ), offset ) || offset + 8 > b.file->size )
+				return false;
+
+			return doubles ? b.file->read64 ( offset ) == 0x7FFFFFFFFFFFFFFFull : b.file->read32 ( offset ) == 0x7FFFFFFFu;
 
 		}
 
@@ -1461,7 +1482,42 @@ namespace decompiler {
 					while ( count > 1 && text_digits [ count - 1 ] == L'0' )
 						count--;
 
-					if ( exponent >= 0 ) {
+					if ( exponent >= significant || exponent < -4 ) {
+
+						shown [ n++ ] = text_digits [ 0 ];
+						shown [ n++ ] = L'.';
+
+						if ( count > 1 ) {
+
+							for ( int32_t i = 1; i < count; i++ )
+								shown [ n++ ] = text_digits [ i ];
+
+						} else
+							shown [ n++ ] = L'0';
+
+						shown [ n++ ] = L'e';
+
+						if ( exponent < 0 ) {
+
+							shown [ n++ ] = L'-';
+							exponent = -exponent;
+
+						}
+
+						wchar_t reverse [ 8 ];
+						int32_t r = 0;
+
+						do {
+
+							reverse [ r++ ] = static_cast < wchar_t > ( L'0' + exponent % 10 );
+							exponent /= 10;
+
+						} while ( exponent && r < 7 );
+
+						while ( r )
+							shown [ n++ ] = reverse [ --r ];
+
+					} else if ( exponent >= 0 ) {
 
 						for ( int32_t i = 0; i <= exponent; i++ )
 							shown [ n++ ] = i < count ? text_digits [ i ] : L'0';
@@ -3348,6 +3404,26 @@ namespace decompiler {
 				case op::INTRINSIC: {
 
 					const wchar_t* called = intrinsic_name ( static_cast < int32_t > ( item.value ) );
+
+					if ( abs_masks && item.arg_count == 2 && ( base::same_text ( called, L"_mm_and_pd" ) || base::same_text ( called, L"_mm_and_ps" ) ) ) {
+
+						bool doubles = called [ 9 ] == L'd';
+						int32_t first = b.args [ static_cast < size_t > ( item.first_arg ) ];
+						int32_t second = b.args [ static_cast < size_t > ( item.first_arg + 1 ) ];
+						int32_t subject = abs_mask ( first, doubles ) ? second : ( abs_mask ( second, doubles ) ? first : -1 );
+
+						if ( subject >= 0 ) {
+
+							out.put ( L"fabs", syntax::FUNCTION );
+							out.put ( L"(" );
+							value ( subject, 0 );
+							out.put ( L")" );
+
+							break;
+
+						}
+
+					}
 					bool wide = item.size == 8 && called [ 0 ] == L'_' && called [ 1 ] == L'I' && called [ 2 ] == L'n' && called [ 3 ] == L't';
 
 					out.put ( wide ? base::writer ( ).add ( called ).add ( L"64" ).text ( ) : called, syntax::FUNCTION );
@@ -3438,6 +3514,26 @@ namespace decompiler {
 
 					const expr& inner = b.exprs [ static_cast < size_t > ( item.a ) ];
 					bool float_change = ( inner.bits & FLOATING ) != ( item.bits & FLOATING );
+
+					if ( abs_masks && ( item.bits & FLOATING ) && inner.kind == op::INTRINSIC && inner.arg_count == 2 && inner.size == 16 ) {
+
+						const wchar_t* inner_name = intrinsic_name ( static_cast < int32_t > ( inner.value ) );
+
+						if ( ( base::same_text ( inner_name, L"_mm_and_pd" ) && item.size == 8 ) || ( base::same_text ( inner_name, L"_mm_and_ps" ) && item.size == 4 ) ) {
+
+							bool doubles = item.size == 8;
+
+							if ( abs_mask ( b.args [ static_cast < size_t > ( inner.first_arg ) ], doubles ) || abs_mask ( b.args [ static_cast < size_t > ( inner.first_arg + 1 ) ], doubles ) ) {
+
+								value ( item.a, parent );
+
+								break;
+
+							}
+
+						}
+
+					}
 
 					if ( bare_tests && !float_change && !( item.bits & FLOATING ) && ( outer_kind == op::ADD || outer_kind == op::SUB ) && ( inner.kind == op::LNOT || ( inner.kind >= op::EQ && inner.kind <= op::GE ) ) ) {
 
