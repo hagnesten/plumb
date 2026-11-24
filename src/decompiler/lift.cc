@@ -10,7 +10,8 @@ namespace decompiler {
 		L"_InterlockedExchange", L"__overflow", L"__parity", L"__unordered", L"__readfsqword", L"__readgsqword", L"__fastfail", L"_bittest", L"__halt",
 		L"_mm_and", L"_mm_or", L"_mm_xor", L"_mm_andnot", L"__shiftleft128", L"__shiftright128", L"__readeflags", L"_xgetbv", L"__syscall",
 		L"NtCurrentTeb", L"__readgsbyte", L"__readgsword", L"__readgsdword", L"__readfsbyte", L"__readfsword", L"__readfsdword",
-		L"_mm_storel_ps", L"_mm_storeh_ps", L"_mm_loadl_pi", L"_mm_loadh_pi", L"_mm_storel_pd", L"_mm_storeh_pd", L"_mm_loadl_pd", L"_mm_loadh_pd"
+		L"_mm_storel_ps", L"_mm_storeh_ps", L"_mm_loadl_pi", L"_mm_loadh_pi", L"_mm_storel_pd", L"_mm_storeh_pd", L"_mm_loadl_pd", L"_mm_loadh_pd",
+		L"_mm_xor_ps", L"_mm_xor_pd", L"_mm_xor_si128", L"_mm_and_ps", L"_mm_and_pd", L"_mm_or_ps", L"_mm_or_pd"
 	};
 
 	static const wchar_t* const compare_names [ 32 ] = {
@@ -30,6 +31,7 @@ namespace decompiler {
 		I_AND, I_OR, I_XOR, I_ANDNOT, I_SHLD, I_SHRD, I_FLAGS, I_XGETBV, I_SYSCALL,
 		I_TEB, I_GSBYTE, I_GSWORD, I_GSDWORD, I_FSBYTE, I_FSWORD, I_FSDWORD,
 		I_STOREL_PS, I_STOREH_PS, I_LOADL_PI, I_LOADH_PI, I_STOREL_PD, I_STOREH_PD, I_LOADL_PD, I_LOADH_PD,
+		I_XOR_PS, I_XOR_PD, I_XOR_SI128, I_AND_PS, I_AND_PD, I_OR_PS, I_OR_PD,
 
 	};
 
@@ -1227,6 +1229,13 @@ namespace decompiler {
 			case I_LOADH_PI:
 			case I_LOADL_PD:
 			case I_LOADH_PD:
+			case I_XOR_PS:
+			case I_XOR_PD:
+			case I_XOR_SI128:
+			case I_AND_PS:
+			case I_AND_PD:
+			case I_OR_PS:
+			case I_OR_PD:
 				return true;
 
 			default:
@@ -4157,17 +4166,17 @@ namespace decompiler {
 
 					}
 
-					write ( ins, 0, intrinsic ( I_XOR, 16, read ( ins, 0 ), read ( ins, 1 ) ) );
+					write ( ins, 0, intrinsic ( sse_extras ? ( ins.name == mnemonic::xorps ? I_XOR_PS : ( ins.name == mnemonic::xorpd ? I_XOR_PD : I_XOR_SI128 ) ) : I_XOR, 16, read ( ins, 0 ), read ( ins, 1 ) ) );
 					return;
 
 				case mnemonic::andps:
 				case mnemonic::andpd:
-					write ( ins, 0, intrinsic ( I_AND, 16, read ( ins, 0 ), read ( ins, 1 ) ) );
+					write ( ins, 0, intrinsic ( sse_extras ? ( ins.name == mnemonic::andps ? I_AND_PS : I_AND_PD ) : I_AND, 16, read ( ins, 0 ), read ( ins, 1 ) ) );
 					return;
 
 				case mnemonic::orps:
 				case mnemonic::orpd:
-					write ( ins, 0, intrinsic ( I_OR, 16, read ( ins, 0 ), read ( ins, 1 ) ) );
+					write ( ins, 0, intrinsic ( sse_extras ? ( ins.name == mnemonic::orps ? I_OR_PS : I_OR_PD ) : I_OR, 16, read ( ins, 0 ), read ( ins, 1 ) ) );
 					return;
 
 				case mnemonic::ucomiss:
