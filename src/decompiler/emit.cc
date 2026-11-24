@@ -486,6 +486,7 @@ namespace decompiler {
 		bool in_logic = false;
 		bool untruncate = false;
 		int32_t forced_exit = -1;
+		int32_t forced_outer = -1;
 		int32_t nest_depth = 0;
 		base::list < int32_t > array_of;
 		base::list < int32_t > array_step;
@@ -4815,6 +4816,7 @@ namespace decompiler {
 
 			int32_t loop = -1;
 			int32_t exit = -1;
+			int32_t outer = -1;
 
 		};
 
@@ -4839,6 +4841,15 @@ namespace decompiler {
 
 				if ( stop != target )
 					jump_line ( L"break", address );
+
+				return true;
+
+			}
+
+			if ( target == context.outer && context.outer >= 0 ) {
+
+				if ( stop != target )
+					go_to ( target, address );
 
 				return true;
 
@@ -6081,6 +6092,8 @@ namespace decompiler {
 
 			inner.loop = start;
 			inner.exit = exit;
+			inner.outer = forced_outer;
+			forced_outer = -1;
 
 			const block_code& item = b.code [ static_cast < size_t > ( start ) ];
 
@@ -6270,7 +6283,7 @@ namespace decompiler {
 
 							if ( !members [ static_cast < size_t > ( s ) ] ) {
 
-								if ( !exit_block ( s ) )
+								if ( !exit_block ( s ) && s != exit )
 									resume = -2;
 
 								continue;
@@ -6299,6 +6312,7 @@ namespace decompiler {
 					open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
 					loop_body [ static_cast < size_t > ( start ) ] = inner_set;
 					forced_exit = resume;
+					forced_outer = exit;
 					nest_depth++;
 
 					int32_t after = loop ( start, inner );
