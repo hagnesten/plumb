@@ -654,6 +654,7 @@ namespace decompiler {
 	static bool shared_products = true;
 	static bool flush_by_definition = true;
 	static bool sized_regs = true;
+	static bool same_guards = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -2215,6 +2216,13 @@ namespace decompiler {
 
 				if ( guard_b >= 0 )
 					guard_b = b->replace ( guard_b, source, sized );
+
+				if ( same_guards && value.kind == op::LOAD ) {
+
+					guard_a = swap_same ( guard_a, source, var );
+					guard_b = swap_same ( guard_b, source, var );
+
+				}
 
 			}
 
