@@ -435,6 +435,7 @@ namespace decompiler {
 	static bool api_types = true;
 	static bool double_pointees = true;
 	static bool low_writes = true;
+	static bool brace_before_else = true;
 	static bool scalar_lanes = true;
 	static bool float_zero = true;
 	static bool chain_rest = true;
@@ -7986,6 +7987,67 @@ namespace decompiler {
 		}
 
 		r.lines = kept;
+
+		if ( !brace_before_else )
+			return;
+
+		total = r.lines.count ( );
+
+		base::list < line > braced;
+		int32_t open_text = -1;
+		int32_t close_text = -1;
+
+		auto brace_line = [ & ] ( wchar_t symbol, int32_t indent, int32_t& at ) {
+
+			if ( at < 0 ) {
+
+				at = r.text.count ( );
+				r.text.push ( symbol );
+
+			}
+
+			line made;
+
+			made.text = at;
+			made.length = 1;
+			made.first_span = r.spans.count ( );
+			made.span_count = 0;
+			made.indent = indent;
+			made.address = 0;
+
+			return made;
+
+		};
+
+		for ( int32_t i = 0; i < total; i++ ) {
+
+			const line head = r.lines [ static_cast < size_t > ( i ) ];
+
+			braced.push ( head );
+
+			if ( i + 3 >= total || !( line_starts ( r, head, L"if ( " ) || line_starts ( r, head, L"else if ( " ) ) )
+				continue;
+
+			const line only = r.lines [ static_cast < size_t > ( i + 1 ) ];
+			const line after = r.lines [ static_cast < size_t > ( i + 2 ) ];
+			const line next = r.lines [ static_cast < size_t > ( i + 3 ) ];
+
+			if ( only.indent != head.indent + 1 || line_is ( r, only, L"{" ) || after.indent != head.indent )
+				continue;
+
+			bool block_else = line_is ( r, after, L"else" ) && line_is ( r, next, L"{" ) && next.indent == head.indent;
+
+			if ( !block_else && !line_starts ( r, after, L"else if ( " ) )
+				continue;
+
+			braced.push ( brace_line ( L'{', head.indent, open_text ) );
+			braced.push ( only );
+			braced.push ( brace_line ( L'}', head.indent, close_text ) );
+			i++;
+
+		}
+
+		r.lines = braced;
 
 	}
 
