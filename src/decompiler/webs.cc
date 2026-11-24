@@ -1,5 +1,4 @@
 #include "decompiler/internal.hh"
-#include "base/files.hh"
 
 namespace decompiler {
 
@@ -592,6 +591,8 @@ namespace decompiler {
 
 	static bool narrow_by_callee = true;
 	static bool narrow_copies = true;
+	static bool narrow_extra_args = true;
+	static bool narrow_pointer_bits = true;
 
 	void builder::narrow_webs ( ) {
 
@@ -607,7 +608,7 @@ namespace decompiler {
 		for ( int32_t v = 0; v < total; v++ ) {
 
 			const variable& item = vars [ static_cast < size_t > ( v ) ];
-			bool candidate = ( item.kind == var_kind::REGISTER || item.kind == var_kind::PARAMETER ) && item.family >= 0 && item.family < 16 && !item.cookie && !item.saved && !( item.bits & ( FLOATING | POINTER ) ) && item.size == 8;
+			bool candidate = ( item.kind == var_kind::REGISTER || item.kind == var_kind::PARAMETER ) && item.family >= 0 && item.family < 16 && !item.cookie && !item.saved && !( item.bits & FLOATING ) && ( narrow_pointer_bits || !( item.bits & POINTER ) ) && item.size == 8;
 
 			if ( !candidate )
 				blocked [ static_cast < size_t > ( v ) ] = 1;
@@ -682,6 +683,9 @@ namespace decompiler {
 				for ( int32_t i = 0; i < node.arg_count; i++ ) {
 
 					int32_t width = 0;
+
+					if ( shaped && i >= shape.count && !shape.variadic && narrow_extra_args )
+						continue;
 
 					if ( shaped && i < shape.count && !shape.params [ i ].pointer && !( shape.params [ i ].bits & FLOATING ) && shape.params [ i ].size > 0 && shape.params [ i ].size <= 4 )
 						width = shape.params [ i ].size;
