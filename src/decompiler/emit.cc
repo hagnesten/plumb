@@ -467,6 +467,7 @@ namespace decompiler {
 	static bool fall_then_signs = true;
 	static bool fall_returns_first = true;
 	static bool else_returns = true;
+	static bool keep_step_order = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
@@ -5298,6 +5299,7 @@ namespace decompiler {
 					continue;
 
 				bool used = false;
+				bool only_steps = true;
 
 				for ( int32_t k = s + 1; k < tail.first + tail.count && !used; k++ ) {
 
@@ -5313,7 +5315,22 @@ namespace decompiler {
 
 					used = b.references ( later.right, var, -1 ) || ( later.left >= 0 && b.references ( later.left, var, -1 ) );
 
+					bool step = later.kind == stmt::ASSIGN && later.left >= 0 && later.right >= 0 && b.exprs [ static_cast < size_t > ( later.left ) ].kind == op::VAR;
+
+					if ( step ) {
+
+						const expr& next = b.exprs [ static_cast < size_t > ( later.right ) ];
+
+						step = ( next.kind == op::ADD || next.kind == op::SUB ) && next.a >= 0 && b.exprs [ static_cast < size_t > ( next.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( next.a ) ].value == b.exprs [ static_cast < size_t > ( later.left ) ].value && next.b >= 0 && b.exprs [ static_cast < size_t > ( next.b ) ].kind == op::CONST;
+
+					}
+
+					only_steps = only_steps && step;
+
 				}
+
+				if ( keep_step_order && only_steps )
+					continue;
 
 				if ( !used )
 					return s;
