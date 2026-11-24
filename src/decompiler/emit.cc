@@ -454,6 +454,7 @@ namespace decompiler {
 	static bool call_untruncate = true;
 	static bool store_untruncate = true;
 	static bool nested_loops = true;
+	static bool widened_halves = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -485,6 +486,8 @@ namespace decompiler {
 		bool truth = false;
 		bool in_logic = false;
 		bool untruncate = false;
+		uint8_t holder_size = 0;
+		op holder_kind = op::CONST;
 		int32_t forced_exit = -1;
 		int32_t forced_outer = -1;
 		int32_t nest_depth = 0;
@@ -2527,7 +2530,13 @@ namespace decompiler {
 			const expr& node = b.exprs [ static_cast < size_t > ( index ) ];
 
 			in_logic = bit_tests && ( node.kind == op::LAND || node.kind == op::LOR || ( ( node.kind == op::AND || node.kind == op::OR ) && logical_pair ( node ) ) );
+
+			uint8_t saved_size = holder_size;
+			op saved_kind = holder_kind;
+
 			value_body ( index, parent, hex_hint );
+			holder_size = saved_size;
+			holder_kind = saved_kind;
 			in_logic = saved;
 
 		}
@@ -2548,7 +2557,11 @@ namespace decompiler {
 
 			const expr item = b.exprs [ static_cast < size_t > ( index ) ];
 			bool truthy = truth;
+			uint8_t outer_size = holder_size;
+			op outer_kind = holder_kind;
 
+			holder_size = item.size;
+			holder_kind = item.kind;
 			truth = false;
 
 			if ( bit_tests ) {
@@ -3163,6 +3176,21 @@ namespace decompiler {
 
 						out.put ( ( item.bits & SIGNED ) ? L"(int)" : L"(unsigned int)", syntax::TYPE );
 						value ( inner.a, 14 );
+
+						if ( parent > 14 )
+							out.put ( L")" );
+
+						break;
+
+					}
+
+					if ( shown && widened_halves && !float_change && item.size == 4 && inner.size == 8 && outer_size == 8 && !( item.bits & ( SIGNED | FLOATING ) ) && !( inner.bits & FLOATING ) && ( outer_kind == op::MUL || outer_kind == op::ADD || outer_kind == op::SUB || outer_kind == op::SHL || outer_kind == op::AND || outer_kind == op::OR ) ) {
+
+						if ( parent > 14 )
+							out.put ( L"(" );
+
+						out.put ( L"(unsigned int)", syntax::TYPE );
+						value ( item.a, 14 );
 
 						if ( parent > 14 )
 							out.put ( L")" );
