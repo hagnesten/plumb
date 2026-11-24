@@ -653,6 +653,7 @@ namespace decompiler {
 	static bool narrow_lea = true;
 	static bool shared_products = true;
 	static bool flush_by_definition = true;
+	static bool sized_regs = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -2196,10 +2197,12 @@ namespace decompiler {
 
 			}
 
+			int32_t held = sized_regs && value.size < b->vars [ static_cast < size_t > ( var ) ].size && value.kind != op::CONST && !( value.bits & FLOATING ) ? b->var_expr ( var, value.size ) : replacement;
+
 			for ( int32_t other = 0; other < 32; other++ ) {
 
 				if ( other != slot && regs [ other ] >= 0 )
-					regs [ other ] = b->replace ( regs [ other ], source, replacement );
+					regs [ other ] = b->replace ( regs [ other ], source, held );
 
 			}
 
