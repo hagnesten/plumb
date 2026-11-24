@@ -652,6 +652,7 @@ namespace decompiler {
 	static bool indexed_stack = true;
 	static bool narrow_lea = true;
 	static bool shared_products = true;
+	static bool flush_by_definition = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -4775,7 +4776,34 @@ namespace decompiler {
 
 			}
 
-			for ( int32_t slot = 0; slot < 32; slot++ ) {
+			int32_t flush_order [ 32 ];
+
+			for ( int32_t slot = 0; slot < 32; slot++ )
+				flush_order [ slot ] = slot;
+
+			if ( flush_by_definition ) {
+
+				for ( int32_t i = 1; i < 32; i++ ) {
+
+					int32_t moving = flush_order [ i ];
+					int32_t j = i - 1;
+
+					while ( j >= 0 && state.reg_at [ flush_order [ j ] ] > state.reg_at [ moving ] ) {
+
+						flush_order [ j + 1 ] = flush_order [ j ];
+						j--;
+
+					}
+
+					flush_order [ j + 1 ] = moving;
+
+				}
+
+			}
+
+			for ( int32_t k = 0; k < 32; k++ ) {
+
+				int32_t slot = flush_order [ k ];
 
 				if ( slot == 4 )
 					continue;
