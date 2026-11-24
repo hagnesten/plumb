@@ -459,6 +459,8 @@ namespace decompiler {
 	static bool shift_products = true;
 	static bool fall_then = true;
 	static bool zero_ranges = true;
+	static bool array_min_step = true;
+	static bool hex_divisors = true;
 	static bool fall_then_simple = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
@@ -3464,10 +3466,12 @@ namespace decompiler {
 
 						case op::DIV:
 							symbol = L" / ";
+							bitwise = hex_divisors && ( item.bits & UNSIGNED );
 							break;
 
 						case op::MOD:
 							symbol = L" % ";
+							bitwise = hex_divisors && ( item.bits & UNSIGNED );
 							break;
 
 						case op::AND:
@@ -7815,6 +7819,33 @@ namespace decompiler {
 
 			if ( head < b.call_names.count ( ) && !b.call_names [ static_cast < size_t > ( head ) ].empty ( ) )
 				continue;
+
+			if ( !uniform && array_min_step ) {
+
+				int32_t smallest = accessed [ static_cast < size_t > ( head ) ] ? item.size : 64;
+
+				for ( int32_t j = i + 1; j <= last; j++ )
+					smallest = base::min ( smallest, static_cast < int32_t > ( b.vars [ static_cast < size_t > ( stack [ static_cast < size_t > ( j ) ] ) ].size ) );
+
+				bool aligned = smallest == 2 || smallest == 4 || smallest == 8;
+
+				for ( int32_t j = i + 1; j <= last && aligned; j++ ) {
+
+					const variable& other = b.vars [ static_cast < size_t > ( stack [ static_cast < size_t > ( j ) ] ) ];
+
+					if ( ( other.offset - item.offset ) % smallest != 0 || other.size % smallest != 0 )
+						aligned = false;
+
+				}
+
+				if ( aligned ) {
+
+					step = smallest;
+					uniform = true;
+
+				}
+
+			}
 
 			if ( !uniform || !step || ( step != 1 && step != 2 && step != 4 && step != 8 && step != 16 ) || ( ( item.bits & FLOATING ) && step != 16 ) )
 				step = 1;

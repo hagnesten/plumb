@@ -257,6 +257,8 @@ namespace decompiler {
 
 		void guard_expressions ( );
 
+		void fold_divisions ( );
+
 		void fold_switches ( );
 
 		void chain_switches ( );
