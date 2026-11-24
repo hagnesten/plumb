@@ -462,6 +462,7 @@ namespace decompiler {
 	static bool array_min_step = true;
 	static bool hex_divisors = true;
 	static bool indexed_arrays = true;
+	static bool bare_tests = true;
 	static bool fall_then_simple = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
@@ -3285,6 +3286,32 @@ namespace decompiler {
 
 					const expr& inner = b.exprs [ static_cast < size_t > ( item.a ) ];
 					bool float_change = ( inner.bits & FLOATING ) != ( item.bits & FLOATING );
+
+					if ( bare_tests && !float_change && !( item.bits & FLOATING ) && ( outer_kind == op::ADD || outer_kind == op::SUB ) && ( inner.kind == op::LNOT || ( inner.kind >= op::EQ && inner.kind <= op::GE ) ) ) {
+
+						out.put ( L"(" );
+
+						if ( inner.kind == op::LNOT && inner.a >= 0 ) {
+
+							value ( inner.a, 9 );
+							out.put ( L" == ", syntax::OPERATOR );
+							out.put ( L"0", syntax::NUMBER );
+
+						} else {
+
+							bool held_zero = explicit_zero;
+
+							explicit_zero = true;
+							value ( item.a, 0 );
+							explicit_zero = held_zero;
+
+						}
+
+						out.put ( L")" );
+
+						break;
+
+					}
 
 					if ( zero_ranges && !float_change && inner.kind == op::VAR && inner.size > item.size && !( item.bits & ( SIGNED | FLOATING ) ) && inner.value >= 0 && inner.value < zero_known.count ( ) && zero_known [ static_cast < size_t > ( inner.value ) ] && zero_known [ static_cast < size_t > ( inner.value ) ] <= item.size ) {
 

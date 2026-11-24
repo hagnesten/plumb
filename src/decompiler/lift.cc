@@ -758,6 +758,7 @@ namespace decompiler {
 	static bool indexed_stack = true;
 	static bool narrow_lea = true;
 	static bool shared_products = true;
+	static bool carry_ops = true;
 	static bool shared_vectors = true;
 	static bool shared_vector_reads = false;
 	static bool flush_by_definition = true;
@@ -3508,6 +3509,28 @@ namespace decompiler {
 						set_flags ( 3, chosen, -1, size );
 
 						return;
+
+					}
+
+					if ( carry_ops && flag_kind ) {
+
+						int32_t test = condition ( 2 );
+
+						if ( test >= 0 ) {
+
+							op kind = ins.name == mnemonic::adc ? op::ADD : op::SUB;
+							int32_t left = read ( ins, 0 );
+							int32_t right = read ( ins, 1 );
+							int32_t carry = k.make ( op::CAST, size, test, -1, 0, UNSIGNED );
+							const expr& amount = k.exprs [ static_cast < size_t > ( right ) ];
+							int32_t value = amount.kind == op::CONST && amount.value == 0 ? ( kind == op::ADD ? k.binary ( op::ADD, carry, left, size ) : k.binary ( op::SUB, left, carry, size ) ) : k.binary ( kind, k.binary ( kind, left, right, size ), carry, size );
+
+							write ( ins, 0, value );
+							set_flags ( 3, value, -1, size );
+
+							return;
+
+						}
 
 					}
 
