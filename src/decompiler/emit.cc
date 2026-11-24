@@ -3704,6 +3704,37 @@ namespace decompiler {
 
 						}
 
+						if ( scalar_lanes && ( flavor == 3 || flavor == 4 ) ) {
+
+							const expr& passed = b.exprs [ static_cast < size_t > ( argument ) ];
+							const wchar_t* packed = flavor == 3 ? L"__m128" : L"__m128d";
+
+							if ( passed.kind == op::VAR && passed.size < 16 && ( passed.bits & FLOATING ) && passed.value >= 0 && passed.value < b.vars.count ( ) && b.vars [ static_cast < size_t > ( passed.value ) ].kind == var_kind::PARAMETER && !( passed.value < vector.count ( ) && vector [ static_cast < size_t > ( passed.value ) ] ) ) {
+
+								out.put ( L"*(" );
+								out.put ( packed, syntax::TYPE );
+								out.put ( L" *)&" );
+								value ( argument, 14 );
+
+								continue;
+
+							}
+
+							if ( passed.kind == op::LOAD && ( passed.size == 4 || passed.size == 8 ) && ( passed.bits & FLOATING ) && passed.a >= 0 ) {
+
+								out.put ( L"(" );
+								out.put ( packed, syntax::TYPE );
+								out.put ( L")*(" );
+								out.put ( passed.size == 4 ? L"unsigned int" : L"unsigned __int64", syntax::TYPE );
+								out.put ( L" *)" );
+								value ( passed.a, 14 );
+
+								continue;
+
+							}
+
+						}
+
 						value ( argument, 2 );
 
 					}
