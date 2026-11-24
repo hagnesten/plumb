@@ -437,6 +437,7 @@ namespace decompiler {
 	static bool low_writes = true;
 	static bool scalar_lanes = true;
 	static bool float_zero = true;
+	static bool chain_rest = true;
 	static bool defer_later = true;
 	static bool return_casts = true;
 	static bool return_var_casts = false;
@@ -540,6 +541,7 @@ namespace decompiler {
 		base::list < uint8_t > element;
 		base::list < uint8_t > boolean;
 		base::list < uint8_t > vector;
+		bool chain_falls = false;
 		bool inline_returns = true;
 		bool call_unused = false;
 		bool fall_returns = true;
@@ -6650,7 +6652,7 @@ namespace decompiler {
 				brace ( L"}" );
 				ended = false;
 
-			} else if ( then_ends && else_part != follow && else_part >= 0 && !( else_returns && !chained && follow < 0 && then_part >= 0 && b.code [ static_cast < size_t > ( then_part ) ].end == term::RETURN && b.code [ static_cast < size_t > ( else_part ) ].end == term::RETURN && pred [ static_cast < size_t > ( then_part ) ].count ( ) == 1 && pred [ static_cast < size_t > ( else_part ) ].count ( ) == 1 && !emitted [ static_cast < size_t > ( else_part ) ] && empty_block ( then_part ) && empty_block ( else_part ) && !branch_fed ( block ) ) ) {
+			} else if ( then_ends && else_part != follow && else_part >= 0 && !( chain_rest && chained && chain_falls ) && !( else_returns && !chained && follow < 0 && then_part >= 0 && b.code [ static_cast < size_t > ( then_part ) ].end == term::RETURN && b.code [ static_cast < size_t > ( else_part ) ].end == term::RETURN && pred [ static_cast < size_t > ( then_part ) ].count ( ) == 1 && pred [ static_cast < size_t > ( else_part ) ].count ( ) == 1 && !emitted [ static_cast < size_t > ( else_part ) ] && empty_block ( then_part ) && empty_block ( else_part ) && !branch_fed ( block ) ) ) {
 
 				brace ( L"}" );
 				ended = false;
@@ -6667,10 +6669,31 @@ namespace decompiler {
 					brace ( L"}" );
 					body ( else_part );
 
-					int32_t next = branch ( else_part, stop, context, true );
+					bool saved_falls = chain_falls;
 
-					( void ) next;
-					ended = then_ends && ended;
+					chain_falls = ( chained && chain_falls ) || !then_ends;
+
+					int32_t next = branch ( else_part, stop, context, true );
+					bool chain_ends = ended;
+
+					chain_falls = saved_falls;
+
+					if ( chain_rest && next >= 0 && next < count && next != follow && !emitted [ static_cast < size_t > ( next ) ] ) {
+
+						else_line ( );
+						brace ( L"{" );
+						out.indent++;
+						ended = false;
+
+						if ( !special ( next, -2, context, item.last ) )
+							region ( next, follow, context );
+
+						chain_ends = ended;
+						close_brace ( );
+
+					}
+
+					ended = then_ends && chain_ends;
 
 				} else {
 
