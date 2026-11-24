@@ -33,6 +33,8 @@ namespace decompiler {
 
 	}
 
+	static bool lone_return_folds = true;
+
 	void builder::fold_returns ( ) {
 
 		int32_t total = code.count ( );
@@ -101,6 +103,84 @@ namespace decompiler {
 					graph.edges.pop ( );
 
 			}
+
+			if ( !lone_return_folds )
+				continue;
+
+			int32_t sources = 0;
+			int32_t lone = -1;
+
+			for ( const analysis::edge& link : graph.edges ) {
+
+				if ( link.to == r ) {
+
+					sources++;
+					lone = link.from;
+
+				}
+
+			}
+
+			if ( sources != 1 || lone < 0 || lone >= total || lone == r )
+				continue;
+
+			block_code& owner = code [ static_cast < size_t > ( lone ) ];
+
+			if ( owner.end != term::FALL || owner.taken != r )
+				continue;
+
+			int32_t last = -1;
+
+			for ( int32_t s = owner.first; s < owner.first + owner.count && s < statements.count ( ); s++ ) {
+
+				if ( statements [ static_cast < size_t > ( s ) ].kind != stmt::NOP )
+					last = s;
+
+			}
+
+			if ( last < 0 )
+				continue;
+
+			statement& line = statements [ static_cast < size_t > ( last ) ];
+
+			if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || exprs [ static_cast < size_t > ( line.left ) ].value != var || references ( line.right, static_cast < int32_t > ( var ), -1 ) )
+				continue;
+
+			bool folded_before = false;
+
+			for ( int32_t p = 0; p < total; p++ ) {
+
+				const block_code& other = code [ static_cast < size_t > ( p ) ];
+
+				if ( p != r && other.end == term::RETURN && other.last == tail.last && other.returned >= 0 && exprs [ static_cast < size_t > ( other.returned ) ].kind == op::CONST )
+					folded_before = true;
+
+			}
+
+			if ( !folded_before )
+				continue;
+
+			owner.end = term::RETURN;
+			owner.returned = line.right;
+			owner.taken = -1;
+			owner.last = tail.last;
+			line.kind = stmt::NOP;
+
+			int32_t kept = 0;
+
+			for ( int32_t e = 0; e < graph.edges.count ( ); e++ ) {
+
+				const analysis::edge link = graph.edges [ static_cast < size_t > ( e ) ];
+
+				if ( link.from == lone && link.to == r )
+					continue;
+
+				graph.edges [ static_cast < size_t > ( kept++ ) ] = link;
+
+			}
+
+			while ( graph.edges.count ( ) > kept )
+				graph.edges.pop ( );
 
 		}
 
