@@ -438,6 +438,7 @@ namespace decompiler {
 	static bool return_casts = true;
 	static bool return_var_casts = false;
 	static bool unsigned_narrow = true;
+	static bool bit_tests = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -466,6 +467,8 @@ namespace decompiler {
 		bool ended = false;
 		bool bare_unsigned = false;
 		bool vector_store = false;
+		bool truth = false;
+		bool in_logic = false;
 		bool explicit_zero = false;
 		base::list < uint8_t > hidden;
 		base::list < uint8_t > element;
@@ -1353,6 +1356,25 @@ namespace decompiler {
 
 		}
 
+		int32_t bit_operand ( int32_t e ) const {
+
+			while ( e >= 0 && b.exprs [ static_cast < size_t > ( e ) ].kind == op::CAST && b.exprs [ static_cast < size_t > ( e ) ].a >= 0 && b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( e ) ].a ) ].kind == op::AND )
+				e = b.exprs [ static_cast < size_t > ( e ) ].a;
+
+			if ( e < 0 )
+				return -1;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind != op::AND || node.b < 0 || ( node.bits & FLOATING ) || logical_pair ( node ) )
+				return -1;
+
+			const expr& mask = b.exprs [ static_cast < size_t > ( node.b ) ];
+
+			return mask.kind == op::CONST && mask.value != 0 && !( mask.bits & POINTER ) ? e : -1;
+
+		}
+
 		bool logical_pair ( const expr& item ) const {
 
 			auto logical = [ & ] ( int32_t e ) {
@@ -2061,6 +2083,21 @@ namespace decompiler {
 
 			}
 
+			bool saved = in_logic;
+
+			if ( in_logic )
+				truth = true;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( index ) ];
+
+			in_logic = bit_tests && ( node.kind == op::LAND || node.kind == op::LOR || ( ( node.kind == op::AND || node.kind == op::OR ) && logical_pair ( node ) ) );
+			value_body ( index, parent, hex_hint );
+			in_logic = saved;
+
+		}
+
+		void value_body ( int32_t index, int32_t parent, bool hex_hint ) {
+
 			for ( int32_t h = 0; h < hoisted.count ( ); h++ ) {
 
 				if ( hoisted [ static_cast < size_t > ( h ) ] == index ) {
@@ -2074,6 +2111,65 @@ namespace decompiler {
 			}
 
 			const expr item = b.exprs [ static_cast < size_t > ( index ) ];
+			bool truthy = truth;
+
+			truth = false;
+
+			if ( bit_tests ) {
+
+				int32_t tested_bits = -1;
+				bool equal = false;
+
+				if ( truthy && bit_operand ( index ) >= 0 )
+					tested_bits = bit_operand ( index );
+				else if ( item.kind == op::LNOT && bit_operand ( item.a ) >= 0 ) {
+
+					tested_bits = bit_operand ( item.a );
+					equal = true;
+
+				} else if ( ( item.kind == op::EQ || item.kind == op::NE ) && item.b >= 0 && b.exprs [ static_cast < size_t > ( item.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( item.b ) ].value == 0 && !( b.exprs [ static_cast < size_t > ( item.b ) ].bits & POINTER ) && bit_operand ( item.a ) >= 0 ) {
+
+					tested_bits = bit_operand ( item.a );
+					equal = item.kind == op::EQ;
+
+				}
+
+				if ( tested_bits >= 0 ) {
+
+					bool wrap = parent > precedence ( op::NE );
+
+					if ( wrap )
+						out.put ( L"(" );
+
+					const expr& masked = b.exprs [ static_cast < size_t > ( tested_bits ) ];
+					int32_t subject = masked.a;
+					int64_t mask = b.exprs [ static_cast < size_t > ( masked.b ) ].value;
+
+					while ( subject >= 0 && b.exprs [ static_cast < size_t > ( subject ) ].kind == op::CAST && b.exprs [ static_cast < size_t > ( subject ) ].a >= 0 && b.exprs [ static_cast < size_t > ( subject ) ].size < b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( subject ) ].a ) ].size && b.exprs [ static_cast < size_t > ( subject ) ].size < 8 && mask > 0 && static_cast < uint64_t > ( mask ) < ( 1ull << ( b.exprs [ static_cast < size_t > ( subject ) ].size * 8 - 1 ) ) && !( b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( subject ) ].a ) ].bits & FLOATING ) && b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( subject ) ].a ) ].kind == op::VAR )
+						subject = b.exprs [ static_cast < size_t > ( subject ) ].a;
+
+					if ( subject != masked.a ) {
+
+						out.put ( L"(" );
+						value ( subject, precedence ( op::AND ) );
+						out.put ( L" & ", syntax::OPERATOR );
+						value ( masked.b, precedence ( op::AND ) + 1 );
+						out.put ( L")" );
+
+					} else
+						value ( tested_bits, precedence ( op::NE ) + 1 );
+
+					out.put ( equal ? L" == " : L" != ", syntax::OPERATOR );
+					out.put ( L"0", syntax::NUMBER );
+
+					if ( wrap )
+						out.put ( L")" );
+
+					return;
+
+				}
+
+			}
 
 			if ( ( item.kind == op::EQ || item.kind == op::NE ) && item.b >= 0 && !( item.bits & FLOATING ) ) {
 
@@ -3844,8 +3940,12 @@ namespace decompiler {
 
 				if ( test.kind == op::CONST && !negated )
 					out.put ( test.value ? L"1" : L"0", syntax::NUMBER );
-				else
+				else {
+
+					truth = bit_tests;
 					value ( shown, 0 );
+
+				}
 
 				paren_close ( );
 
@@ -3921,6 +4021,7 @@ namespace decompiler {
 			out.begin ( address );
 			out.put ( L"while", syntax::CONTROL );
 			paren_open ( );
+			truth = bit_tests;
 			value ( condition, 0 );
 			paren_close ( );
 			out.put ( L";" );
