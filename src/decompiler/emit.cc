@@ -444,6 +444,9 @@ namespace decompiler {
 	static bool array_memsets = true;
 	static bool shared_returns = true;
 	static bool fold_increments = true;
+	static bool wrapped_unsigned = true;
+	static bool mask_forms = true;
+	static bool latch_folds = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -1147,8 +1150,11 @@ namespace decompiler {
 			bool negative = value < 0 && !( size < 8 && value > 0 );
 			uint64_t magnitude = negative ? static_cast < uint64_t > ( -value ) : static_cast < uint64_t > ( value );
 
+			bool wrapped = false;
+
 			if ( negative && ( is_unsigned || bare_unsigned || ( magnitude > 0x100000000ull && hex_form ) ) ) {
 
+				wrapped = !is_unsigned && !bare_unsigned && size >= 8;
 				negative = false;
 				magnitude = size >= 8 ? static_cast < uint64_t > ( value ) : static_cast < uint64_t > ( value ) & ( ( 1ull << ( size * 8 ) ) - 1 );
 
@@ -1158,7 +1164,7 @@ namespace decompiler {
 				hex_form = true;
 
 			bool fits = negative ? magnitude <= 0x80000000ull : magnitude <= ( is_unsigned || bare_unsigned ? 0xFFFFFFFFull : 0x7FFFFFFFull );
-			bool unsigned_suffix = is_unsigned && !negative && !bare_unsigned;
+			bool unsigned_suffix = ( is_unsigned && !negative && !bare_unsigned ) || ( wrapped && wrapped_unsigned );
 			int32_t occurrence = next_occurrence ( value );
 			wchar_t form = b.names && !dry ? b.names->number_form ( out.open ? out.current.address : 0, value, occurrence ) : 0;
 
@@ -1405,6 +1411,20 @@ namespace decompiler {
 
 		}
 
+		bool count_call ( int32_t e, int32_t depth ) const {
+
+			if ( e < 0 || depth > 64 )
+				return false;
+
+			const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+			if ( node.kind == op::CALL || node.kind == op::INTRINSIC )
+				return true;
+
+			return count_call ( node.a, depth + 1 ) || count_call ( node.b, depth + 1 ) || count_call ( node.c, depth + 1 );
+
+		}
+
 		void plan_increments ( ) {
 
 			fold_at.clear ( );
@@ -1481,17 +1501,16 @@ namespace decompiler {
 					bool up = amount.value > 0;
 					bool last_line = t == lines.count ( ) - 1;
 
-					if ( last_line && latch )
-						continue;
-
 					if ( t > 0 ) {
 
 						int32_t before = lines [ static_cast < size_t > ( t - 1 ) ];
 						const statement& prior = b.statements [ static_cast < size_t > ( before ) ];
 						bool defines = prior.kind == stmt::ASSIGN && prior.left >= 0 && b.exprs [ static_cast < size_t > ( prior.left ) ].kind == op::VAR;
 						int32_t uses = count_var ( prior.right, x, 0 ) + ( defines ? 0 : count_var ( prior.left, x, 0 ) );
+						bool memory = !defines || ( prior.right >= 0 && b.exprs [ static_cast < size_t > ( prior.right ) ].kind == op::LOAD );
+						bool calls = prior.right < 0 || count_call ( prior.right, 0 ) || ( !defines && count_call ( prior.left, 0 ) );
 
-						if ( ( prior.kind == stmt::ASSIGN || prior.kind == stmt::STORE ) && uses == 1 && fold_at [ static_cast < size_t > ( before ) ] < 0 && !hidden [ static_cast < size_t > ( before ) ] && !( defines && b.exprs [ static_cast < size_t > ( prior.left ) ].value == x ) ) {
+						if ( ( !( last_line && latch ) || ( memory && latch_folds ) ) && !calls && ( prior.kind == stmt::ASSIGN || prior.kind == stmt::STORE ) && uses == 1 && fold_at [ static_cast < size_t > ( before ) ] < 0 && !hidden [ static_cast < size_t > ( before ) ] && !( defines && b.exprs [ static_cast < size_t > ( prior.left ) ].value == x ) ) {
 
 							fold_at [ static_cast < size_t > ( before ) ] = static_cast < int32_t > ( x );
 							fold_how [ static_cast < size_t > ( before ) ] = up ? 3 : 4;
@@ -1504,7 +1523,7 @@ namespace decompiler {
 
 					}
 
-					if ( last_line && block.end == term::BRANCH && block.condition >= 0 && count_var ( block.condition, x, 0 ) == 1 ) {
+					if ( last_line && !latch && block.end == term::BRANCH && block.condition >= 0 && count_var ( block.condition, x, 0 ) == 1 ) {
 
 						fold_cond.push ( block.condition );
 						fold_cond_var.push ( static_cast < int32_t > ( x ) );
@@ -3204,6 +3223,36 @@ namespace decompiler {
 					const expr& right = b.exprs [ static_cast < size_t > ( item.b ) ];
 
 					operand = true;
+
+					if ( mask_forms && item.kind == op::AND && right.kind == op::CONST && !( right.bits & POINTER ) && !( item.bits & FLOATING ) && item.a >= 0 ) {
+
+						const expr& masked = b.exprs [ static_cast < size_t > ( item.a ) ];
+						int32_t subject = item.a;
+
+						if ( masked.kind == op::CAST && masked.a >= 0 && masked.size < b.exprs [ static_cast < size_t > ( masked.a ) ].size && masked.size <= 4 && right.value > 0 && right.value < ( 1ll << ( masked.size * 8 - 1 ) ) && b.exprs [ static_cast < size_t > ( masked.a ) ].kind == op::VAR && !( b.exprs [ static_cast < size_t > ( masked.a ) ].bits & FLOATING ) )
+							subject = masked.a;
+
+						if ( subject != item.a || ( right.value < 0 && item.size == 8 ) ) {
+
+							value ( subject, mine, true );
+							out.put ( symbol, syntax::OPERATOR );
+
+							bool held = operand;
+
+							operand = false;
+
+							if ( right.value < 0 && item.size == 8 )
+								number ( right.value, 8, true, true );
+							else
+								value ( item.b, mine + 1, true );
+
+							operand = held;
+
+							break;
+
+						}
+
+					}
 
 					if ( base_first && item.kind == op::ADD && item.a >= 0 && !( item.bits & FLOATING ) && right.kind != op::CONST && right.kind != op::MUL && right.kind != op::SHL ) {
 
