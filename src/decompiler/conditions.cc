@@ -84,6 +84,8 @@ namespace decompiler {
 	static bool swap_copies = true;
 	static bool copy_local = true;
 	static bool expr_fixed = true;
+	static bool keep_destination = true;
+	static bool origin_numbers = true;
 
 	static bool has_call ( const builder& b, int32_t e, int32_t depth ) {
 
@@ -536,6 +538,36 @@ namespace decompiler {
 				if ( !fixed ( source.value ) && !( copy_local && local_only ( v, single [ static_cast < size_t > ( v ) ], source.value, uses [ static_cast < size_t > ( v ) ] ) ) )
 					continue;
 
+				if ( keep_destination && vars [ static_cast < size_t > ( source.value ) ].kind == var_kind::REGISTER && vars [ static_cast < size_t > ( source.value ) ].family == 0 && vars [ static_cast < size_t > ( v ) ].family > 0 && vars [ static_cast < size_t > ( v ) ].family < 16 && defs [ static_cast < size_t > ( source.value ) ] == 1 && single [ static_cast < size_t > ( source.value ) ] >= 0 && !returned [ static_cast < size_t > ( source.value ) ] ) {
+
+					statement& origin = statements [ static_cast < size_t > ( single [ static_cast < size_t > ( source.value ) ] ) ];
+					int32_t produced = origin.right >= 0 ? origin.right : -1;
+
+					while ( produced >= 0 && exprs [ static_cast < size_t > ( produced ) ].kind == op::CAST )
+						produced = exprs [ static_cast < size_t > ( produced ) ].a;
+
+					if ( produced >= 0 && exprs [ static_cast < size_t > ( produced ) ].kind == op::CALL && origin.address < line.address ) {
+
+						int64_t from_var = source.value;
+
+						origin.left = line.left;
+						line.kind = stmt::NOP;
+
+						for ( expr& node : exprs ) {
+
+							if ( node.kind == op::VAR && node.value == from_var )
+								node.value = v;
+
+						}
+
+						changed = true;
+
+						continue;
+
+					}
+
+				}
+
 				int32_t value = line.right;
 
 				line.kind = stmt::NOP;
@@ -789,8 +821,10 @@ namespace decompiler {
 		if ( copy_constants ) {
 
 			base::list < int32_t > known;
+			base::list < uint64_t > known_at;
 
 			known.fill ( static_cast < size_t > ( total ), -1 );
+			known_at.fill ( static_cast < size_t > ( total ), 0 );
 
 			for ( const block_code& block : code ) {
 
@@ -830,6 +864,9 @@ namespace decompiler {
 
 						line.right = make ( op::CONST, right.size, -1, -1, constant.value, constant.bits );
 
+						if ( origin_numbers && known_at [ static_cast < size_t > ( right.value ) ] )
+							line.origin = known_at [ static_cast < size_t > ( right.value ) ];
+
 					}
 
 					if ( target < 0 || target >= total )
@@ -838,6 +875,7 @@ namespace decompiler {
 					const expr& now = exprs [ static_cast < size_t > ( line.right ) ];
 
 					known [ static_cast < size_t > ( target ) ] = now.kind == op::CONST && !( now.bits & ( FLOATING | POINTER ) ) ? line.right : -1;
+					known_at [ static_cast < size_t > ( target ) ] = line.origin ? line.origin : line.address;
 
 				}
 
@@ -1026,6 +1064,9 @@ namespace decompiler {
 					continue;
 
 				bool defines = other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR;
+
+				if ( origin_numbers && defines && other.right >= 0 && exprs [ static_cast < size_t > ( other.right ) ].kind == op::VAR && exprs [ static_cast < size_t > ( other.right ) ].value == v && !other.origin )
+					other.origin = line.origin ? line.origin : line.address;
 
 				if ( !defines )
 					other.left = substitute ( *this, other.left, v, value, 0 );

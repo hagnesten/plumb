@@ -583,8 +583,10 @@ namespace decompiler {
 
 				int64_t v = b.exprs [ static_cast < size_t > ( line.left ) ].value;
 
-				if ( v >= 0 && v < first_def.count ( ) && line.address < first_def [ static_cast < size_t > ( v ) ] )
-					first_def [ static_cast < size_t > ( v ) ] = line.address;
+				uint64_t at = line.origin ? line.origin : line.address;
+
+				if ( v >= 0 && v < first_def.count ( ) && at < first_def [ static_cast < size_t > ( v ) ] )
+					first_def [ static_cast < size_t > ( v ) ] = at;
 
 			}
 
@@ -606,21 +608,30 @@ namespace decompiler {
 
 			}
 
+			base::list < uint64_t > extra;
+
+			auto def_of = [ & ] ( int32_t x ) {
+
+				return x < 0 ? extra [ static_cast < size_t > ( -x - 1 ) ] : first_def [ static_cast < size_t > ( x ) ];
+
+			};
+
 			base::sort ( order.data ( ), order.count ( ), [ & ] ( int32_t x, int32_t y ) {
 
-				const variable& left = b.vars [ static_cast < size_t > ( x ) ];
-				const variable& right = b.vars [ static_cast < size_t > ( y ) ];
-				bool left_stack = left.kind == var_kind::STACK;
-				bool right_stack = right.kind == var_kind::STACK;
+				bool left_stack = x >= 0 && b.vars [ static_cast < size_t > ( x ) ].kind == var_kind::STACK;
+				bool right_stack = y >= 0 && b.vars [ static_cast < size_t > ( y ) ].kind == var_kind::STACK;
 
 				if ( left_stack != right_stack )
 					return !left_stack;
 
 				if ( left_stack )
-					return left.offset < right.offset;
+					return b.vars [ static_cast < size_t > ( x ) ].offset < b.vars [ static_cast < size_t > ( y ) ].offset;
 
-				if ( by_address && first_def [ static_cast < size_t > ( x ) ] != first_def [ static_cast < size_t > ( y ) ] )
-					return first_def [ static_cast < size_t > ( x ) ] < first_def [ static_cast < size_t > ( y ) ];
+				if ( by_address && def_of ( x ) != def_of ( y ) )
+					return def_of ( x ) < def_of ( y );
+
+				if ( x < 0 || y < 0 )
+					return x < y;
 
 				return var_number [ static_cast < size_t > ( x ) ] < var_number [ static_cast < size_t > ( y ) ];
 
@@ -630,7 +641,7 @@ namespace decompiler {
 
 			for ( int32_t v : order ) {
 
-				if ( b.vars [ static_cast < size_t > ( v ) ].ghost && var_number [ static_cast < size_t > ( v ) ] < 0 ) {
+				if ( v < 0 || ( b.vars [ static_cast < size_t > ( v ) ].ghost && var_number [ static_cast < size_t > ( v ) ] < 0 ) ) {
 
 					next++;
 

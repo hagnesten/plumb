@@ -112,6 +112,7 @@ namespace decompiler {
 		int32_t left = -1;
 		int32_t right = -1;
 		uint64_t address = 0;
+		uint64_t origin = 0;
 
 	};
 
