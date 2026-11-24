@@ -267,6 +267,8 @@ namespace decompiler {
 
 	}
 
+	static bool fold_scaled_shifts = true;
+
 	int32_t builder::fold_arithmetic ( op kind, int32_t a, int32_t b, uint8_t size ) {
 
 		const expr left = exprs [ static_cast < size_t > ( a ) ];
@@ -295,6 +297,9 @@ namespace decompiler {
 
 		if ( kind == op::MUL && right.kind == op::CONST && left.kind == op::SHL && left.b >= 0 && exprs [ static_cast < size_t > ( left.b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( left.b ) ].value < 32 )
 			return binary ( op::MUL, left.a, constant ( right.value << exprs [ static_cast < size_t > ( left.b ) ].value, size ), size );
+
+		if ( fold_scaled_shifts && kind == op::SHL && right.kind == op::CONST && right.value > 0 && right.value < 16 && left.kind == op::MUL && left.size == size && left.b >= 0 && exprs [ static_cast < size_t > ( left.b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( left.b ) ].value > 0 && exprs [ static_cast < size_t > ( left.b ) ].value < 16 )
+			return binary ( op::MUL, left.a, constant ( exprs [ static_cast < size_t > ( left.b ) ].value << right.value, size ), size );
 
 		if ( kind == op::ADD ) {
 
