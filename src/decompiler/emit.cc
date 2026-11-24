@@ -468,6 +468,8 @@ namespace decompiler {
 	static bool fall_returns_first = true;
 	static bool else_returns = true;
 	static bool keep_step_order = true;
+	static bool literal_floats = true;
+	static bool ida_reals = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
@@ -1385,6 +1387,116 @@ namespace decompiler {
 				value = __builtin_bit_cast ( double, bits );
 
 			base::writer text;
+
+			if ( ida_reals && value == value && value < 1e300 && value > -1e300 ) {
+
+				wchar_t shown [ 64 ];
+				int32_t n = 0;
+
+				if ( value < 0 ) {
+
+					shown [ n++ ] = L'-';
+					value = -value;
+
+				}
+
+				if ( value == 0.0 ) {
+
+					shown [ n++ ] = L'0';
+					shown [ n++ ] = L'.';
+					shown [ n++ ] = L'0';
+
+				} else {
+
+					int32_t significant = size == 4 ? 8 : 16;
+					int32_t exponent = 0;
+					double power = 1.0;
+
+					if ( value >= 1.0 ) {
+
+						while ( value >= power * 10.0 && exponent < 300 ) {
+
+							power *= 10.0;
+							exponent++;
+
+						}
+
+					} else {
+
+						while ( value < power && exponent > -300 ) {
+
+							power /= 10.0;
+							exponent--;
+
+						}
+
+					}
+
+					double mantissa = value / power;
+					double scale = 1.0;
+
+					for ( int32_t i = 1; i < significant; i++ )
+						scale *= 10.0;
+
+					uint64_t digits = static_cast < uint64_t > ( mantissa * scale + 0.5 );
+					uint64_t limit = static_cast < uint64_t > ( scale * 10.0 );
+
+					if ( digits >= limit ) {
+
+						digits /= 10;
+						exponent++;
+
+					}
+
+					wchar_t text_digits [ 24 ];
+					int32_t count = significant;
+
+					for ( int32_t i = significant - 1; i >= 0; i-- ) {
+
+						text_digits [ i ] = static_cast < wchar_t > ( L'0' + digits % 10 );
+						digits /= 10;
+
+					}
+
+					while ( count > 1 && text_digits [ count - 1 ] == L'0' )
+						count--;
+
+					if ( exponent >= 0 ) {
+
+						for ( int32_t i = 0; i <= exponent; i++ )
+							shown [ n++ ] = i < count ? text_digits [ i ] : L'0';
+
+						shown [ n++ ] = L'.';
+
+						if ( count > exponent + 1 ) {
+
+							for ( int32_t i = exponent + 1; i < count; i++ )
+								shown [ n++ ] = text_digits [ i ];
+
+						} else
+							shown [ n++ ] = L'0';
+
+					} else {
+
+						shown [ n++ ] = L'0';
+						shown [ n++ ] = L'.';
+
+						for ( int32_t i = 0; i < -exponent - 1 && n < 40; i++ )
+							shown [ n++ ] = L'0';
+
+						for ( int32_t i = 0; i < count; i++ )
+							shown [ n++ ] = text_digits [ i ];
+
+					}
+
+				}
+
+				shown [ n ] = 0;
+				out.put ( shown, syntax::NUMBER );
+
+				return;
+
+			}
 
 			if ( value != value )
 				text.add ( L"NAN" );
@@ -2977,6 +3089,23 @@ namespace decompiler {
 				}
 
 				case op::GLOBAL:
+
+					if ( literal_floats && ( item.bits & FLOATING ) && ( item.size == 4 || item.size == 8 ) ) {
+
+						int32_t section = b.file->section_at ( static_cast < uint64_t > ( item.value ) );
+						uint64_t offset = 0;
+
+						if ( section >= 0 && section < b.file->sections.count ( ) && !b.file->sections [ static_cast < size_t > ( section ) ].write && !b.file->sections [ static_cast < size_t > ( section ) ].execute && b.file->offset_of ( static_cast < uint64_t > ( item.value ), offset ) && offset + item.size <= b.file->size ) {
+
+							int64_t bits = item.size == 4 ? static_cast < int64_t > ( b.file->read32 ( offset ) ) : static_cast < int64_t > ( b.file->read64 ( offset ) );
+
+							real ( bits, item.size );
+
+							break;
+
+						}
+
+					}
 
 					if ( b.file->section_at ( static_cast < uint64_t > ( item.value ) ) <= 0 && static_cast < uint64_t > ( item.value ) >= b.file->base ) {
 
