@@ -452,6 +452,8 @@ namespace decompiler {
 
 	}
 
+	static bool float_copies = true;
+
 	void builder::narrow_floats ( ) {
 
 		int32_t total = vars.count ( );
@@ -513,6 +515,24 @@ namespace decompiler {
 
 			}
 
+			if ( float_copies && node.kind == op::INTRINSIC && node.size == 4 && ( node.bits & FLOATING ) ) {
+
+				for ( int32_t i = 0; i < node.arg_count; i++ ) {
+
+					int32_t passed = args [ static_cast < size_t > ( node.first_arg + i ) ];
+					int32_t v = var_of ( passed );
+
+					if ( v >= 0 )
+						seen [ static_cast < size_t > ( v ) ] = 1;
+					else
+						self ( self, passed, depth + 1 );
+
+				}
+
+				return;
+
+			}
+
 			self ( self, node.a, depth + 1 );
 			self ( self, node.b, depth + 1 );
 			self ( self, node.c, depth + 1 );
@@ -521,6 +541,9 @@ namespace decompiler {
 				self ( self, args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
 
 		};
+
+		base::list < int32_t > copy_to;
+		base::list < int32_t > copy_from;
 
 		for ( const statement& line : statements ) {
 
@@ -532,8 +555,21 @@ namespace decompiler {
 			if ( target >= 0 ) {
 
 				const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
+				int32_t from = float_copies ? var_of ( line.right ) : -1;
 
-				if ( source.size != 4 || !( source.bits & FLOATING ) )
+				if ( from >= 0 && from != target && vars [ static_cast < size_t > ( from ) ].family >= 16 && vars [ static_cast < size_t > ( from ) ].family < 32 && ( vars [ static_cast < size_t > ( from ) ].bits & FLOATING ) && !blocked [ static_cast < size_t > ( target ) ] ) {
+
+					copy_to.push ( target );
+					copy_from.push ( from );
+					seen [ static_cast < size_t > ( from ) ] = 1;
+
+					continue;
+
+				}
+
+				bool constant = float_copies && ( ( source.kind == op::CONST && source.value == 0 ) || ( source.kind == op::REAL && source.size == 4 ) );
+
+				if ( ( source.size != 4 || !( source.bits & FLOATING ) ) && !constant )
 					blocked [ static_cast < size_t > ( target ) ] = 1;
 
 			} else
@@ -551,6 +587,26 @@ namespace decompiler {
 			walk ( walk, block.condition, 0 );
 			walk ( walk, block.selector, 0 );
 			walk ( walk, block.returned, 0 );
+
+		}
+
+		for ( bool moved = true; moved; ) {
+
+			moved = false;
+
+			for ( int32_t k = 0; k < copy_to.count ( ); k++ ) {
+
+				size_t to = static_cast < size_t > ( copy_to [ static_cast < size_t > ( k ) ] );
+				size_t from = static_cast < size_t > ( copy_from [ static_cast < size_t > ( k ) ] );
+
+				if ( blocked [ to ] != blocked [ from ] ) {
+
+					blocked [ to ] = blocked [ from ] = 1;
+					moved = true;
+
+				}
+
+			}
 
 		}
 
