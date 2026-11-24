@@ -2893,9 +2893,14 @@ namespace decompiler {
 						out.put ( base::writer ( ).add ( L"0x" ).hex ( static_cast < uint64_t > ( item.value ) ).text ( ), syntax::NUMBER );
 						out.put ( L"]" );
 
-					} else if ( b.names->name ( static_cast < uint64_t > ( item.value ), false, name, 200 ) )
-						out.put ( name, syntax::GLOBAL, static_cast < uint64_t > ( item.value ) );
-					else
+					} else if ( b.names->name ( static_cast < uint64_t > ( item.value ), false, name, 200 ) ) {
+
+						if ( simd_types && item.size >= 8 && name [ 0 ] == L's' && name [ 1 ] == L'_' )
+							out.put ( base::writer ( ).add ( L"g_" ).hex ( static_cast < uint64_t > ( item.value ) ).text ( ), syntax::GLOBAL, static_cast < uint64_t > ( item.value ) );
+						else
+							out.put ( name, syntax::GLOBAL, static_cast < uint64_t > ( item.value ) );
+
+					} else
 						number ( item.value, 8, true, false );
 
 					break;
