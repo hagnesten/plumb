@@ -650,6 +650,7 @@ namespace decompiler {
 	static bool merge_slots = true;
 	static bool no_phantom_stack = true;
 	static bool indexed_stack = true;
+	static bool narrow_lea = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -3063,6 +3064,34 @@ namespace decompiler {
 						frame = true;
 						frame_delta = delta + ins.operands [ 1 ].value;
 						note_frame ( );
+
+						return;
+
+					}
+
+					if ( narrow_lea && size == 4 && k.long_mode && !ins.operands [ 1 ].rip_relative ( ) && ins.operands [ 1 ].base != x86::RSP && ins.operands [ 1 ].base != x86::RBP && ( ins.operands [ 1 ].base != x86::NONE || ins.operands [ 1 ].index != x86::NONE ) ) {
+
+						const x86::operand& m = ins.operands [ 1 ];
+						int32_t sum = -1;
+
+						if ( m.base != x86::NONE )
+							sum = read_reg ( x86::resize_register ( m.base, 4 ) );
+
+						if ( m.index != x86::NONE ) {
+
+							int32_t index = read_reg ( x86::resize_register ( m.index, 4 ) );
+
+							if ( m.scale > 1 )
+								index = k.binary ( op::MUL, index, k.constant ( m.scale, 4 ), 4 );
+
+							sum = sum < 0 ? index : k.binary ( op::ADD, sum, index, 4 );
+
+						}
+
+						if ( m.value )
+							sum = k.binary ( op::ADD, sum, k.constant ( static_cast < int32_t > ( m.value ), 4 ), 4 );
+
+						write ( ins, 0, sum );
 
 						return;
 

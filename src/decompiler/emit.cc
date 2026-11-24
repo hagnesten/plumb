@@ -452,6 +452,7 @@ namespace decompiler {
 	static bool sext_products = true;
 	static bool collapse_casts = true;
 	static bool call_untruncate = true;
+	static bool store_untruncate = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -3932,6 +3933,7 @@ namespace decompiler {
 			if ( dry )
 				return;
 
+			untruncate = store_untruncate && ( item.kind == stmt::STORE || item.kind == stmt::ASSIGN ) && item.left >= 0 && b.exprs [ static_cast < size_t > ( item.left ) ].kind == op::LOAD && b.exprs [ static_cast < size_t > ( item.left ) ].size == 4 && !( b.exprs [ static_cast < size_t > ( item.left ) ].bits & FLOATING );
 			active_var = -1;
 
 			if ( !inline_mode && index >= 0 && index < fold_at.count ( ) && fold_at [ static_cast < size_t > ( index ) ] >= 0 ) {
@@ -4553,6 +4555,7 @@ namespace decompiler {
 
 			int32_t shown = condition >= 0 && negated ? b.negate ( condition ) : condition;
 
+			untruncate = false;
 			hoisted.clear ( );
 			hoisted_temp.clear ( );
 
@@ -4672,6 +4675,7 @@ namespace decompiler {
 			out.begin ( address );
 			out.put ( L"while", syntax::CONTROL );
 			paren_open ( );
+			untruncate = false;
 			truth = bit_tests;
 			value ( condition, 0 );
 			paren_close ( );
@@ -4697,6 +4701,8 @@ namespace decompiler {
 			int32_t yes = -1;
 			int32_t no = -1;
 			bool shown = item.returned >= 0 && ( b.returns_value || item.end == term::TAIL );
+
+			untruncate = false;
 
 			hoisted.clear ( );
 			hoisted_temp.clear ( );
