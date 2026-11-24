@@ -8491,10 +8491,20 @@ namespace decompiler {
 
 				note.add ( L" // " );
 
-				if ( item.family >= 16 )
+				if ( item.family >= 16 ) {
+
+					bool partial = head.vector.count ( ) <= v || !head.vector [ static_cast < size_t > ( v ) ];
+
 					note.add ( L"xmm" ).number ( item.family - 16 );
+
+					if ( partial && item.size == 8 )
+						note.add ( L"_8" );
+					else if ( partial && item.size == 4 )
+						note.add ( L"_4" );
+
+				}
 				else if ( item.family >= 8 )
-					note.add ( wide [ item.family ] ).add ( item.size == 4 ? L"d" : ( item.size == 2 ? L"w" : ( item.size == 1 ? L"b" : L"" ) ) );
+					note.add ( wide [ item.family ] ).add ( item.size == 4 ? L"d" : L"" );
 				else if ( item.size == 8 && b.long_mode )
 					note.add ( wide [ item.family ] );
 				else
