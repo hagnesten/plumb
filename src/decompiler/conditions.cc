@@ -569,6 +569,11 @@ namespace decompiler {
 
 						}
 
+						uses [ static_cast < size_t > ( v ) ] += uses [ static_cast < size_t > ( from_var ) ] - 1;
+						uses [ static_cast < size_t > ( from_var ) ] = 0;
+						defs [ static_cast < size_t > ( from_var ) ] = 0;
+						single [ static_cast < size_t > ( v ) ] = single [ static_cast < size_t > ( from_var ) ];
+						single [ static_cast < size_t > ( from_var ) ] = -1;
 						changed = true;
 
 						continue;
@@ -580,6 +585,9 @@ namespace decompiler {
 				int32_t value = line.right;
 
 				line.kind = stmt::NOP;
+				uses [ static_cast < size_t > ( source.value ) ] += uses [ static_cast < size_t > ( v ) ] - 1;
+				uses [ static_cast < size_t > ( v ) ] = 0;
+				defs [ static_cast < size_t > ( v ) ] = 0;
 				vars [ static_cast < size_t > ( v ) ].ghost = true;
 				vars [ static_cast < size_t > ( v ) ].born = line.address ? line.address : line.origin;
 
