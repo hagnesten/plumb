@@ -651,6 +651,7 @@ namespace decompiler {
 	static bool no_phantom_stack = true;
 	static bool indexed_stack = true;
 	static bool narrow_lea = true;
+	static bool shared_products = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -1421,6 +1422,8 @@ namespace decompiler {
 		builder* b = nullptr;
 		int32_t regs [ 32 ];
 		uint64_t reg_at [ 32 ] = { };
+		uint8_t reads [ 32 ] = { };
+		uint64_t read_at [ 32 ] = { };
 		uint64_t now = 0;
 		int32_t flag_kind = 0;
 		int32_t flag_result = -1;
@@ -1452,8 +1455,12 @@ namespace decompiler {
 
 		void reset ( ) {
 
-			for ( int32_t i = 0; i < 32; i++ )
+			for ( int32_t i = 0; i < 32; i++ ) {
+
 				regs [ i ] = -1;
+				reads [ i ] = 0;
+
+			}
 
 			forget_kept ( );
 
@@ -1484,7 +1491,52 @@ namespace decompiler {
 
 		}
 
+		bool real_product ( int32_t value ) {
+
+			const expr& node = b->exprs [ static_cast < size_t > ( value ) ];
+
+			if ( node.kind != op::MUL )
+				return false;
+
+			for ( int32_t k = 0; k < 2; k++ ) {
+
+				int32_t side = k ? node.b : node.a;
+
+				if ( side >= 0 && b->exprs [ static_cast < size_t > ( side ) ].kind == op::CONST ) {
+
+					int64_t factor = static_cast < int64_t > ( b->exprs [ static_cast < size_t > ( side ) ].value );
+
+					return factor > 1 || factor < 0;
+
+				}
+
+			}
+
+			return true;
+
+		}
+
 		int32_t family_value ( int32_t slot ) {
+
+			if ( regs [ slot ] >= 0 && shared_products && slot < 16 && real_product ( regs [ slot ] ) && !( busy & ( 1u << slot ) ) ) {
+
+				if ( read_at [ slot ] != now ) {
+
+					read_at [ slot ] = now;
+					reads [ slot ]++;
+
+				}
+
+				if ( reads [ slot ] >= 2 ) {
+
+					materialize ( slot, 0 );
+
+					if ( regs [ slot ] < 0 )
+						return b->var_expr ( b->register_var ( slot ), 0 );
+
+				}
+
+			}
 
 			if ( regs [ slot ] >= 0 )
 				return regs [ slot ];
@@ -1531,6 +1583,7 @@ namespace decompiler {
 
 			regs [ slot ] = value;
 			reg_at [ slot ] = now;
+			reads [ slot ] = 0;
 
 			if ( b->exprs [ static_cast < size_t > ( value ) ].depth > 12 )
 				materialize ( slot, 0 );
