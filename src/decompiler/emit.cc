@@ -435,6 +435,8 @@ namespace decompiler {
 	static bool api_types = true;
 	static bool double_pointees = true;
 	static bool defer_later = true;
+	static bool return_casts = true;
+	static bool return_var_casts = false;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -3993,9 +3995,26 @@ namespace decompiler {
 
 					const expr& top = b.exprs [ static_cast < size_t > ( item.returned ) ];
 					bool keep = explicit_zero;
+					int32_t inner = top.kind == op::CAST ? top.a : -1;
+					bool widened = return_casts && b.long_mode && !b.has_prototype && !b.returns_float && b.result_width == 0 && b.result_text.empty ( ) && top.kind == op::CAST && top.size == 8 && inner >= 0 && b.exprs [ static_cast < size_t > ( inner ) ].size == 4 && !( top.bits & ( SIGNED | FLOATING | POINTER ) ) && !( b.exprs [ static_cast < size_t > ( inner ) ].bits & FLOATING ) && b.exprs [ static_cast < size_t > ( inner ) ].kind != op::CONST && !( b.exprs [ static_cast < size_t > ( inner ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( inner ) ].value >= 0 && b.exprs [ static_cast < size_t > ( inner ) ].value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( inner ) ].value ) ].bits & UNSIGNED ) );
 
 					explicit_zero = ( b.result_width == 1 || b.result_width == 2 ) && ( top.kind == op::EQ || top.kind == op::NE );
-					value ( item.returned, 0 );
+
+					if ( !widened && return_casts && b.long_mode && !b.has_prototype && !b.returns_float && b.result_width == 0 && b.result_text.empty ( ) && top.size == 4 && ( top.kind == op::ADD || top.kind == op::SUB || top.kind == op::MUL || top.kind == op::SHL || top.kind == op::AND || top.kind == op::OR || top.kind == op::XOR || ( return_var_casts && top.kind == op::VAR && top.value >= 0 && top.value < b.vars.count ( ) && b.vars [ static_cast < size_t > ( top.value ) ].size == 4 && !( b.vars [ static_cast < size_t > ( top.value ) ].bits & ( UNSIGNED | FLOATING ) ) && !( top.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( top.value ) ].empty ( ) ) ) ) && !( top.bits & ( FLOATING | POINTER ) ) ) {
+
+						widened = true;
+						inner = item.returned;
+
+					}
+
+					if ( widened ) {
+
+						out.put ( L"(unsigned int)", syntax::TYPE );
+						value ( inner, 14 );
+
+					} else
+						value ( item.returned, 0 );
+
 					explicit_zero = keep;
 
 				}
