@@ -606,6 +606,7 @@ namespace decompiler {
 	static bool brace_before_else = true;
 	static bool power_hex = true;
 	static bool unsigned_results = true;
+	static bool step_carriers = true;
 	static bool expand_strings = true;
 	static bool raw_float_copies = true;
 	static bool scalar_lanes = true;
@@ -715,6 +716,7 @@ namespace decompiler {
 		base::list < uint8_t > boolean;
 		base::list < uint8_t > vector;
 		bool chain_falls = false;
+		base::list < int32_t > carried;
 		bool inline_returns = true;
 		bool call_unused = false;
 		bool fall_returns = true;
@@ -7022,7 +7024,38 @@ namespace decompiler {
 
 		}
 
-		bool open_for ( uint64_t address, int32_t condition, bool negated, int32_t step, bool need_init ) {
+		int32_t step_carrier ( int32_t step, int32_t latch ) const {
+
+			if ( !step_carriers || step < 0 || latch < 0 || latch >= count )
+				return -1;
+
+			int32_t carrier = -1;
+
+			for ( int32_t s = 0; s < fold_at.count ( ) && s < fold_inc.count ( ); s++ ) {
+
+				if ( fold_at [ static_cast < size_t > ( s ) ] >= 0 && fold_inc [ static_cast < size_t > ( s ) ] == step )
+					carrier = s;
+
+			}
+
+			if ( carrier < 0 || b.statements [ static_cast < size_t > ( carrier ) ].kind != stmt::STORE )
+				return -1;
+
+			const block_code& tail = b.code [ static_cast < size_t > ( latch ) ];
+			int32_t last = -1;
+
+			for ( int32_t s = tail.first; s < tail.first + tail.count && s < b.statements.count ( ); s++ ) {
+
+				if ( b.statements [ static_cast < size_t > ( s ) ].kind != stmt::NOP && s != step )
+					last = s;
+
+			}
+
+			return last == carrier ? carrier : -1;
+
+		}
+
+		bool open_for ( uint64_t address, int32_t condition, bool negated, int32_t step, bool need_init, int32_t carrier = -1 ) {
 
 			int32_t var = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( b.statements [ static_cast < size_t > ( step ) ].left ) ].value );
 			int32_t init = -1;
@@ -7105,7 +7138,7 @@ namespace decompiler {
 			}
 
 			out.put ( L" " );
-			inline_statement ( step );
+			inline_statement ( carrier >= 0 ? carrier : step );
 			paren_close ( );
 			out.finish ( );
 			brace ( L"{" );
@@ -7194,10 +7227,19 @@ namespace decompiler {
 				int32_t leaving = back_taken ? item.other : item.taken;
 				int32_t test = back_taken ? item.condition : b.negate ( item.condition );
 				int32_t step = counted_step ( start, test );
+				int32_t carrier = usable_step ( step ) ? -1 : step_carrier ( step, start );
 
-				if ( usable_step ( step ) && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
+				if ( ( usable_step ( step ) || carrier >= 0 ) && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true, carrier ) ) {
 
 					hidden [ static_cast < size_t > ( step ) ] = 1;
+
+					if ( carrier >= 0 ) {
+
+						hidden [ static_cast < size_t > ( carrier ) ] = 1;
+						carried.push ( carrier );
+
+					}
+
 					body ( start );
 					close_brace ( );
 
@@ -7247,10 +7289,19 @@ namespace decompiler {
 
 					int32_t test = back_taken ? tail.condition : b.negate ( tail.condition );
 					int32_t step = counted_step ( latch, test );
+					int32_t carrier = usable_step ( step ) ? -1 : step_carrier ( step, latch );
 
-					if ( usable_step ( step ) && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true ) ) {
+					if ( ( usable_step ( step ) || carrier >= 0 ) && entry_true ( test, step, start ) && open_for ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, test, false, step, true, carrier ) ) {
 
 						hidden [ static_cast < size_t > ( step ) ] = 1;
+
+						if ( carrier >= 0 ) {
+
+							hidden [ static_cast < size_t > ( carrier ) ] = 1;
+							carried.push ( carrier );
+
+						}
+
 						emitted [ static_cast < size_t > ( latch ) ] = 1;
 						region ( start, latch, inner );
 
@@ -7626,6 +7677,14 @@ namespace decompiler {
 
 		void run ( ) {
 
+			for ( int32_t c : carried ) {
+
+				if ( c >= 0 && c < hidden.count ( ) )
+					hidden [ static_cast < size_t > ( c ) ] = 0;
+
+			}
+
+			carried.clear ( );
 			emitted.fill ( static_cast < size_t > ( count ), 0 );
 			labeled.fill ( static_cast < size_t > ( count ), 0 );
 
