@@ -570,9 +570,28 @@ namespace decompiler {
 
 	}
 
+	static bool negate_pairs = true;
+
 	int32_t builder::negate ( int32_t condition ) {
 
 		const expr item = exprs [ static_cast < size_t > ( condition ) ];
+
+		if ( negate_pairs && ( item.kind == op::EQ || item.kind == op::NE ) && item.a >= 0 && item.b >= 0 && exprs [ static_cast < size_t > ( item.b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( item.b ) ].value == 0 ) {
+
+			const expr& inner = exprs [ static_cast < size_t > ( item.a ) ];
+
+			if ( ( inner.kind == op::OR || inner.kind == op::AND ) && inner.size == 1 && inner.a >= 0 && inner.b >= 0 ) {
+
+				op left = exprs [ static_cast < size_t > ( inner.a ) ].kind;
+				op right = exprs [ static_cast < size_t > ( inner.b ) ].kind;
+				bool pair = ( ( left >= op::EQ && left <= op::GE ) || left == op::LNOT ) && ( ( right >= op::EQ && right <= op::GE ) || right == op::LNOT );
+
+				if ( pair )
+					return item.kind == op::NE ? negate ( item.a ) : item.a;
+
+			}
+
+		}
 
 		switch ( item.kind ) {
 
@@ -602,6 +621,27 @@ namespace decompiler {
 
 			case op::LOR:
 				return make ( op::LAND, 1, negate ( item.a ), negate ( item.b ) );
+
+			case op::OR:
+			case op::AND: {
+
+				auto boolean = [ & ] ( int32_t e ) {
+
+					if ( e < 0 )
+						return false;
+
+					op kind = exprs [ static_cast < size_t > ( e ) ].kind;
+
+					return ( kind >= op::EQ && kind <= op::GE ) || kind == op::LNOT || kind == op::LAND || kind == op::LOR;
+
+				};
+
+				if ( negate_pairs && item.size == 1 && boolean ( item.a ) && boolean ( item.b ) )
+					return make ( item.kind == op::OR ? op::LAND : op::LOR, 1, negate ( item.a ), negate ( item.b ) );
+
+				return make ( op::LNOT, 1, condition );
+
+			}
 
 			case op::CONST:
 				return constant ( item.value ? 0 : 1, 1 );
@@ -3257,6 +3297,28 @@ namespace decompiler {
 
 				int32_t left = read ( ins, 0 );
 				int32_t right = read ( ins, 1 );
+
+				if ( negate_pairs && ( kind == op::OR || kind == op::AND ) && size == 1 ) {
+
+					auto boolean = [ & ] ( int32_t e ) {
+
+						op test = k.exprs [ static_cast < size_t > ( e ) ].kind;
+
+						return ( test >= op::EQ && test <= op::GE ) || test == op::LNOT;
+
+					};
+
+					if ( boolean ( left ) && boolean ( right ) ) {
+
+						int32_t held = left;
+
+						left = right;
+						right = held;
+
+					}
+
+				}
+
 				int32_t value = select_fold ( kind, left, right, size );
 
 				if ( value < 0 )

@@ -3816,7 +3816,9 @@ namespace decompiler {
 						out.put ( ( b.vars [ static_cast < size_t > ( lhs.value ) ].bits & UNSIGNED ) ? L"(unsigned __int64)" : L"(__int64)", syntax::TYPE );
 						value ( item.b, 14 );
 
-					} else
+					} else if ( ( item.kind == op::LAND || item.kind == op::LOR ) && item.b >= 0 && b.exprs [ static_cast < size_t > ( item.b ) ].kind == item.kind )
+						value ( item.b, mine, bitwise );
+					else
 						value ( item.b, mine + 1, bitwise );
 
 					break;
@@ -5962,6 +5964,12 @@ namespace decompiler {
 				negated = true;
 
 			} else if ( fall_then && follow >= 0 && else_part != follow && other >= 0 && taken >= 0 && item.condition >= 0 && negative_test ( item.condition ) && ( !fall_then_simple || ( b.code [ static_cast < size_t > ( other ) ].end == term::FALL && b.code [ static_cast < size_t > ( other ) ].taken == follow && b.code [ static_cast < size_t > ( taken ) ].end == term::FALL && b.code [ static_cast < size_t > ( taken ) ].taken == follow ) ) ) {
+
+				then_part = other;
+				else_part = taken;
+				negated = true;
+
+			} else if ( fall_returns_first && follow < 0 && other >= 0 && taken >= 0 && item.condition >= 0 && b.exprs [ static_cast < size_t > ( item.condition ) ].kind == op::LOR && else_returns && !chained && empty_block ( taken ) && empty_block ( other ) && !branch_fed ( block ) && b.code [ static_cast < size_t > ( other ) ].end == term::RETURN && b.code [ static_cast < size_t > ( taken ) ].end == term::RETURN && pred [ static_cast < size_t > ( other ) ].count ( ) == 1 && pred [ static_cast < size_t > ( taken ) ].count ( ) == 1 ) {
 
 				then_part = other;
 				else_part = taken;
