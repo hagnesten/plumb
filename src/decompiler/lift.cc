@@ -589,6 +589,7 @@ namespace decompiler {
 	static bool negate_pairs = true;
 	static bool float_flips = true;
 	static bool joined_sets = true;
+	static bool select_loads = true;
 	static bool sse_extras = true;
 
 	int32_t builder::negate ( int32_t condition ) {
@@ -4245,7 +4246,7 @@ namespace decompiler {
 
 					op kind = k.exprs [ static_cast < size_t > ( value ) ].kind;
 
-					if ( kind != op::VAR && kind != op::CONST )
+					if ( kind != op::VAR && kind != op::CONST && !( select_loads && kind == op::LOAD && !( k.exprs [ static_cast < size_t > ( value ) ].bits & FLOATING ) && !( live & ( 1u << held ) ) && flag_kind == 1 && flag_b >= 0 && k.exprs [ static_cast < size_t > ( flag_b ) ].kind == op::CONST ) )
 						materialize ( held, ins.address );
 
 				}
