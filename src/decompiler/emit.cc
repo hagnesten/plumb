@@ -436,6 +436,7 @@ namespace decompiler {
 	static bool double_pointees = true;
 	static bool low_writes = true;
 	static bool brace_before_else = true;
+	static bool power_hex = true;
 	static bool scalar_lanes = true;
 	static bool float_zero = true;
 	static bool chain_rest = true;
@@ -1467,6 +1468,9 @@ namespace decompiler {
 			wchar_t form = b.names && !dry ? b.names->number_form ( out.open ? out.current.address : 0, value, occurrence ) : 0;
 
 			hex_form = hex_form || unsigned_suffix || magnitude > 0xFFFFFFFFull;
+
+			if ( power_hex && magnitude >= 0x2000 && ( magnitude & ( magnitude - 1 ) ) == 0 )
+				hex_form = true;
 
 			if ( form == L'h' )
 				hex_form = true;
