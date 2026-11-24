@@ -2,6 +2,8 @@
 
 namespace decompiler {
 
+	static bool logic_wrap = true;
+
 	struct sink {
 
 		result* r = nullptr;
@@ -285,11 +287,177 @@ namespace decompiler {
 
 		}
 
+		int32_t estimated_width ( const wchar_t* text, int32_t length ) const {
+
+			int32_t width = current.indent * 2 + length;
+
+			for ( int32_t i = 0; i + 2 < length; i++ ) {
+
+				bool edge = i == 0 || !( ( text [ i - 1 ] >= L'a' && text [ i - 1 ] <= L'z' ) || ( text [ i - 1 ] >= L'A' && text [ i - 1 ] <= L'Z' ) || ( text [ i - 1 ] >= L'0' && text [ i - 1 ] <= L'9' ) || text [ i - 1 ] == L'_' );
+
+				if ( !edge )
+					continue;
+
+				if ( text [ i ] == L'g' && text [ i + 1 ] == L'_' )
+					width += 4;
+				else if ( text [ i ] == L'f' && text [ i + 1 ] == L'n' && text [ i + 2 ] == L'_' )
+					width += 1;
+
+			}
+
+			return width;
+
+		}
+
+		static bool starts ( const wchar_t* text, int32_t length, const wchar_t* head ) {
+
+			int32_t i = 0;
+
+			for ( ; head [ i ]; i++ ) {
+
+				if ( i >= length || text [ i ] != head [ i ] )
+					return false;
+
+			}
+
+			return true;
+
+		}
+
+		void wrap_logic ( ) {
+
+			int32_t start = current.text;
+			int32_t length = r->text.count ( ) - start;
+
+			if ( spaced || length < 8 || !logic_wrap )
+				return;
+
+			const wchar_t* text = r->text.data ( ) + start;
+			int32_t open_at = -1;
+
+			if ( starts ( text, length, L"if ( " ) )
+				open_at = 3;
+			else if ( starts ( text, length, L"else if ( " ) )
+				open_at = 8;
+			else if ( starts ( text, length, L"while ( " ) )
+				open_at = 6;
+
+			if ( open_at < 0 || text [ length - 1 ] != L')' || text [ length - 2 ] != L' ' )
+				return;
+
+			if ( estimated_width ( text, length ) < 123 )
+				return;
+
+			int32_t close = length - 2;
+			base::list < int32_t > cuts;
+			int32_t level = 0;
+			bool quoted = false;
+
+			for ( int32_t i = open_at + 2; i + 3 < close; i++ ) {
+
+				wchar_t c = text [ i ];
+
+				if ( ( c == L'"' || c == L'\'' ) && text [ i - 1 ] != L'\\' )
+					quoted = !quoted;
+
+				if ( quoted )
+					continue;
+
+				if ( c == L'(' || c == L'[' )
+					level++;
+				else if ( c == L')' || c == L']' )
+					level--;
+				else if ( level == 0 && c == L' ' && ( ( text [ i + 1 ] == L'|' && text [ i + 2 ] == L'|' ) || ( text [ i + 1 ] == L'&' && text [ i + 2 ] == L'&' ) ) && text [ i + 3 ] == L' ' )
+					cuts.push ( i );
+
+			}
+
+			if ( cuts.empty ( ) )
+				return;
+
+			int32_t column = open_at - 1;
+			base::list < wchar_t > copy;
+
+			for ( int32_t i = 0; i < length; i++ )
+				copy.push ( text [ i ] );
+
+			base::list < int32_t > moved;
+
+			moved.fill ( static_cast < size_t > ( length + 1 ), 0 );
+
+			while ( r->text.count ( ) > start )
+				r->text.pop ( );
+
+			base::list < int32_t > breaks;
+			int32_t cut = 0;
+
+			for ( int32_t i = 0; i < length; i++ ) {
+
+				if ( cut < cuts.count ( ) && i == cuts [ static_cast < size_t > ( cut ) ] ) {
+
+					cut++;
+					moved [ static_cast < size_t > ( i ) ] = r->text.count ( ) - start;
+					breaks.push ( r->text.count ( ) - start );
+
+					for ( int32_t k = 0; k < column; k++ )
+						r->text.push ( L' ' );
+
+					continue;
+
+				}
+
+				moved [ static_cast < size_t > ( i ) ] = r->text.count ( ) - start;
+				r->text.push ( copy [ static_cast < size_t > ( i ) ] );
+
+			}
+
+			moved [ static_cast < size_t > ( length ) ] = r->text.count ( ) - start;
+
+			for ( int32_t s = current.first_span; s < r->spans.count ( ); s++ ) {
+
+				span& item = r->spans [ static_cast < size_t > ( s ) ];
+				int32_t from = item.start - start;
+				int32_t to = from + item.length;
+
+				if ( from < 0 || to > length || to <= from )
+					continue;
+
+				item.start = start + moved [ static_cast < size_t > ( from ) ];
+				item.length = moved [ static_cast < size_t > ( to - 1 ) ] + 1 - moved [ static_cast < size_t > ( from ) ];
+
+			}
+
+			int32_t from = 0;
+			int32_t span_at = current.first_span;
+
+			for ( int32_t edge : breaks ) {
+
+				line piece = current;
+
+				piece.text = start + from;
+				piece.length = edge - from;
+				piece.first_span = span_at;
+
+				while ( span_at < r->spans.count ( ) && r->spans [ static_cast < size_t > ( span_at ) ].start < start + edge )
+					span_at++;
+
+				piece.span_count = span_at - piece.first_span;
+				r->lines.push ( piece );
+				from = edge;
+
+			}
+
+			current.text = start + from;
+			current.first_span = span_at;
+
+		}
+
 		void finish ( ) {
 
 			if ( !open )
 				return;
 
+			wrap_logic ( );
 			wrap ( );
 
 			if ( names && current.address && current.address != commented ) {
