@@ -442,6 +442,7 @@ namespace decompiler {
 	static bool base_first = true;
 	static bool array_vars = true;
 	static bool array_memsets = true;
+	static bool shared_returns = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -4961,6 +4962,118 @@ namespace decompiler {
 			int32_t follow = follow_of ( block, stop, context );
 			bool taken_jump = taken == context.loop || taken == context.exit;
 			bool other_jump = other == context.loop || other == context.exit;
+
+			if ( shared_returns && follow < 0 && context.loop < 0 && taken >= 0 && other >= 0 && taken < count && other < count ) {
+
+				int32_t last = -1;
+
+				for ( int32_t i = 0; i < count; i++ ) {
+
+					if ( b.code [ static_cast < size_t > ( i ) ].reachable && ( last < 0 || b.graph.blocks [ static_cast < size_t > ( i ) ].start > b.graph.blocks [ static_cast < size_t > ( last ) ].start ) )
+						last = i;
+
+				}
+
+				auto same_value = [ & ] ( int32_t x ) {
+
+					const block_code& tail = b.code [ static_cast < size_t > ( x ) ];
+
+					if ( tail.returned < 0 )
+						return true;
+
+					const expr& back = b.exprs [ static_cast < size_t > ( tail.returned ) ];
+
+					if ( back.kind == op::CONST )
+						return true;
+
+					if ( back.kind != op::VAR )
+						return false;
+
+					for ( int32_t p : pred [ static_cast < size_t > ( x ) ] ) {
+
+						const block_code& from = b.code [ static_cast < size_t > ( p ) ];
+
+						for ( int32_t s = from.first; s < from.first + from.count && s < b.statements.count ( ); s++ ) {
+
+							const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+							if ( line.kind == stmt::ASSIGN && line.left >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( line.left ) ].value == back.value )
+								return false;
+
+						}
+
+					}
+
+					return true;
+
+				};
+
+				auto falls_in = [ & ] ( int32_t x ) {
+
+					for ( int32_t p : pred [ static_cast < size_t > ( x ) ] ) {
+
+						if ( b.graph.blocks [ static_cast < size_t > ( p ) ].end == b.graph.blocks [ static_cast < size_t > ( x ) ].start && b.code [ static_cast < size_t > ( p ) ].end != term::BRANCH )
+							return true;
+
+					}
+
+					return false;
+
+				};
+
+				auto sets_return = [ & ] ( int32_t x, int32_t end_block ) {
+
+					const block_code& tail = b.code [ static_cast < size_t > ( end_block ) ];
+
+					if ( tail.returned < 0 )
+						return true;
+
+					const expr& back = b.exprs [ static_cast < size_t > ( tail.returned ) ];
+
+					if ( back.kind == op::CONST )
+						return true;
+
+					if ( back.kind != op::VAR )
+						return false;
+
+					const block_code& mine = b.code [ static_cast < size_t > ( x ) ];
+
+					for ( int32_t s = mine.first; s < mine.first + mine.count && s < b.statements.count ( ); s++ ) {
+
+						const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+						if ( line.kind == stmt::ASSIGN && line.left >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( line.left ) ].value == back.value && line.right >= 0 && b.exprs [ static_cast < size_t > ( line.right ) ].kind == op::CONST )
+							return true;
+
+					}
+
+					return false;
+
+				};
+
+				auto shared = [ & ] ( int32_t x ) {
+
+					if ( emitted [ static_cast < size_t > ( x ) ] || pred [ static_cast < size_t > ( x ) ].count ( ) < 2 || !small_block ( x ) || !falls_in ( x ) || header [ static_cast < size_t > ( x ) ] )
+						return false;
+
+					if ( exit_block ( x ) )
+						return same_value ( x ) && ( x == last || sets_return ( x, x ) );
+
+					const block_code& step = b.code [ static_cast < size_t > ( x ) ];
+
+					if ( step.end != term::FALL || step.taken < 0 || step.taken >= count || !exit_block ( step.taken ) || !empty_block ( step.taken ) )
+						return false;
+
+					return sets_return ( x, step.taken );
+
+				};
+
+				if ( shared ( taken ) && !exit_block ( other ) )
+					follow = taken;
+				else if ( shared ( other ) && !exit_block ( taken ) )
+					follow = other;
+
+			}
 
 			if ( context.loop >= 0 && stop == context.loop && ( taken == context.loop ) != ( other == context.loop ) ) {
 
