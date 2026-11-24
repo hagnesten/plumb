@@ -441,6 +441,7 @@ namespace decompiler {
 	static bool bit_tests = true;
 	static bool base_first = true;
 	static bool array_vars = true;
+	static bool array_memsets = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -2694,10 +2695,37 @@ namespace decompiler {
 					out.put ( L"(" );
 					operand = false;
 
+					int32_t whole = -1;
+
+					if ( item.arg_count == 3 && base::same_text ( called, L"memset" ) ) {
+
+						const expr& where = b.exprs [ static_cast < size_t > ( b.args [ static_cast < size_t > ( item.first_arg ) ] ) ];
+						const expr& amount = b.exprs [ static_cast < size_t > ( b.args [ static_cast < size_t > ( item.first_arg + 2 ) ] ) ];
+						int64_t v = where.kind == op::ADDRESS ? ( where.a < 0 ? where.value : ( b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::VAR ? b.exprs [ static_cast < size_t > ( where.a ) ].value : -1 ) ) : -1;
+
+						if ( v >= 0 && v < array_of.count ( ) && array_of [ static_cast < size_t > ( v ) ] == v && amount.kind == op::CONST && amount.value == static_cast < int64_t > ( array_step [ static_cast < size_t > ( v ) ] ) * array_count [ static_cast < size_t > ( v ) ] )
+							whole = static_cast < int32_t > ( v );
+
+					}
+
 					for ( int32_t i = 0; i < item.arg_count; i++ ) {
 
 						if ( i )
 							out.put ( L", " );
+
+						if ( i == 2 && whole >= 0 ) {
+
+							wchar_t array_name [ 64 ];
+
+							var_name ( whole, array_name );
+							out.put ( L"sizeof", syntax::KEYWORD );
+							out.put ( L"(" );
+							out.put ( array_name, syntax::LOCAL );
+							out.put ( L")" );
+
+							continue;
+
+						}
 
 						value ( b.args [ static_cast < size_t > ( item.first_arg + i ) ], 2 );
 
@@ -6855,6 +6883,145 @@ namespace decompiler {
 
 	}
 
+	static void stack_memsets ( builder& b, const base::list < int32_t >& array_of ) {
+
+		if ( !array_memsets )
+			return;
+
+		int32_t total = b.vars.count ( );
+
+		auto target_of = [ & ] ( const statement& line, int32_t& var, uint8_t& size ) -> bool {
+
+			if ( ( line.kind != stmt::ASSIGN && line.kind != stmt::STORE ) || line.left < 0 || line.right < 0 )
+				return false;
+
+			const expr& right = b.exprs [ static_cast < size_t > ( line.right ) ];
+
+			if ( right.kind != op::CONST || right.value != 0 || ( right.bits & POINTER ) )
+				return false;
+
+			const expr& left = b.exprs [ static_cast < size_t > ( line.left ) ];
+
+			if ( left.kind == op::VAR ) {
+
+				var = static_cast < int32_t > ( left.value );
+				size = static_cast < uint8_t > ( left.size );
+
+			} else if ( left.kind == op::LOAD && left.a >= 0 && b.exprs [ static_cast < size_t > ( left.a ) ].kind == op::ADDRESS ) {
+
+				const expr& where = b.exprs [ static_cast < size_t > ( left.a ) ];
+
+				var = static_cast < int32_t > ( where.a < 0 ? where.value : ( b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::VAR ? b.exprs [ static_cast < size_t > ( where.a ) ].value : -1 ) );
+				size = static_cast < uint8_t > ( left.size );
+
+			} else
+				return false;
+
+			return var >= 0 && var < total && var < array_of.count ( ) && array_of [ static_cast < size_t > ( var ) ] >= 0;
+
+		};
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			int32_t head = -1;
+			int64_t low = 0;
+			int64_t high = 0;
+			int32_t first_line = -1;
+			int32_t low_var = -1;
+			base::list < int32_t > run;
+
+			auto close = [ & ] ( ) {
+
+				if ( run.count ( ) >= 2 && high - low >= 24 && first_line >= 0 ) {
+
+					int32_t place = b.make ( op::ADDRESS, 8, -1, -1, low_var, POINTER );
+					int32_t zero = b.make ( op::CONST, 4, -1, -1, 0, 0 );
+					int32_t amount = b.make ( op::CONST, 4, -1, -1, high - low, 0 );
+					int32_t call = b.make ( op::INTRINSIC, 8, -1, -1, 1, 0 );
+					int32_t first = b.args.count ( );
+
+					b.args.push ( place );
+					b.args.push ( zero );
+					b.args.push ( amount );
+					b.exprs [ static_cast < size_t > ( call ) ].first_arg = first;
+					b.exprs [ static_cast < size_t > ( call ) ].arg_count = 3;
+
+					for ( int32_t s : run )
+						b.statements [ static_cast < size_t > ( s ) ].kind = stmt::NOP;
+
+					statement& kept = b.statements [ static_cast < size_t > ( first_line ) ];
+
+					kept.kind = stmt::EXPR;
+					kept.left = -1;
+					kept.right = call;
+
+				}
+
+				run.clear ( );
+				head = -1;
+				first_line = -1;
+
+			};
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+				if ( line.kind == stmt::NOP )
+					continue;
+
+				int32_t var = -1;
+				uint8_t size = 0;
+
+				if ( !target_of ( line, var, size ) ) {
+
+					close ( );
+
+					continue;
+
+				}
+
+				int32_t owner = array_of [ static_cast < size_t > ( var ) ];
+				int64_t from = b.vars [ static_cast < size_t > ( var ) ].offset - b.vars [ static_cast < size_t > ( owner ) ].offset;
+
+				if ( head == owner && from == high ) {
+
+					high += size;
+					run.push ( s );
+
+					continue;
+
+				}
+
+				if ( head == owner && from + size == low ) {
+
+					low = from;
+					low_var = var;
+					run.push ( s );
+
+					continue;
+
+				}
+
+				close ( );
+				head = owner;
+				low = from;
+				high = from + size;
+				low_var = var;
+				first_line = s;
+				run.push ( s );
+
+			}
+
+			close ( );
+
+		}
+
+	}
+
 	static void vector_vars ( builder& b, base::list < uint8_t >& vector ) {
 
 		int32_t total = b.vars.count ( );
@@ -8489,6 +8656,7 @@ namespace decompiler {
 		boolean_vars ( b, body_emitter.boolean );
 		vector_vars ( b, body_emitter.vector );
 		stack_arrays ( b, body_emitter.array_of, body_emitter.array_step, body_emitter.array_count );
+		stack_memsets ( b, body_emitter.array_of );
 
 		if ( !body_emitter.indexing ) {
 
