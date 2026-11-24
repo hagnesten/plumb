@@ -3388,6 +3388,25 @@ namespace decompiler {
 
 						int32_t argument = b.args [ static_cast < size_t > ( item.first_arg + i ) ];
 						int32_t flavor = simd_types ? packed_flavor ( called, false ) : 0;
+						const wchar_t* pointer_cast = nullptr;
+
+						if ( simd_types && i == 0 && ( base::same_text ( called, L"_mm_storel_ps" ) || base::same_text ( called, L"_mm_storeh_ps" ) || base::same_text ( called, L"_mm_storel_pd" ) || base::same_text ( called, L"_mm_storeh_pd" ) ) )
+							pointer_cast = L"double *";
+						else if ( simd_types && i == 1 && ( base::same_text ( called, L"_mm_loadl_pi" ) || base::same_text ( called, L"_mm_loadh_pi" ) ) )
+							pointer_cast = L"const __m64 *";
+						else if ( simd_types && i == 1 && ( base::same_text ( called, L"_mm_loadl_pd" ) || base::same_text ( called, L"_mm_loadh_pd" ) ) )
+							pointer_cast = L"const double *";
+
+						if ( pointer_cast ) {
+
+							out.put ( L"(" );
+							out.put ( pointer_cast, syntax::TYPE );
+							out.put ( L")" );
+							value ( argument, 14 );
+
+							continue;
+
+						}
 
 						if ( simd_types && i == 1 && b.exprs [ static_cast < size_t > ( argument ) ].kind == op::CONST && called [ 0 ] == L'_' && called [ 4 ] == L's' && ( called [ 5 ] == L'r' || called [ 5 ] == L'l' ) && called [ 7 ] == L'i' && called [ 8 ] == L'_' && called [ 9 ] == L'e' && called [ 10 ] == L'p' ) {
 

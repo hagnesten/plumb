@@ -9,8 +9,18 @@ namespace decompiler {
 		L"sqrtf", L"sqrt", L"fminf", L"fmaxf", L"fmin", L"fmax", L"__rdtsc", L"__cpuid", L"_InterlockedExchangeAdd", L"_InterlockedCompareExchange",
 		L"_InterlockedExchange", L"__overflow", L"__parity", L"__unordered", L"__readfsqword", L"__readgsqword", L"__fastfail", L"_bittest", L"__halt",
 		L"_mm_and", L"_mm_or", L"_mm_xor", L"_mm_andnot", L"__shiftleft128", L"__shiftright128", L"__readeflags", L"_xgetbv", L"__syscall",
-		L"NtCurrentTeb", L"__readgsbyte", L"__readgsword", L"__readgsdword", L"__readfsbyte", L"__readfsword", L"__readfsdword"
+		L"NtCurrentTeb", L"__readgsbyte", L"__readgsword", L"__readgsdword", L"__readfsbyte", L"__readfsword", L"__readfsdword",
+		L"_mm_storel_ps", L"_mm_storeh_ps", L"_mm_loadl_pi", L"_mm_loadh_pi", L"_mm_storel_pd", L"_mm_storeh_pd", L"_mm_loadl_pd", L"_mm_loadh_pd"
 	};
+
+	static const wchar_t* const compare_names [ 32 ] = {
+		L"_mm_cmpeq_ps", L"_mm_cmplt_ps", L"_mm_cmple_ps", L"_mm_cmpunord_ps", L"_mm_cmpneq_ps", L"_mm_cmpnlt_ps", L"_mm_cmpnle_ps", L"_mm_cmpord_ps",
+		L"_mm_cmpeq_ss", L"_mm_cmplt_ss", L"_mm_cmple_ss", L"_mm_cmpunord_ss", L"_mm_cmpneq_ss", L"_mm_cmpnlt_ss", L"_mm_cmpnle_ss", L"_mm_cmpord_ss",
+		L"_mm_cmpeq_pd", L"_mm_cmplt_pd", L"_mm_cmple_pd", L"_mm_cmpunord_pd", L"_mm_cmpneq_pd", L"_mm_cmpnlt_pd", L"_mm_cmpnle_pd", L"_mm_cmpord_pd",
+		L"_mm_cmpeq_sd", L"_mm_cmplt_sd", L"_mm_cmple_sd", L"_mm_cmpunord_sd", L"_mm_cmpneq_sd", L"_mm_cmpnlt_sd", L"_mm_cmpnle_sd", L"_mm_cmpord_sd"
+	};
+
+	static const int32_t compare_base = 2000;
 
 	enum intrinsic_id : int32_t {
 
@@ -19,6 +29,7 @@ namespace decompiler {
 		I_XCHG, I_OVERFLOW, I_PARITY, I_UNORDERED, I_FS, I_GS, I_FASTFAIL, I_BITTEST, I_HALT,
 		I_AND, I_OR, I_XOR, I_ANDNOT, I_SHLD, I_SHRD, I_FLAGS, I_XGETBV, I_SYSCALL,
 		I_TEB, I_GSBYTE, I_GSWORD, I_GSDWORD, I_FSBYTE, I_FSWORD, I_FSDWORD,
+		I_STOREL_PS, I_STOREH_PS, I_LOADL_PI, I_LOADH_PI, I_STOREL_PD, I_STOREH_PD, I_LOADL_PD, I_LOADH_PD,
 
 	};
 
@@ -96,6 +107,9 @@ namespace decompiler {
 	static const int32_t packed_base = 1000;
 
 	const wchar_t* intrinsic_name ( int32_t id ) {
+
+		if ( id >= compare_base && id < compare_base + 32 )
+			return compare_names [ id - compare_base ];
 
 		if ( id >= packed_base ) {
 
@@ -571,6 +585,7 @@ namespace decompiler {
 	}
 
 	static bool negate_pairs = true;
+	static bool sse_extras = true;
 
 	int32_t builder::negate ( int32_t condition ) {
 
@@ -1208,6 +1223,10 @@ namespace decompiler {
 			case I_ANDNOT:
 			case I_SHLD:
 			case I_SHRD:
+			case I_LOADL_PI:
+			case I_LOADH_PI:
+			case I_LOADL_PD:
+			case I_LOADH_PD:
 				return true;
 
 			default:
@@ -4237,6 +4256,51 @@ namespace decompiler {
 		bool packed ( const x86::instruction& ins ) {
 
 			builder& k = *b;
+
+			if ( sse_extras && ins.count >= 3 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 2 ].type == x86::kind::IMM && ( ins.name == mnemonic::cmpps || ins.name == mnemonic::cmpss || ins.name == mnemonic::cmppd || ins.name == mnemonic::cmpsd ) ) {
+
+				int32_t family = ins.name == mnemonic::cmpps ? 0 : ( ins.name == mnemonic::cmpss ? 1 : ( ins.name == mnemonic::cmppd ? 2 : 3 ) );
+				int32_t predicate = static_cast < int32_t > ( ins.operands [ 2 ].value & 7 );
+				int32_t value = intrinsic ( compare_base + family * 8 + predicate, 16, read ( ins, 0 ), read ( ins, 1 ) );
+
+				k.exprs [ static_cast < size_t > ( value ) ].bits |= FLOATING;
+				write ( ins, 0, value );
+
+				return true;
+
+			}
+
+			if ( sse_extras && ins.count == 2 && ( ins.name == mnemonic::movlps || ins.name == mnemonic::movhps || ins.name == mnemonic::movlpd || ins.name == mnemonic::movhpd ) ) {
+
+				bool high = ins.name == mnemonic::movhps || ins.name == mnemonic::movhpd;
+				bool doubles = ins.name == mnemonic::movlpd || ins.name == mnemonic::movhpd;
+
+				if ( ins.operands [ 0 ].type == x86::kind::MEM && ins.operands [ 1 ].type == x86::kind::REG ) {
+
+					int32_t where = address_of ( ins, ins.operands [ 0 ] );
+					int32_t value = read ( ins, 1 );
+
+					flush ( live );
+					emit ( stmt::EXPR, -1, intrinsic ( doubles ? ( high ? I_STOREH_PD : I_STOREL_PD ) : ( high ? I_STOREH_PS : I_STOREL_PS ), 8, where, value ), ins.address );
+
+					return true;
+
+				}
+
+				if ( ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::MEM ) {
+
+					int32_t where = address_of ( ins, ins.operands [ 1 ] );
+					int32_t value = intrinsic ( doubles ? ( high ? I_LOADH_PD : I_LOADL_PD ) : ( high ? I_LOADH_PI : I_LOADL_PI ), 16, read ( ins, 0 ), where );
+
+					k.exprs [ static_cast < size_t > ( value ) ].bits |= FLOATING;
+					write ( ins, 0, value );
+
+					return true;
+
+				}
+
+			}
+
 			int32_t index = -1;
 			int32_t total = static_cast < int32_t > ( sizeof ( packed_forms ) / sizeof ( packed_forms [ 0 ] ) );
 
