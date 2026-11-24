@@ -83,6 +83,7 @@ namespace decompiler {
 	static bool calls_forward = true;
 	static bool swap_copies = true;
 	static bool copy_local = true;
+	static bool expr_fixed = true;
 
 	static bool has_call ( const builder& b, int32_t e, int32_t depth ) {
 
@@ -331,6 +332,160 @@ namespace decompiler {
 				return found == wanted;
 
 			};
+
+			auto pure_fixed = [ & ] ( auto& self, int32_t e, int32_t depth ) -> bool {
+
+				if ( e < 0 || depth > 16 )
+					return false;
+
+				const expr& node = exprs [ static_cast < size_t > ( e ) ];
+
+				switch ( node.kind ) {
+
+					case op::CONST:
+						return true;
+
+					case op::VAR:
+						return fixed ( node.value ) && !( vars [ static_cast < size_t > ( node.value ) ].bits & FLOATING );
+
+					case op::ADD:
+					case op::SUB:
+					case op::AND:
+					case op::OR:
+					case op::XOR:
+					case op::SHL:
+					case op::SHR:
+					case op::MUL:
+						return !( node.bits & FLOATING ) && self ( self, node.a, depth + 1 ) && self ( self, node.b, depth + 1 );
+
+					case op::CAST:
+						return !( node.bits & FLOATING ) && self ( self, node.a, depth + 1 );
+
+					default:
+						return false;
+
+				}
+
+			};
+
+			for ( int32_t v = 0; v < total && expr_fixed; v++ ) {
+
+				if ( !plain ( v ) || defs [ static_cast < size_t > ( v ) ] != 1 || uses [ static_cast < size_t > ( v ) ] != 1 || single [ static_cast < size_t > ( v ) ] < 0 || returned [ static_cast < size_t > ( v ) ] || ( vars [ static_cast < size_t > ( v ) ].bits & FLOATING ) )
+					continue;
+
+				statement& line = statements [ static_cast < size_t > ( single [ static_cast < size_t > ( v ) ] ) ];
+				const expr source = exprs [ static_cast < size_t > ( line.right ) ];
+
+				if ( source.kind == op::VAR || source.kind == op::CONST || source.size != exprs [ static_cast < size_t > ( line.left ) ].size || !pure_fixed ( pure_fixed, line.right, 0 ) )
+					continue;
+
+				int32_t value = line.right;
+				bool self_use = false;
+				base::list < int32_t > here;
+
+				here.fill ( static_cast < size_t > ( total ), 0 );
+				count_vars ( *this, line.right, here, 0 );
+				self_use = here [ static_cast < size_t > ( v ) ] != 0;
+
+				if ( self_use )
+					continue;
+
+				uint64_t def_at = line.address;
+				uint64_t use_at = 0;
+
+				for ( int32_t k = 0; k < code.count ( ) && !use_at; k++ ) {
+
+					const block_code& block = code [ static_cast < size_t > ( k ) ];
+
+					for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ) && !use_at; s++ ) {
+
+						const statement& other = statements [ static_cast < size_t > ( s ) ];
+
+						if ( other.kind == stmt::NOP )
+							continue;
+
+						base::list < int32_t > seen;
+
+						seen.fill ( static_cast < size_t > ( total ), 0 );
+						count_vars ( *this, other.right, seen, 0 );
+
+						if ( !( other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR ) )
+							count_vars ( *this, other.left, seen, 0 );
+
+						if ( seen [ static_cast < size_t > ( v ) ] )
+							use_at = other.address ? other.address : 1;
+
+					}
+
+					if ( !use_at ) {
+
+						base::list < int32_t > seen;
+
+						seen.fill ( static_cast < size_t > ( total ), 0 );
+						count_vars ( *this, block.condition, seen, 0 );
+						count_vars ( *this, block.selector, seen, 0 );
+						count_vars ( *this, block.returned, seen, 0 );
+
+						if ( seen [ static_cast < size_t > ( v ) ] && k < graph.blocks.count ( ) )
+							use_at = graph.blocks [ static_cast < size_t > ( k ) ].end - 1;
+
+					}
+
+				}
+
+				bool hoisted_out = false;
+
+				for ( const analysis::edge& link : graph.edges ) {
+
+					if ( link.from < 0 || link.to < 0 || link.from >= graph.blocks.count ( ) || link.to >= graph.blocks.count ( ) )
+						continue;
+
+					uint64_t head = graph.blocks [ static_cast < size_t > ( link.to ) ].start;
+					uint64_t tail = graph.blocks [ static_cast < size_t > ( link.from ) ].end;
+
+					if ( graph.blocks [ static_cast < size_t > ( link.from ) ].start < head )
+						continue;
+
+					bool use_inside = use_at >= head && use_at < tail;
+					bool def_inside = def_at >= head && def_at < tail;
+
+					if ( use_inside && !def_inside )
+						hoisted_out = true;
+
+				}
+
+				if ( hoisted_out || !use_at )
+					continue;
+
+				line.kind = stmt::NOP;
+				vars [ static_cast < size_t > ( v ) ].ghost = true;
+				vars [ static_cast < size_t > ( v ) ].born = line.address;
+
+				for ( statement& other : statements ) {
+
+					if ( other.kind == stmt::NOP || other.kind == stmt::ASM )
+						continue;
+
+					bool defines = other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR;
+
+					if ( !defines )
+						other.left = substitute ( *this, other.left, v, value, 0 );
+
+					other.right = substitute ( *this, other.right, v, value, 0 );
+
+				}
+
+				for ( block_code& block : code ) {
+
+					block.condition = substitute ( *this, block.condition, v, value, 0 );
+					block.selector = substitute ( *this, block.selector, v, value, 0 );
+					block.returned = substitute ( *this, block.returned, v, value, 0 );
+
+				}
+
+				changed = true;
+
+			}
 
 			for ( int32_t v = 0; v < total && copy_fixed; v++ ) {
 
