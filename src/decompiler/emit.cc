@@ -456,6 +456,7 @@ namespace decompiler {
 	static bool nested_loops = true;
 	static bool simd_types = true;
 	static bool plain_copies = true;
+	static bool shift_products = true;
 	static int32_t packed_flavor ( const wchar_t* name, bool result );
 	static bool widened_halves = true;
 	static bool void_arithmetic = true;
@@ -2587,6 +2588,17 @@ namespace decompiler {
 
 			uint8_t saved_size = holder_size;
 			op saved_kind = holder_kind;
+
+			if ( shift_products && node.kind == op::SHL && node.a >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( node.b ) ].value >= 1 && b.exprs [ static_cast < size_t > ( node.b ) ].value <= 5 && !( node.bits & FLOATING ) ) {
+
+				int32_t shift = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( node.b ) ].value );
+				uint8_t size = node.size;
+				uint8_t bits = node.bits;
+				int32_t operand = node.a;
+
+				index = b.make ( op::MUL, size, operand, b.constant ( 1ll << shift, size ), 0, bits );
+
+			}
 
 			value_body ( index, parent, hex_hint );
 			holder_size = saved_size;
