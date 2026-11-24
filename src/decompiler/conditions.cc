@@ -61,6 +61,15 @@ namespace decompiler {
 		copy.b = c;
 		copy.c = third;
 
+		if ( copy.kind == op::MUL && a >= 0 && c >= 0 && b.exprs [ static_cast < size_t > ( c ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( a ) ].kind == op::MUL ) {
+
+			const expr& inner = b.exprs [ static_cast < size_t > ( a ) ];
+
+			if ( inner.b >= 0 && b.exprs [ static_cast < size_t > ( inner.b ) ].kind == op::CONST && inner.size == copy.size )
+				return b.binary ( op::MUL, a, c, copy.size, copy.bits );
+
+		}
+
 		if ( copy.arg_count ) {
 
 			copy.first_arg = b.args.count ( );
