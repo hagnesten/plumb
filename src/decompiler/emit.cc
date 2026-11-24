@@ -606,6 +606,7 @@ namespace decompiler {
 	static bool brace_before_else = true;
 	static bool power_hex = true;
 	static bool unsigned_results = true;
+	static bool expand_strings = true;
 	static bool raw_float_copies = true;
 	static bool scalar_lanes = true;
 	static bool float_zero = true;
@@ -11073,6 +11074,19 @@ namespace decompiler {
 
 				if ( unsigned_results && ( item.bits & UNSIGNED ) && base::same_text ( declared, L"int" ) )
 					declared = L"unsigned int";
+
+				if ( expand_strings && item.kind != var_kind::PARAMETER ) {
+
+					if ( base::same_text ( declared, L"LPCWSTR" ) )
+						declared = L"const WCHAR *";
+					else if ( base::same_text ( declared, L"LPWSTR" ) )
+						declared = L"WCHAR *";
+					else if ( base::same_text ( declared, L"LPCSTR" ) )
+						declared = L"const CHAR *";
+					else if ( base::same_text ( declared, L"LPSTR" ) )
+						declared = L"CHAR *";
+
+				}
 
 			}
 
