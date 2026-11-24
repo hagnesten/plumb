@@ -448,6 +448,7 @@ namespace decompiler {
 	static bool mask_forms = true;
 	static bool latch_folds = true;
 	static bool inferred_unsigned = true;
+	static bool widen_assign = true;
 	static bool void_arithmetic = true;
 	static bool diamond_ternary = false;
 	static bool guarded_loops = true;
@@ -478,6 +479,7 @@ namespace decompiler {
 		bool vector_store = false;
 		bool truth = false;
 		bool in_logic = false;
+		bool untruncate = false;
 		base::list < int32_t > array_of;
 		base::list < int32_t > array_step;
 		base::list < int32_t > array_count;
@@ -2971,7 +2973,16 @@ namespace decompiler {
 
 					const expr& inner = b.exprs [ static_cast < size_t > ( item.a ) ];
 					bool float_change = ( inner.bits & FLOATING ) != ( item.bits & FLOATING );
-					bool retyped = inner.kind == op::VAR && inner.value >= 0 && inner.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( inner.value ) ].empty ( ) && b.vars [ static_cast < size_t > ( inner.value ) ].size == item.size;
+
+					if ( untruncate && !float_change && inner.kind == op::VAR && inner.size > item.size && item.size == 4 ) {
+
+						value ( item.a, parent );
+
+						break;
+
+					}
+
+					bool retyped =inner.kind == op::VAR && inner.value >= 0 && inner.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( inner.value ) ].empty ( ) && b.vars [ static_cast < size_t > ( inner.value ) ].size == item.size;
 					bool shown = ( float_change || inner.size != item.size ) && !no_casts && !retyped;
 
 					if ( ( item.bits & POINTER ) && ( item.bits & FLOATING ) ) {
@@ -3811,6 +3822,22 @@ namespace decompiler {
 
 						}
 
+						semicolon ( );
+
+						break;
+
+					}
+
+					if ( widen_assign && item.kind == stmt::ASSIGN && left.kind == op::VAR && left.size == 8 && left.value >= 0 && left.value < b.vars.count ( ) && !( b.vars [ static_cast < size_t > ( left.value ) ].bits & ( FLOATING | POINTER ) ) && pointer_step ( item.left ) == 0 && right.size == 4 && !( right.bits & FLOATING ) && ( right.kind == op::ADD || right.kind == op::SUB || right.kind == op::MUL || right.kind == op::SHL || right.kind == op::XOR || right.kind == op::OR ) && ( left.value >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( left.value ) ].empty ( ) ) ) {
+
+						value ( item.left, 0 );
+						out.put ( L" = ", syntax::OPERATOR );
+						out.put ( L"(unsigned int)", syntax::TYPE );
+						out.put ( L"(" );
+						untruncate = true;
+						value ( item.right, 0 );
+						untruncate = false;
+						out.put ( L")" );
 						semicolon ( );
 
 						break;
