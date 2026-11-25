@@ -1196,7 +1196,6 @@ namespace decompiler {
 			if ( item.kind == var_kind::STACK || ( item.bits & FLOATING ) || item.flags || probe.size != item.size )
 				continue;
 
-			block_code& target = code [ static_cast < size_t > ( zero_side ) ];
 			int64_t same_vars [ 4 ] = { v, -1, -1, -1 };
 			int32_t same_count = 1;
 
@@ -1270,8 +1269,6 @@ namespace decompiler {
 				}
 
 			}
-
-			( void ) target;
 
 			for ( int32_t slot = 0; slot < same_count; slot++ ) {
 
