@@ -1,4 +1,4 @@
-> **Buy me a coffee:** if Plumb is useful to you, Bitcoin tips are welcome at `bc1q8fdk4vnea7syk4chnjqayfdgphads2pv8kc3zz`
+> **Support Plumb:** Plumb is free and open source. If you'd like to help keep it going, you can donate Bitcoin to `bc1q8fdk4vnea7syk4chnjqayfdgphads2pv8kc3zz`
 
 # Plumb
 
