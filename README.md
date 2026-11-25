@@ -1,3 +1,5 @@
+> **Buy me a coffee:** if Plumb is useful to you, Bitcoin tips are welcome at `bc1q8fdk4vnea7syk4chnjqayfdgphads2pv8kc3zz`
+
 <img src="docs/media/icon.png" width="64" align="right" alt="">
 
 # Plumb
