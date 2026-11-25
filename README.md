@@ -1,4 +1,4 @@
-> **Support open source reversing:** `bc1q8fdk4vnea7syk4chnjqayfdgphads2pv8kc3zz`
+> **Support open source reverse engineering:** `bc1q8fdk4vnea7syk4chnjqayfdgphads2pv8kc3zz`
 
 # Plumb
 
