@@ -603,6 +603,7 @@ namespace decompiler {
 	static bool api_types = true;
 	static bool double_pointees = true;
 	static bool low_writes = true;
+	static bool unsigned_bounds = true;
 	static bool anchored_globals = true;
 	static bool brace_before_else = true;
 	static bool power_hex = true;
@@ -4763,11 +4764,14 @@ namespace decompiler {
 
 					bool signed_compare = compare && ( item.bits & SIGNED ) && item.kind != op::EQ && item.kind != op::NE && !( item.bits & FLOATING );
 
+					bool negative_bound = false;
+
 					if ( cast_lhs ) {
 
 						out.put ( lhs.size == 1 ? L"(unsigned __int8)" : ( lhs.size == 2 ? L"(unsigned __int16)" : ( lhs.size == 4 ? L"(unsigned int)" : L"(unsigned __int64)" ) ), syntax::TYPE );
 						value ( item.a, 14, bitwise );
 						unsigned_compare = false;
+						negative_bound = unsigned_bounds && right.value < 0;
 
 					} else if ( unsigned_narrow && unsigned_compare && !no_casts && lhs.kind == op::CAST && lhs.a >= 0 && lhs.size < b.exprs [ static_cast < size_t > ( lhs.a ) ].size && lhs.size <= 4 && !( lhs.bits & FLOATING ) && !( b.exprs [ static_cast < size_t > ( lhs.a ) ].bits & FLOATING ) ) {
 
@@ -4802,6 +4806,8 @@ namespace decompiler {
 
 						if ( float_compare && right.value == 0 )
 							real ( 0, right.size );
+						else if ( negative_bound )
+							number ( right.value, lhs.size, true, true );
 						else
 							number ( right.value, lhs.kind == op::SET ? lhs.size : right.size, !simple_constant ( right.value ) || ( ( unsigned_compare || hex_bound ) && right.value > 9 ), unsigned_compare || ( hex_bound && right.value < 0 ) );
 
