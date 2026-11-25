@@ -293,6 +293,8 @@ namespace decompiler {
 		void substitute_known ( );
 
 		void fold_constants ( );
+
+		void zero_edges ( );
 		void propagate_register_constants ( );
 
 		void inline_temps ( );

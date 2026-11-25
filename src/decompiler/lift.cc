@@ -590,6 +590,7 @@ namespace decompiler {
 	static bool float_flips = true;
 	static bool joined_sets = true;
 	static bool select_loads = true;
+	static bool zero_paths = true;
 	static bool sse_extras = true;
 
 	int32_t builder::negate ( int32_t condition ) {
@@ -5404,6 +5405,10 @@ namespace decompiler {
 		fold_returns ( );
 		split_webs ( );
 		fold_constants ( );
+
+		if ( zero_paths )
+			zero_edges ( );
+
 		inline_temps ( );
 		prune ( );
 
