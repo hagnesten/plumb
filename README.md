@@ -1,6 +1,6 @@
 > **Buy me a coffee:** if Plumb is useful to you, Bitcoin tips are welcome at `bc1q8fdk4vnea7syk4chnjqayfdgphads2pv8kc3zz`
 
-<h1>Plumb <img src="docs/media/icon.png" width="44" height="44" align="right" alt="Plumb logo"></h1>
+<h1>Plumb <img src="docs/media/icon.png" width="80" height="80" align="right" alt="Plumb logo"></h1>
 
 A disassembler, decompiler and debugger for Windows executables. Plumb is written in C++ with no C runtime and no third-party code, and the whole program is a single executable.
 
