@@ -1,5 +1,3 @@
-> **Support open source reverse engineering:** `bc1q8fdk4vnea7syk4chnjqayfdgphads2pv8kc3zz`
-
 # Plumb
 
 A disassembler, decompiler and debugger for Windows executables. Plumb is written in C++ with no C runtime and no third-party code, and the whole program is a single executable.
@@ -195,3 +193,7 @@ The executable lands in `build\release\Plumb.exe`. Pass a file path to open it o
 - `src/render` Direct3D 11 renderer, DirectWrite text and shaders
 - `src/ui` Views, panels, docking, menus and commands
 - `src/host` The window, input and frame pacing
+
+## Support
+
+Support open source reverse engineering: `bc1q8fdk4vnea7syk4chnjqayfdgphads2pv8kc3zz`
