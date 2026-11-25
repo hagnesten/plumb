@@ -603,6 +603,7 @@ namespace decompiler {
 	static bool api_types = true;
 	static bool double_pointees = true;
 	static bool low_writes = true;
+	static bool anchored_globals = true;
 	static bool brace_before_else = true;
 	static bool power_hex = true;
 	static bool unsigned_results = true;
@@ -2823,6 +2824,324 @@ namespace decompiler {
 
 		}
 
+		base::list < global_access > anchors;
+		base::list < int32_t > scale_defs;
+		bool anchors_ready = false;
+
+		bool split_global ( int32_t address, global_access& out_access ) const {
+
+			if ( address < 0 )
+				return false;
+
+			const expr& sum = b.exprs [ static_cast < size_t > ( address ) ];
+
+			if ( sum.kind != op::ADD || sum.a < 0 || sum.b < 0 || sum.size != 8 )
+				return false;
+
+			for ( int32_t side = 0; side < 2; side++ ) {
+
+				const expr& base_node = b.exprs [ static_cast < size_t > ( side ? sum.b : sum.a ) ];
+				int32_t other = side ? sum.a : sum.b;
+				const expr& scaled = b.exprs [ static_cast < size_t > ( other ) ];
+
+				if ( base_node.kind != op::CONST || !( base_node.bits & POINTER ) || b.file->section_at ( static_cast < uint64_t > ( base_node.value ) ) <= 0 )
+					continue;
+
+				out_access.start = static_cast < uint64_t > ( base_node.value );
+
+				if ( scaled.kind == op::MUL && scaled.a >= 0 && scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value > 0 ) {
+
+					out_access.index = scaled.a;
+					out_access.scale = b.exprs [ static_cast < size_t > ( scaled.b ) ].value;
+
+					int32_t plain = bare_index ( scaled.a );
+
+					for ( int32_t k = 0; plain >= 0 && k + 2 < scale_defs.count ( ); k += 3 ) {
+
+						int32_t from = scale_defs [ static_cast < size_t > ( k + 1 ) ];
+						int64_t factor = scale_defs [ static_cast < size_t > ( k + 2 ) ];
+
+						if ( factor > 1 && out_access.scale % factor == 0 && b.same ( from, plain ) ) {
+
+							out_access.index = scale_defs [ static_cast < size_t > ( k ) ];
+							out_access.scale /= factor;
+							out_access.renamed = true;
+
+							break;
+
+						}
+
+					}
+
+					return true;
+
+				}
+
+				if ( scaled.kind == op::SHL && scaled.a >= 0 && scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value < 8 ) {
+
+					out_access.index = scaled.a;
+					out_access.scale = 1ll << b.exprs [ static_cast < size_t > ( scaled.b ) ].value;
+
+					return true;
+
+				}
+
+				if ( !( scaled.bits & POINTER ) && scaled.kind != op::CONST ) {
+
+					out_access.index = other;
+					out_access.scale = 1;
+
+					return true;
+
+				}
+
+			}
+
+			return false;
+
+		}
+
+		int32_t bare_index ( int32_t e ) const {
+
+			while ( e >= 0 && b.exprs [ static_cast < size_t > ( e ) ].kind == op::CAST )
+				e = b.exprs [ static_cast < size_t > ( e ) ].a;
+
+			return e;
+
+		}
+
+		void collect_anchors ( ) {
+
+			anchors_ready = true;
+			anchors.clear ( );
+			scale_defs.clear ( );
+
+			{
+
+				base::list < int32_t > defs;
+
+				defs.fill ( b.vars.size ( ), 0 );
+
+				for ( const statement& line : b.statements ) {
+
+					if ( line.kind == stmt::ASSIGN && line.left >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( line.left ) ].value >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].value < b.vars.count ( ) )
+						defs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( line.left ) ].value ) ]++;
+
+				}
+
+				for ( const statement& line : b.statements ) {
+
+					if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 )
+						continue;
+
+					const expr& target = b.exprs [ static_cast < size_t > ( line.left ) ];
+					const expr& source = b.exprs [ static_cast < size_t > ( line.right ) ];
+
+					if ( target.kind != op::VAR || target.value < 0 || target.value >= b.vars.count ( ) || defs [ static_cast < size_t > ( target.value ) ] != 1 )
+						continue;
+
+					if ( source.kind != op::MUL || source.a < 0 || source.b < 0 || b.exprs [ static_cast < size_t > ( source.b ) ].kind != op::CONST || b.exprs [ static_cast < size_t > ( source.b ) ].value <= 1 || b.exprs [ static_cast < size_t > ( source.b ) ].value > 0x10000 )
+						continue;
+
+					scale_defs.push ( line.left );
+					scale_defs.push ( bare_index ( source.a ) );
+					scale_defs.push ( static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( source.b ) ].value ) );
+
+				}
+
+			}
+
+			auto walk = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+				if ( e < 0 || depth > 96 )
+					return;
+
+				const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+				global_access item;
+
+				if ( node.kind == op::LOAD && !( node.bits & FLOATING ) && node.size <= 8 && split_global ( node.a, item ) ) {
+
+					item.size = node.size;
+					anchors.push ( item );
+
+				}
+
+				self ( self, node.a, depth + 1 );
+				self ( self, node.b, depth + 1 );
+				self ( self, node.c, depth + 1 );
+
+				for ( int32_t i = 0; i < node.arg_count; i++ )
+					self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+			};
+
+			for ( const block_code& block : b.code ) {
+
+				if ( !block.reachable )
+					continue;
+
+				for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+					const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+					if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+						continue;
+
+					walk ( walk, line.left, 0 );
+					walk ( walk, line.right, 0 );
+
+				}
+
+				walk ( walk, block.condition, 0 );
+				walk ( walk, block.selector, 0 );
+				walk ( walk, block.returned, 0 );
+
+			}
+
+			for ( int32_t i = 0; i < anchors.count ( ); i++ ) {
+
+				global_access& item = anchors [ static_cast < size_t > ( i ) ];
+				uint64_t lowest = item.start;
+				uint8_t element = item.size;
+				int32_t distinct = 0;
+
+				for ( const global_access& other : anchors ) {
+
+					if ( other.scale != item.scale || !b.same ( bare_index ( other.index ), bare_index ( item.index ) ) )
+						continue;
+
+					uint64_t gap = other.start > item.start ? other.start - item.start : item.start - other.start;
+
+					if ( gap >= 0x400 )
+						continue;
+
+					if ( other.start < lowest || ( other.start == lowest && other.size < element ) ) {
+
+						lowest = other.start;
+						element = other.size;
+
+					}
+
+				}
+
+				for ( const global_access& other : anchors ) {
+
+					if ( other.scale == item.scale && b.same ( bare_index ( other.index ), bare_index ( item.index ) ) && other.start != item.start && ( other.start > item.start ? other.start - item.start : item.start - other.start ) < 0x400 )
+						distinct++;
+
+				}
+
+				if ( element && ( item.scale % element != 0 || ( item.start - lowest ) % element != 0 ) ) {
+
+					uint8_t smallest = element;
+
+					for ( const global_access& other : anchors ) {
+
+						if ( other.scale == item.scale && b.same ( bare_index ( other.index ), bare_index ( item.index ) ) && ( other.start > item.start ? other.start - item.start : item.start - other.start ) < 0x400 && other.size < smallest )
+							smallest = other.size;
+
+					}
+
+					element = smallest;
+
+				}
+
+				if ( !distinct || element == 0 || item.scale % element != 0 || ( item.start - lowest ) % element != 0 )
+					continue;
+
+				item.base = lowest;
+				item.element = element;
+				item.grouped = true;
+
+			}
+
+		}
+
+		bool anchored_access ( const expr& item, int32_t parent ) {
+
+			if ( !anchored_globals || !global_arrays || item.kind != op::LOAD || ( item.bits & FLOATING ) )
+				return false;
+
+			if ( !anchors_ready )
+				collect_anchors ( );
+
+			global_access here;
+
+			if ( !split_global ( item.a, here ) )
+				return false;
+
+			const global_access* found = nullptr;
+
+			for ( const global_access& other : anchors ) {
+
+				if ( other.grouped && other.start == here.start && other.scale == here.scale && other.size == item.size && b.same ( bare_index ( other.index ), bare_index ( here.index ) ) )
+					found = &other;
+
+			}
+
+			if ( !found || ( found->base == found->start && found->element == item.size && found->scale == item.size && !here.renamed ) )
+				return false;
+
+			if ( item.size < found->element && item.size != 1 && item.size != 2 )
+				return false;
+
+			int64_t step = found->scale / found->element;
+			int64_t extra = static_cast < int64_t > ( ( found->start - found->base ) / found->element );
+			bool narrow = item.size < found->element;
+			bool wide = item.size > found->element;
+
+			if ( narrow ) {
+
+				out.put ( item.size == 1 ? L"LOBYTE" : L"LOWORD", syntax::FUNCTION );
+				out.put ( L"(" );
+
+			} else if ( wide ) {
+
+				if ( parent > 14 )
+					out.put ( L"(" );
+
+				out.put ( L"*(" );
+				type_name ( item.size, item.bits, false, true );
+				out.put ( L" *)&" );
+
+			}
+
+			wchar_t label [ 200 ];
+
+			if ( b.names->name ( found->base, false, label, 200 ) )
+				out.put ( label, syntax::GLOBAL, found->base );
+			else
+				number ( static_cast < int64_t > ( found->base ), 8, true, false );
+
+			out.put ( L"[" );
+
+			if ( step != 1 ) {
+
+				out.put ( base::writer ( ).number ( step ).text ( ), syntax::NUMBER );
+				out.put ( L" * ", syntax::OPERATOR );
+				value ( here.index, 13 );
+
+			} else
+				value ( here.index, extra ? 11 : 0 );
+
+			if ( extra ) {
+
+				out.put ( extra < 0 ? L" - " : L" + ", syntax::OPERATOR );
+				out.put ( base::writer ( ).number ( extra < 0 ? -extra : extra ).text ( ), syntax::NUMBER );
+
+			}
+
+			out.put ( L"]" );
+
+			if ( narrow )
+				out.put ( L")" );
+			else if ( wide && parent > 14 )
+				out.put ( L")" );
+
+			return true;
+
+		}
+
 		void global_element ( uint64_t start, int32_t index ) {
 
 			wchar_t label [ 200 ];
@@ -2902,6 +3221,9 @@ namespace decompiler {
 		void lvalue_or_load ( const expr& item, int32_t parent ) {
 
 			if ( indexed_element ( item ) )
+				return;
+
+			if ( anchored_access ( item, parent ) )
 				return;
 
 			const expr& where = b.exprs [ static_cast < size_t > ( item.a ) ];
@@ -3129,6 +3451,9 @@ namespace decompiler {
 		void extended_load ( const expr& item, int32_t parent, uint8_t sign ) {
 
 			const expr& where = b.exprs [ static_cast < size_t > ( item.a ) ];
+
+			if ( anchored_access ( item, parent ) )
+				return;
 
 			{
 

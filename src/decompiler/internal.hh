@@ -160,6 +160,19 @@ namespace decompiler {
 
 	};
 
+	struct global_access {
+
+		int32_t index = -1;
+		int64_t scale = 1;
+		uint64_t start = 0;
+		uint8_t size = 0;
+		uint64_t base = 0;
+		uint8_t element = 0;
+		bool grouped = false;
+		bool renamed = false;
+
+	};
+
 	struct field_use {
 
 		int32_t var = -1;
