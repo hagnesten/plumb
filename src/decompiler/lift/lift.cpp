@@ -829,6 +829,7 @@ namespace decompiler {
 	static bool carried_floats = true;
 	static bool filled_returns = true;
 	static bool block_writers = true;
+	static bool negated_carry = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -1660,6 +1661,7 @@ namespace decompiler {
 		int32_t flag_a = -1;
 		int32_t flag_b = -1;
 		uint8_t flag_size = 4;
+		bool flag_negated = false;
 		int64_t delta = 0;
 		bool frame = false;
 		int64_t frame_delta = 0;
@@ -1702,6 +1704,7 @@ namespace decompiler {
 			}
 
 			flag_kind = 0;
+			flag_negated = false;
 			entry_flag_var = -1;
 			entry_flag_code = 0;
 			arg_written = 0;
@@ -2869,6 +2872,9 @@ namespace decompiler {
 
 					}
 
+					if ( ( code == 2 || code == 3 ) && flag_negated && negated_carry )
+						return k.binary ( code == 2 ? op::NE : op::EQ, a, z, size );
+
 					switch ( code ) {
 
 						case 4:
@@ -3053,6 +3059,7 @@ namespace decompiler {
 		void set_flags ( int32_t kind, int32_t a, int32_t c, uint8_t size ) {
 
 			flag_result = -1;
+			flag_negated = false;
 			flag_kind = kind;
 			flag_a = a;
 			flag_b = c;
@@ -3765,6 +3772,7 @@ namespace decompiler {
 
 					write ( ins, 0, value );
 					set_flags ( 3, value, -1, size );
+					flag_negated = true;
 
 					return;
 
