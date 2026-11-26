@@ -101,26 +101,6 @@ namespace ui {
 		if ( forget >= 0 )
 			forget_recent ( forget );
 
-		y += recent.empty ( ) ? 52.0f : 26.0f;
-
-		c.text ( L"Keys", render::font::UI_STRONG, math::vec2 ( x, y + 8.0f ), ink ( tone::INK_SOFT ) );
-		y += 22.0f;
-		c.fill ( math::rect ( x, y, column, 1.0f ), 0.0f, ink ( tone::LINE ) );
-		y += 18.0f;
-
-		const command hints [ 8 ] = { command::OPEN, command::GO_ADDRESS, command::PALETTE, command::TOGGLE_GRAPH, command::VIEW_PSEUDOCODE, command::SWAP_VIEW, command::SHOW_REFERENCES, command::MAKE_SIGNATURE };
-
-		for ( int32_t i = 0; i < 8; i++ ) {
-
-			float hx = x + static_cast < float > ( i % 2 ) * ( column * 0.5f + 8.0f );
-			float hy = y + static_cast < float > ( i / 2 ) * 28.0f;
-			const wchar_t* keys = command_keys ( hints [ i ] );
-
-			key_cap ( math::vec2 ( hx, hy ), keys, ink ( tone::INK_SOFT ), false );
-			c.text ( command_label ( hints [ i ] ), render::font::SMALL, math::vec2 ( hx + c.measure ( keys, render::font::SMALL ) + 22.0f, hy ), ink ( tone::INK_FAINT ) );
-
-		}
-
 		c.pop ( );
 
 	}
