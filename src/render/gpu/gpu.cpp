@@ -1,4 +1,5 @@
-#include "render/render.h"
+#include "render/gpu/gpu.h"
+#include "render/canvas/canvas.h"
 #include "base/strings/strings.h"
 #include <windows.h>
 #include <d3d11.h>

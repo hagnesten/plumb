@@ -1,7 +1,8 @@
 #pragma once
 
 #include "debugger/debugger.h"
-#include "render/render.h"
+#include "render/gpu/gpu.h"
+#include "render/canvas/canvas.h"
 #include "loader/binary/binary.h"
 #include "analysis/database/database.h"
 #include "analysis/signatures/signatures.h"
