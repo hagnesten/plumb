@@ -610,6 +610,7 @@ namespace decompiler {
 	static bool wide_negatives = true;
 	static bool void_equals = true;
 	static bool void_stores = true;
+	static bool derived_types = true;
 	static bool plain_negatives = true;
 	static bool unsigned_results = true;
 	static bool step_carriers = true;
@@ -8785,6 +8786,7 @@ namespace decompiler {
 
 		uint64_t cached_target = 0;
 		bool cached_ok = false;
+		bool cached_derived = false;
 		c_prototype* shape = new c_prototype ( );
 
 		auto load = [ & ] ( uint64_t target ) {
@@ -8794,6 +8796,7 @@ namespace decompiler {
 
 			cached_target = target;
 			cached_ok = false;
+			cached_derived = false;
 
 			const wchar_t* declared = target ? b.names->prototype ( target ) : nullptr;
 			base::writer problem;
@@ -8801,6 +8804,13 @@ namespace decompiler {
 
 			if ( !declared && api_types && target && b.names->name ( target, true, callee, 200 ) )
 				declared = api_prototype ( callee );
+
+			if ( !declared && derived_types && target ) {
+
+				declared = b.names->derived ( target );
+				cached_derived = declared != nullptr;
+
+			}
 
 			if ( declared && parse_prototype ( declared, b.long_mode, *shape, problem ) )
 				cached_ok = true;
@@ -8835,7 +8845,7 @@ namespace decompiler {
 			const expr& left = b.exprs [ static_cast < size_t > ( item.left ) ];
 			const expr& right = b.exprs [ static_cast < size_t > ( item.right ) ];
 
-			if ( left.kind != op::VAR || right.kind != op::CALL || !load ( static_cast < uint64_t > ( right.value ) ) )
+			if ( left.kind != op::VAR || right.kind != op::CALL || !load ( static_cast < uint64_t > ( right.value ) ) || cached_derived )
 				continue;
 
 			if ( !shape->result_type.empty )
@@ -8859,6 +8869,9 @@ namespace decompiler {
 					continue;
 
 				const expr& passed = b.exprs [ static_cast < size_t > ( index ) ];
+
+				if ( cached_derived && ( passed.kind != op::VAR || b.vars [ static_cast < size_t > ( passed.value ) ].kind != var_kind::PARAMETER || !( base::same_text ( shape->types [ i ], L"unsigned __int64" ) || base::same_text ( shape->types [ i ], L"unsigned int" ) || base::same_text ( shape->types [ i ], L"unsigned __int16" ) || base::same_text ( shape->types [ i ], L"unsigned __int8" ) ) ) )
+					continue;
 
 				if ( passed.kind == op::VAR ) {
 

@@ -645,9 +645,98 @@ struct plain_names : decompiler::namer {
 
 	}
 
+	base::list < uint64_t > derived_at;
+	base::list < int32_t > derived_offset;
+	base::list < wchar_t > derived_chars;
+
 	const wchar_t* prototype ( uint64_t function ) override {
 
 		return owner->prototype_for ( function );
+
+	}
+
+	const wchar_t* derived ( uint64_t function ) override {
+
+		for ( int32_t i = 0; i < derived_at.count ( ); i++ ) {
+
+			if ( derived_at [ static_cast < size_t > ( i ) ] == function )
+				return derived_chars.data ( ) + derived_offset [ static_cast < size_t > ( i ) ];
+
+		}
+
+		return nullptr;
+
+	}
+
+	void derive ( uint64_t function, const decompiler::result& code ) {
+
+		int32_t start = derived_chars.count ( );
+		bool spaced = false;
+
+		for ( const decompiler::line& line : code.lines ) {
+
+			if ( line.length == 1 && code.text [ static_cast < size_t > ( line.text ) ] == L'{' )
+				break;
+
+			for ( int32_t k = 0; k < line.length; k++ ) {
+
+				wchar_t c = code.text [ static_cast < size_t > ( line.text + k ) ];
+
+				if ( c == L' ' || c == L'\t' ) {
+
+					spaced = derived_chars.count ( ) > start;
+
+					continue;
+
+				}
+
+				if ( spaced )
+					derived_chars.push ( L' ' );
+
+				spaced = false;
+				derived_chars.push ( c );
+
+			}
+
+			spaced = derived_chars.count ( ) > start;
+
+		}
+
+		if ( derived_chars.count ( ) == start )
+			return;
+
+		derived_chars.push ( 0 );
+
+		decompiler::c_prototype* shape = new decompiler::c_prototype ( );
+		base::writer problem;
+		bool parsed = decompiler::parse_prototype ( derived_chars.data ( ) + start, true, *shape, problem );
+
+		derived_chars.resize ( static_cast < size_t > ( start ) );
+
+		if ( parsed ) {
+
+			base::writer text;
+
+			text.add ( shape->result ).add ( L" __fastcall " ).add ( shape->name ).add ( L"(" );
+
+			for ( int32_t j = 0; j < shape->count; j++ )
+				text.add ( j ? L", " : L"" ).add ( shape->types [ j ] );
+
+			if ( shape->variadic )
+				text.add ( shape->count ? L", ..." : L"..." );
+
+			text.add ( L")" );
+
+			for ( const wchar_t* c = text.text ( ); *c; c++ )
+				derived_chars.push ( *c );
+
+			derived_chars.push ( 0 );
+			derived_at.push ( function );
+			derived_offset.push ( start );
+
+		}
+
+		delete shape;
 
 	}
 
@@ -727,8 +816,119 @@ static bool decompile_mode ( ) {
 
 	names.owner = app;
 
-	for ( int32_t i = 0; i < app->db->functions.count ( ) && done < limit; i++ ) {
+	const analysis::database& db = *app->db;
+	int32_t total_functions = db.functions.count ( );
+	base::list < int32_t > order;
+	base::list < uint8_t > state;
+	base::list < base::list < char > > chunks;
+	bool derive = !argument ( L"--no-derive" );
 
+	state.fill ( static_cast < size_t > ( total_functions ), 0 );
+	chunks.fill ( static_cast < size_t > ( total_functions ), base::list < char > ( ) );
+
+	auto callees = [ & ] ( int32_t index, base::list < int32_t >& out ) {
+
+		const analysis::function_info& item = db.functions [ static_cast < size_t > ( index ) ];
+		uint64_t at = item.start;
+
+		while ( at < item.end ) {
+
+			x86::instruction ins;
+
+			if ( !db.is_start ( at ) || !db.decode ( at, ins ) ) {
+
+				at++;
+
+				continue;
+
+			}
+
+			at += ins.length;
+
+			if ( ( ins.control != x86::flow::CALL && ins.control != x86::flow::JUMP ) || !ins.direct ( ) )
+				continue;
+
+			uint64_t target = ins.target ( );
+
+			if ( target >= item.start && target < item.end )
+				continue;
+
+			int32_t callee = db.function_starting ( target );
+
+			if ( callee >= 0 && callee != index )
+				out.push ( callee );
+
+		}
+
+	};
+
+	for ( int32_t root = 0; root < total_functions && derive; root++ ) {
+
+		if ( state [ static_cast < size_t > ( root ) ] )
+			continue;
+
+		base::list < int32_t > stack;
+		base::list < int32_t > pending;
+		base::list < int32_t > cursor;
+
+		stack.push ( root );
+		cursor.push ( 0 );
+		state [ static_cast < size_t > ( root ) ] = 1;
+		pending.clear ( );
+		callees ( root, pending );
+
+		base::list < base::list < int32_t > > lists;
+
+		lists.push ( pending );
+
+		while ( stack.count ( ) ) {
+
+			size_t top = static_cast < size_t > ( stack.count ( ) - 1 );
+			base::list < int32_t >& next = lists [ top ];
+			int32_t& position = cursor [ top ];
+
+			if ( position < next.count ( ) ) {
+
+				int32_t callee = next [ static_cast < size_t > ( position ) ];
+
+				position++;
+
+				if ( state [ static_cast < size_t > ( callee ) ] )
+					continue;
+
+				state [ static_cast < size_t > ( callee ) ] = 1;
+
+				base::list < int32_t > found;
+
+				callees ( callee, found );
+				stack.push ( callee );
+				cursor.push ( 0 );
+				lists.push ( found );
+
+				continue;
+
+			}
+
+			order.push ( stack.back ( ) );
+			state [ static_cast < size_t > ( stack.back ( ) ) ] = 2;
+			stack.remove_at ( top );
+			cursor.remove_at ( top );
+			lists.remove_at ( top );
+
+		}
+
+	}
+
+	if ( !derive ) {
+
+		for ( int32_t i = 0; i < total_functions; i++ )
+			order.push ( i );
+
+	}
+
+	for ( int32_t step = 0; step < order.count ( ) && done < limit; step++ ) {
+
+		int32_t i = order [ static_cast < size_t > ( step ) ];
 		const analysis::function_info& item = app->db->functions [ static_cast < size_t > ( i ) ];
 		wchar_t name [ 200 ];
 
@@ -763,13 +963,17 @@ static bool decompile_mode ( ) {
 
 		}
 
+		if ( derive )
+			names.derive ( item.start, code );
+
 		if ( limit > 200 && !which )
 			continue;
 
+		base::list < char >& chunk = chunks [ static_cast < size_t > ( i ) ];
 		base::writer header;
 
 		header.add ( L"//----- (" ).hex ( item.start, 16 ).add ( L")----------------------------------------------------" );
-		append ( out, header );
+		append ( chunk, header );
 
 		for ( const decompiler::line& line : code.lines ) {
 
@@ -781,11 +985,18 @@ static bool decompile_mode ( ) {
 			for ( int32_t k = 0; k < line.length && k < 1800; k++ )
 				text.add ( code.text [ static_cast < size_t > ( line.text + k ) ] );
 
-			append ( out, text );
+			append ( chunk, text );
 
 		}
 
-		append ( out, base::writer ( ) );
+		append ( chunk, base::writer ( ) );
+
+	}
+
+	for ( const base::list < char >& chunk : chunks ) {
+
+		for ( char c : chunk )
+			out.push ( c );
 
 	}
 

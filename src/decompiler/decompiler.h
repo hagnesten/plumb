@@ -141,6 +141,12 @@ namespace decompiler {
 
 		}
 
+		virtual const wchar_t* derived ( uint64_t ) {
+
+			return nullptr;
+
+		}
+
 		virtual bool spaced ( ) {
 
 			return false;
