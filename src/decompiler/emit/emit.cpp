@@ -607,6 +607,8 @@ namespace decompiler {
 	static bool anchored_globals = true;
 	static bool brace_before_else = true;
 	static bool power_hex = true;
+	static bool wide_negatives = true;
+	static bool plain_negatives = true;
 	static bool unsigned_results = true;
 	static bool step_carriers = true;
 	static bool default_cases = true;
@@ -1627,7 +1629,7 @@ namespace decompiler {
 
 			bool wrapped = false;
 
-			if ( negative && ( is_unsigned || bare_unsigned || ( magnitude > 0x100000000ull && hex_form ) ) ) {
+			if ( negative && ( is_unsigned || bare_unsigned || ( magnitude > 0x100000000ull && hex_form ) || ( wide_negatives && size >= 8 && magnitude > 0x80000000ull ) ) ) {
 
 				wrapped = !is_unsigned && !bare_unsigned && size >= 8;
 				negative = false;
@@ -1648,6 +1650,8 @@ namespace decompiler {
 			if ( power_hex && magnitude >= 0x2000 && ( magnitude & ( magnitude - 1 ) ) == 0 )
 				hex_form = true;
 
+			if ( plain_negatives && negative )
+				hex_form = false;
 
 			if ( form == L'h' )
 				hex_form = true;
