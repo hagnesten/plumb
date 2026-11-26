@@ -6072,6 +6072,17 @@ namespace decompiler {
 				if ( back.kind == op::CONST && !( back.bits & POINTER ) && !b.has_prototype && !b.returns_float && b.long_mode ) {
 
 					bool narrow = b.result_width == 1 || b.result_width == 2 || ( !b.result_text.empty ( ) && b.return_size <= 4 );
+
+					if ( narrow && !b.result_width && !b.result_text.empty ( ) ) {
+
+						c_type declared;
+						wchar_t clean [ 64 ];
+
+						if ( parse_type ( b.result_text.get ( ), b.long_mode, declared, clean, 64 ) && declared.size == 8 )
+							narrow = false;
+
+					}
+
 					int64_t shown_value = back.value;
 
 					if ( b.result_width == 1 || b.result_width == 2 )
