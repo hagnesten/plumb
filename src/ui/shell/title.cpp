@@ -73,7 +73,7 @@ namespace ui {
 
 		c.fill ( area, 0.0f, ink ( tone::TITLE ) );
 		c.fill ( math::rect ( 0.0f, area.bottom ( ) - 1.0f, w, 1.0f ), 0.0f, ink ( tone::LINE ) );
-		draw_brand ( math::vec2 ( 18.0f, area.center ( ).y ), 16.0f );
+		draw_brand ( math::vec2 ( 17.0f, area.center ( ).y ), 15.0f );
 		c.text ( L"Plumb", render::font::BRAND, math::vec2 ( 31.0f, area.center ( ).y ), ink ( tone::INK ) );
 		c.fill ( math::rect ( 78.0f, area.y + 9.0f, 1.0f, area.h - 18.0f ), 0.0f, ink ( tone::LINE_STRONG ) );
 		draw_menu_bar ( math::rect ( 82.0f, area.y, 520.0f, area.h ) );

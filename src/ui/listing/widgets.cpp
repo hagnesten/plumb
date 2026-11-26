@@ -6,21 +6,60 @@ namespace ui {
 	void app::draw_brand ( math::vec2 center, float height ) {
 
 		render::canvas& c = canvas;
-		float s = height;
-		float top = center.y - s * 0.5f;
-		render::color brass = render::rgb ( 0xD9A548 );
-		render::color deep = render::rgb ( 0xA8782E );
+		float k = height / 78.0f;
+		float stroke = base::max ( 5.0f * k, 1.25f );
+		float thin = base::max ( 3.0f * k, 1.0f );
+		render::color brace = ink ( tone::INK_FAINT );
 		render::color line = ink ( tone::INK_SOFT );
-		float body_top = top + s * 0.3f;
-		float shoulder = body_top + s * 0.3f;
-		float bottom = top + s;
-		float half = s * 0.25f;
+		render::color brass = render::rgb ( 0xE0A43A );
 
-		c.fill ( math::rect ( center.x - s * 0.018f - 0.4f, top, s * 0.036f + 0.8f, s * 0.24f ), 0.5f, line );
-		c.fill ( math::rect ( center.x - s * 0.1f, top + s * 0.2f, s * 0.2f, s * 0.085f ), s * 0.02f, deep );
-		c.polygon ( math::vec2 ( center.x, body_top ), math::vec2 ( center.x + half, shoulder ), math::vec2 ( center.x, bottom ), math::vec2 ( center.x - half, shoulder ), s * 0.015f, brass );
-		c.polygon ( math::vec2 ( center.x, body_top ), math::vec2 ( center.x + half, shoulder ), math::vec2 ( center.x, bottom ), math::vec2 ( center.x, shoulder ), s * 0.01f, deep );
-		c.fill ( math::rect ( center.x - half * 0.82f, shoulder - s * 0.012f, half * 1.64f, s * 0.024f ), s * 0.012f, render::rgb ( 0xFFFFFF, 0.18f ) );
+		auto at = [ & ] ( float x, float y ) {
+
+			return math::vec2 ( center.x + ( x - 64.0f ) * k, center.y + ( y - 63.0f ) * k );
+
+		};
+
+		for ( int32_t side = 0; side < 2; side++ ) {
+
+			float mirror = side ? -1.0f : 1.0f;
+
+			auto spot = [ & ] ( float x, float y ) {
+
+				return at ( 64.0f + mirror * ( x - 64.0f ), y );
+
+			};
+
+			auto arc = [ & ] ( float x, float y, float radius, float start, float sweep ) {
+
+				c.ring ( spot ( x, y ), radius * k + stroke * 0.5f, stroke, side ? 1.0f - start - sweep : start, sweep, brace );
+
+			};
+
+			auto bar = [ & ] ( float x, float from, float to ) {
+
+				math::vec2 high = spot ( x, from );
+				math::vec2 low = spot ( x, to );
+
+				c.fill ( math::rect ( high.x - stroke * 0.5f, high.y - 0.3f, stroke, low.y - high.y + 0.6f ), 0.0f, brace );
+
+			};
+
+			arc ( 38.0f, 38.0f, 10.0f, 0.75f, 0.25f );
+			bar ( 28.0f, 38.0f, 56.0f );
+			arc ( 20.0f, 56.0f, 8.0f, 0.25f, 0.25f );
+			arc ( 20.0f, 72.0f, 8.0f, 0.0f, 0.25f );
+			bar ( 28.0f, 72.0f, 90.0f );
+			arc ( 38.0f, 90.0f, 10.0f, 0.5f, 0.25f );
+			c.circle ( spot ( 38.0f, 28.0f ), stroke * 0.5f, brace );
+			c.circle ( spot ( 38.0f, 100.0f ), stroke * 0.5f, brace );
+			c.circle ( spot ( 20.0f, 64.0f ), stroke * 0.5f, brace );
+
+		}
+
+		math::vec2 hook = at ( 64.0f, 24.0f );
+
+		c.fill ( math::rect ( hook.x - thin * 0.5f, hook.y - thin * 0.5f, thin, 28.0f * k + thin ), thin * 0.5f, line );
+		c.polygon ( at ( 64.0f, 52.0f ), at ( 78.0f, 68.0f ), at ( 64.0f, 100.0f ), at ( 50.0f, 68.0f ), 0.0f, brass );
 
 	}
 

@@ -13,9 +13,9 @@ namespace ui {
 
 		c.push ( math::vec2 ( area.center ( ).x, top ), 1.0f, shown );
 
-		draw_brand ( math::vec2 ( x + 14.0f, top + 18.0f ), 34.0f );
-		c.text ( L"Plumb", render::font::TITLE, math::vec2 ( x + 40.0f, top + 12.0f ), ink ( tone::INK ) );
-		c.text ( L"x86 and x64 disassembler for PE images", render::font::SMALL, math::vec2 ( x + 40.0f, top + 30.0f ), ink ( tone::INK_FAINT ) );
+		draw_brand ( math::vec2 ( x + 20.0f, top + 18.0f ), 34.0f );
+		c.text ( L"Plumb", render::font::TITLE, math::vec2 ( x + 48.0f, top + 12.0f ), ink ( tone::INK ) );
+		c.text ( L"x86 and x64 disassembler for PE images", render::font::SMALL, math::vec2 ( x + 48.0f, top + 30.0f ), ink ( tone::INK_FAINT ) );
 
 		if ( button ( make_id ( "welcome_open" ), math::rect ( x + column - 132.0f, top + 4.0f, 132.0f, 30.0f ), L"Open file", icons::FOLDER_OPEN, true ) )
 			run ( command::OPEN );
