@@ -832,7 +832,7 @@ namespace decompiler {
 
 			for ( const statement& line : b.statements ) {
 
-				if ( line.kind != stmt::ASSIGN || line.left < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || !line.address )
+				if ( line.kind != stmt::ASSIGN || line.left < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || ( !line.address && !line.origin ) )
 					continue;
 
 				int64_t v = b.exprs [ static_cast < size_t > ( line.left ) ].value;
@@ -11857,7 +11857,6 @@ namespace decompiler {
 		head.out.put ( L"{" );
 		head.out.finish ( );
 		head.out.indent = 1;
-
 
 		int32_t declared = 0;
 		base::list < int32_t > shown_vars;
