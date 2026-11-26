@@ -827,6 +827,8 @@ namespace decompiler {
 	static bool same_guards = true;
 	static bool shared_sources = true;
 	static bool carried_floats = true;
+	static bool filled_returns = true;
+	static bool block_writers = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -5263,7 +5265,64 @@ namespace decompiler {
 				for ( int32_t k = 0; k < count && !rax_written; k++ )
 					rax_written = ( defs [ static_cast < size_t > ( k ) ] & 1u ) != 0;
 
-				if ( carried_floats && float_return && xmm >= 0 && !rax_written ) {
+				int32_t last_writer = 0;
+				const base::list < x86::instruction >& own = listings [ static_cast < size_t > ( index ) ];
+
+				for ( int32_t k = own.count ( ) - 2; k >= 0 && block_writers && !last_writer; k-- ) {
+
+					const x86::instruction& ins = own [ static_cast < size_t > ( k ) ];
+					uint32_t u = 0;
+					uint32_t d = 0;
+
+					if ( ins.name == mnemonic::call )
+						break;
+
+					effects ( ins, long_mode, u, d );
+
+					if ( d & ( 1u << 16 ) ) {
+
+						switch ( ins.name ) {
+
+							case mnemonic::movsd:
+							case mnemonic::movss:
+							case mnemonic::addsd:
+							case mnemonic::addss:
+							case mnemonic::subsd:
+							case mnemonic::subss:
+							case mnemonic::mulsd:
+							case mnemonic::mulss:
+							case mnemonic::divsd:
+							case mnemonic::divss:
+							case mnemonic::sqrtsd:
+							case mnemonic::sqrtss:
+							case mnemonic::minsd:
+							case mnemonic::minss:
+							case mnemonic::maxsd:
+							case mnemonic::maxss:
+							case mnemonic::cvtsi2sd:
+							case mnemonic::cvtsi2ss:
+							case mnemonic::cvtss2sd:
+							case mnemonic::cvtsd2ss:
+								last_writer = 2;
+								break;
+
+							default:
+								last_writer = 3;
+								break;
+
+						}
+
+					} else if ( d & 1u )
+						last_writer = 1;
+
+				}
+
+				if ( last_writer == 2 && float_return && state.regs [ 16 ] >= 0 ) {
+
+					out_block.returned = state.regs [ 16 ];
+					returns_float = true;
+
+				} else if ( carried_floats && float_return && xmm >= 0 && !rax_written ) {
 
 					out_block.returned = xmm;
 					returns_float = true;
@@ -5445,6 +5504,19 @@ namespace decompiler {
 
 			returns_value = true;
 			return_size = base::max ( return_size, exprs [ static_cast < size_t > ( item.returned ) ].size );
+
+		}
+
+		if ( returns_value && filled_returns ) {
+
+			int32_t family = returns_float ? 16 : 0;
+
+			for ( block_code& item : code ) {
+
+				if ( item.end == term::RETURN && item.reachable && item.returned < 0 && family_var [ family ] >= 0 )
+					item.returned = var_expr ( family_var [ family ], 0 );
+
+			}
 
 		}
 
