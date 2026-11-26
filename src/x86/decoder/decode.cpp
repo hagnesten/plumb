@@ -1,5 +1,5 @@
 #include "x86/x86.h"
-#include "x86/forms.h"
+#include "x86/decoder/forms.h"
 
 namespace x86 {
 
