@@ -826,6 +826,7 @@ namespace decompiler {
 	static bool sized_regs = true;
 	static bool same_guards = true;
 	static bool shared_sources = true;
+	static bool carried_floats = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -5249,11 +5250,25 @@ namespace decompiler {
 				out_block.end = term::RETURN;
 
 				int32_t rax = state.regs [ 0 ];
+				int32_t xmm = state.regs [ 16 ];
 
 				if ( rax < 0 && family_var [ 0 ] >= 0 )
 					rax = var_expr ( family_var [ 0 ], 0 );
 
-				if ( rax >= 0 && !( exprs [ static_cast < size_t > ( rax ) ].kind == op::VAR && vars [ static_cast < size_t > ( exprs [ static_cast < size_t > ( rax ) ].value ) ].kind == var_kind::PARAMETER && false ) )
+				if ( xmm < 0 && family_var [ 16 ] >= 0 )
+					xmm = var_expr ( family_var [ 16 ], 0 );
+
+				bool rax_written = false;
+
+				for ( int32_t k = 0; k < count && !rax_written; k++ )
+					rax_written = ( defs [ static_cast < size_t > ( k ) ] & 1u ) != 0;
+
+				if ( carried_floats && float_return && xmm >= 0 && !rax_written ) {
+
+					out_block.returned = xmm;
+					returns_float = true;
+
+				} else if ( rax >= 0 && !( exprs [ static_cast < size_t > ( rax ) ].kind == op::VAR && vars [ static_cast < size_t > ( exprs [ static_cast < size_t > ( rax ) ].value ) ].kind == var_kind::PARAMETER && false ) )
 					out_block.returned = rax;
 				else if ( state.regs [ 16 ] >= 0 ) {
 

@@ -6069,7 +6069,9 @@ namespace decompiler {
 
 				out.put ( L" " );
 
-				if ( back.kind == op::CONST && !( back.bits & POINTER ) && !b.has_prototype && !b.returns_float && b.long_mode ) {
+				if ( back.kind == op::CONST && b.returns_float && !b.has_prototype && ( back.value == 0 || back.size == 4 || back.size == 8 ) )
+					real ( back.value, b.return_size == 4 ? 4 : 8 );
+				else if ( back.kind == op::CONST && !( back.bits & POINTER ) && !b.has_prototype && !b.returns_float && b.long_mode ) {
 
 					bool narrow = b.result_width == 1 || b.result_width == 2 || ( !b.result_text.empty ( ) && b.return_size <= 4 );
 
