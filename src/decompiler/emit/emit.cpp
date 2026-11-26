@@ -5531,6 +5531,7 @@ namespace decompiler {
 							out.put ( L" = ", syntax::OPERATOR );
 							select_arm ( item.left, right.c );
 							semicolon ( );
+							out.finish ( );
 							out.begin ( item.address );
 							out.put ( L"if", syntax::CONTROL );
 							paren_open ( );
