@@ -1,4 +1,4 @@
-<h1>Plumb <img src="docs/media/icon.png" width="80" height="80" align="right" alt="Plumb logo"></h1>
+# Plumb
 
 A disassembler, decompiler and debugger for Windows executables. Plumb is written in C++ with no C runtime and no third-party code, and the whole program is a single executable.
 
