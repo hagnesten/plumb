@@ -612,6 +612,7 @@ namespace decompiler {
 	static bool void_stores = true;
 	static bool derived_types = true;
 	static bool integer_stores = true;
+	static bool float_views = true;
 	static bool plain_negatives = true;
 	static bool unsigned_results = true;
 	static bool step_carriers = true;
@@ -4266,6 +4267,32 @@ namespace decompiler {
 
 					const expr& inner = b.exprs [ static_cast < size_t > ( item.a ) ];
 					bool float_change = ( inner.bits & FLOATING ) != ( item.bits & FLOATING );
+
+					if ( float_views && inner.kind == op::VAR && ( inner.bits & FLOATING ) && inner.size == 8 && item.size == 4 && !( item.bits & ( FLOATING | SIGNED | UNSIGNED | POINTER ) ) && !no_casts ) {
+
+						if ( outer_kind == op::SHL || outer_kind == op::SHR || outer_kind == op::OR || outer_kind == op::AND || outer_kind == op::XOR ) {
+
+							out.put ( L"COERCE_UNSIGNED_INT", syntax::FUNCTION );
+							out.put ( L"(" );
+							value ( item.a, 0 );
+							out.put ( L")" );
+
+							break;
+
+						}
+
+						if ( parent > 14 )
+							out.put ( L"(" );
+
+						out.put ( L"(float)", syntax::TYPE );
+						value ( item.a, 14 );
+
+						if ( parent > 14 )
+							out.put ( L")" );
+
+						break;
+
+					}
 
 					if ( float_zero && ( item.bits & FLOATING ) && !( item.bits & POINTER ) && ( item.size == 4 || item.size == 8 ) && inner.kind == op::CONST && inner.value == 0 ) {
 
