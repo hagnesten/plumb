@@ -593,6 +593,7 @@ namespace decompiler {
 	static bool joined_sets = true;
 	static bool joined_moves = true;
 	static bool select_loads = true;
+	static bool carried_flags = true;
 	static bool zero_paths = true;
 	static bool sse_extras = true;
 
@@ -5530,6 +5531,36 @@ namespace decompiler {
 
 			state.guard_a = out_block.condition;
 			state.guard_b = out_block.selector;
+
+			bool flags_read = false;
+
+			for ( int32_t e = 0; e < item.out_count && carried_flags; e++ ) {
+
+				int32_t to = graph.edges [ static_cast < size_t > ( item.first_out + e ) ].to;
+
+				if ( to < 0 || to >= count )
+					continue;
+
+				const base::list < x86::instruction >& next_list = listings [ static_cast < size_t > ( to ) ];
+
+				if ( !next_list.empty ( ) && next_list [ 0 ].control == x86::flow::BRANCH && next_list [ 0 ].condition != 0xFF && code [ static_cast < size_t > ( to ) ].preds == 1 )
+					flags_read = true;
+
+			}
+
+			for ( int32_t slot = 0; slot < 16 && flags_read; slot++ ) {
+
+				int32_t held = state.regs [ slot ];
+
+				if ( held < 0 || ( held != flag_a && held != flag_b ) || slot == 4 )
+					continue;
+
+				op kind = exprs [ static_cast < size_t > ( held ) ].kind;
+
+				if ( kind != op::VAR && kind != op::CONST )
+					keep |= 1u << slot;
+
+			}
 
 			for ( int32_t slot = 0; slot < 32; slot++ ) {
 
