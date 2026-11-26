@@ -2,7 +2,7 @@
 #include "base/sort/sort.h"
 #include "ui/icons.h"
 #include "ui/tokens.h"
-#include "analysis/graph.h"
+#include "analysis/graph/graph.h"
 
 namespace ui {
 

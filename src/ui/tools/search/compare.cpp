@@ -2,7 +2,7 @@
 #include "base/sort/sort.h"
 #include "base/clock/clock.h"
 #include "base/strings/strings.h"
-#include "analysis/signatures.h"
+#include "analysis/signatures/signatures.h"
 #include "loader/symbols/symbols.h"
 
 namespace ui {

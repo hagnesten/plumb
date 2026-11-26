@@ -5,7 +5,7 @@
 #include "x86/decoder/decoder.h"
 #include "x86/printer/printer.h"
 #include "x86/assembler/assembler.h"
-#include "analysis/database.h"
+#include "analysis/database/database.h"
 #include "base/files/files.h"
 #include "base/clock/clock.h"
 #include "base/strings/strings.h"

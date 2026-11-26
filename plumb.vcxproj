@@ -46,11 +46,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\analysis\database\database.cpp" />
-    <ClCompile Include="src\analysis\discovery\discover.cpp" />
-    <ClCompile Include="src\analysis\discovery\rtti.cpp" />
-    <ClCompile Include="src\analysis\emulation\emulate.cpp" />
+    <ClCompile Include="src\analysis\discovery\discovery.cpp" />
+    <ClCompile Include="src\analysis\emulation\emulation.cpp" />
     <ClCompile Include="src\analysis\graph\graph.cpp" />
-    <ClCompile Include="src\analysis\signatures\runtime_names.cpp" />
+    <ClCompile Include="src\analysis\rtti\rtti.cpp" />
+    <ClCompile Include="src\analysis\runtime_names\runtime_names.cpp" />
     <ClCompile Include="src\analysis\signatures\signatures.cpp" />
     <ClCompile Include="src\base\clock\clock.cpp" />
     <ClCompile Include="src\base\files\files.cpp" />
@@ -147,10 +147,13 @@
     <ClCompile Include="src\x86\registers\registers.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\analysis\database.h" />
-    <ClInclude Include="src\analysis\emulate.h" />
-    <ClInclude Include="src\analysis\graph.h" />
-    <ClInclude Include="src\analysis\signatures.h" />
+    <ClInclude Include="src\analysis\database\database.h" />
+    <ClInclude Include="src\analysis\discovery\discovery.h" />
+    <ClInclude Include="src\analysis\emulation\emulation.h" />
+    <ClInclude Include="src\analysis\graph\graph.h" />
+    <ClInclude Include="src\analysis\rtti\rtti.h" />
+    <ClInclude Include="src\analysis\runtime_names\runtime_names.h" />
+    <ClInclude Include="src\analysis\signatures\signatures.h" />
     <ClInclude Include="src\base\clock\clock.h" />
     <ClInclude Include="src\base\colors\colors.h" />
     <ClInclude Include="src\base\files\files.h" />

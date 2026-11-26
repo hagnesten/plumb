@@ -3,7 +3,7 @@
 #include "base/list/list.h"
 #include "base/writer/writer.h"
 #include "loader/binary/binary.h"
-#include "analysis/database.h"
+#include "analysis/database/database.h"
 
 namespace decompiler {
 

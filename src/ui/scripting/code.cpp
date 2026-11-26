@@ -1,7 +1,7 @@
 #include "ui/scripting.h"
 #include "base/strings/strings.h"
 #include "ui/metrics.h"
-#include "analysis/graph.h"
+#include "analysis/graph/graph.h"
 
 namespace ui {
 

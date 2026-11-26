@@ -1,6 +1,6 @@
 #pragma once
 
-#include "analysis/database.h"
+#include "analysis/database/database.h"
 
 namespace analysis {
 

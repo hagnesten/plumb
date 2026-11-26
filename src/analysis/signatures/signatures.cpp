@@ -1,4 +1,4 @@
-#include "analysis/signatures.h"
+#include "analysis/signatures/signatures.h"
 #include <windows.h>
 
 namespace analysis {

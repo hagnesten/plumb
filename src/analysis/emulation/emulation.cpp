@@ -1,4 +1,4 @@
-#include "analysis/emulate.h"
+#include "analysis/emulation/emulation.h"
 #include "base/strings/strings.h"
 #include "x86/decoder/decoder.h"
 

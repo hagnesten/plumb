@@ -1,4 +1,4 @@
-#include "analysis/database.h"
+#include "analysis/database/database.h"
 #include "base/strings/strings.h"
 #include "x86/decoder/decoder.h"
 

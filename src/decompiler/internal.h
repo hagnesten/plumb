@@ -1,7 +1,7 @@
 #pragma once
 
 #include "decompiler/decompiler.h"
-#include "analysis/graph.h"
+#include "analysis/graph/graph.h"
 
 namespace decompiler {
 

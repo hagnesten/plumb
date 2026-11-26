@@ -1,5 +1,5 @@
 #include "ui/app.h"
-#include "analysis/signatures.h"
+#include "analysis/signatures/signatures.h"
 #include "base/files/files.h"
 #include "base/sort/sort.h"
 #include "base/strings/strings.h"

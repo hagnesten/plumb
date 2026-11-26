@@ -1,7 +1,7 @@
 #include "ui/app.h"
 #include "base/clock/clock.h"
 #include "base/strings/strings.h"
-#include "analysis/emulate.h"
+#include "analysis/emulation/emulation.h"
 
 namespace ui {
 
