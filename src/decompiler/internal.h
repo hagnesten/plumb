@@ -212,6 +212,8 @@ namespace decompiler {
 		base::list < base::text > var_structs;
 		base::list < uint64_t > number_at;
 		base::list < uint64_t > ghost_at;
+		uint64_t result_at = 0;
+		int32_t return_points = 0;
 		uint8_t param_bits [ 16 ] = { };
 		bool returns_value = false;
 		bool bare_return = false;

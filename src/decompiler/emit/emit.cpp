@@ -615,6 +615,7 @@ namespace decompiler {
 	static bool float_views = true;
 	static bool latch_continues = true;
 	static bool born_numbers = true;
+	static bool result_ghosts = true;
 	static bool plain_negatives = true;
 	static bool unsigned_results = true;
 	static bool step_carriers = true;
@@ -877,6 +878,33 @@ namespace decompiler {
 				return x < 0 ? extra [ static_cast < size_t > ( -x - 1 ) ] : first_def [ static_cast < size_t > ( x ) ];
 
 			};
+
+			if ( result_ghosts && by_address && b.returns_value && !b.returns_float && b.result_at && !b.has_prototype ) {
+
+				bool named = result_var >= 0 && result_var < first_def.count ( ) && var_number [ static_cast < size_t > ( result_var ) ] >= 0;
+
+				if ( named ) {
+
+					if ( b.result_at < first_def [ static_cast < size_t > ( result_var ) ] )
+						first_def [ static_cast < size_t > ( result_var ) ] = b.result_at;
+
+				} else if ( b.return_points >= 2 ) {
+
+					bool taken = false;
+
+					for ( int32_t v : order )
+						taken = taken || ( v >= 0 && first_def [ static_cast < size_t > ( v ) ] == b.result_at && !b.vars [ static_cast < size_t > ( v ) ].ghost );
+
+					if ( !taken ) {
+
+						extra.push ( b.result_at );
+						order.push ( -extra.count ( ) );
+
+					}
+
+				}
+
+			}
 
 			base::sort ( order.data ( ), order.count ( ), [ & ] ( int32_t x, int32_t y ) {
 

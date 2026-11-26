@@ -832,6 +832,7 @@ namespace decompiler {
 	static bool block_writers = true;
 	static bool negated_carry = true;
 	static bool block_origins = true;
+	static bool result_numbers = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -5536,6 +5537,72 @@ namespace decompiler {
 
 				if ( item.end == term::RETURN && item.reachable && item.returned < 0 && family_var [ family ] >= 0 )
 					item.returned = var_expr ( family_var [ family ], 0 );
+
+			}
+
+		}
+
+		if ( returns_value && !returns_float && result_numbers ) {
+
+			base::list < uint8_t > visited;
+			base::list < int32_t > pending;
+
+			visited.fill ( static_cast < size_t > ( count ), 0 );
+
+			for ( int32_t i = 0; i < count; i++ ) {
+
+				const base::list < x86::instruction >& list = listings [ static_cast < size_t > ( i ) ];
+
+				if ( code [ static_cast < size_t > ( i ) ].reachable && !list.empty ( ) && list [ list.size ( ) - 1 ].name == mnemonic::ret ) {
+
+					visited [ static_cast < size_t > ( i ) ] = 1;
+					pending.push ( i );
+					return_points++;
+
+				}
+
+			}
+
+			for ( int32_t q = 0; q < pending.count ( ); q++ ) {
+
+				int32_t at = pending [ static_cast < size_t > ( q ) ];
+				const base::list < x86::instruction >& list = listings [ static_cast < size_t > ( at ) ];
+				bool found = false;
+
+				for ( int32_t k = list.count ( ) - 1; k >= 0 && !found; k-- ) {
+
+					const x86::instruction& ins = list [ static_cast < size_t > ( k ) ];
+					uint32_t u = 0;
+					uint32_t d = 0;
+
+					if ( ins.name == mnemonic::ret )
+						continue;
+
+					effects ( ins, long_mode, u, d );
+
+					if ( ins.name == mnemonic::call || ( d & 1u ) ) {
+
+						found = true;
+
+						if ( !result_at || ins.address < result_at )
+							result_at = ins.address;
+
+					}
+
+				}
+
+				if ( found )
+					continue;
+
+				for ( const analysis::edge& link : graph.edges ) {
+
+					if ( link.to != at || link.from < 0 || link.from >= count || visited [ static_cast < size_t > ( link.from ) ] )
+						continue;
+
+					visited [ static_cast < size_t > ( link.from ) ] = 1;
+					pending.push ( link.from );
+
+				}
 
 			}
 
