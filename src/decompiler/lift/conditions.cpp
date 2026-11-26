@@ -90,6 +90,7 @@ namespace decompiler {
 	static bool calls_keep_exprs = true;
 	static bool ghost_call_copies = false;
 	static bool ghost_forwards = false;
+	static bool stack_param_copies = true;
 	static bool ghost_sinks = false;
 	static bool copy_fixed = true;
 	static bool copy_into = true;
@@ -628,7 +629,11 @@ namespace decompiler {
 				uses [ static_cast < size_t > ( source.value ) ] += uses [ static_cast < size_t > ( v ) ] - 1;
 				uses [ static_cast < size_t > ( v ) ] = 0;
 				defs [ static_cast < size_t > ( v ) ] = 0;
-				vars [ static_cast < size_t > ( v ) ].ghost = true;
+
+				const variable& copied = vars [ static_cast < size_t > ( source.value ) ];
+				bool stack_param = copied.kind == var_kind::PARAMETER && long_mode && ( copied.position >= 4 || ( copied.bits & FLOATING ) );
+
+				vars [ static_cast < size_t > ( v ) ].ghost = !( stack_param_copies && stack_param );
 				vars [ static_cast < size_t > ( v ) ].born = line.origin ? line.origin : line.address;
 
 				for ( statement& other : statements ) {
