@@ -76,9 +76,15 @@
     <ClCompile Include="src\loader\symbols\symbols.cpp" />
     <ClCompile Include="src\render\canvas.cpp" />
     <ClCompile Include="src\render\device.cpp" />
-    <ClCompile Include="src\runtime\memory\memory.cpp" />
-    <ClCompile Include="src\runtime\rounding\rounding.cpp" />
-    <ClCompile Include="src\runtime\startup\startup.cpp" />
+    <ClCompile Include="src\runtime\memory\memory.cpp">
+      <AdditionalOptions Condition="'$(plumb_lto)'=='true'">%(AdditionalOptions) -fno-lto</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="src\runtime\rounding\rounding.cpp">
+      <AdditionalOptions Condition="'$(plumb_lto)'=='true'">%(AdditionalOptions) -fno-lto</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="src\runtime\startup\startup.cpp">
+      <AdditionalOptions Condition="'$(plumb_lto)'=='true'">%(AdditionalOptions) -fno-lto</AdditionalOptions>
+    </ClCompile>
     <ClCompile Include="src\script\engine\builtins.cpp" />
     <ClCompile Include="src\script\engine\engine.cpp" />
     <ClCompile Include="src\script\jit\jit.cpp" />

@@ -10,6 +10,8 @@
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
     <EmbedManifest>false</EmbedManifest>
+    <UseMultiToolTask>true</UseMultiToolTask>
+    <EnforceProcessCountAcrossBuilds>true</EnforceProcessCountAcrossBuilds>
   </PropertyGroup>
 
   <ItemDefinitionGroup>
@@ -36,6 +38,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <FloatingPointModel>Fast</FloatingPointModel>
       <AdditionalOptions>/Zc:threadSafeInit- /clang:-ffreestanding /clang:-fno-math-errno /clang:-mno-stack-arg-probe /clang:-Wno-unused-parameter /clang:-Wno-missing-braces %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -65,6 +68,20 @@
     <ResourceCompile>
       <PreprocessorDefinitions>PLUMB_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
+  </ItemDefinitionGroup>
+
+  <PropertyGroup Condition="'$(plumb_lto)'=='' And '$(Configuration)'=='Release'">
+    <plumb_lto>true</plumb_lto>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(plumb_lto)'=='true'">
+    <UseLldLink>true</UseLldLink>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Condition="'$(plumb_lto)'=='true'">
+    <ClCompile>
+      <AdditionalOptions>-flto=thin %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
 
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
