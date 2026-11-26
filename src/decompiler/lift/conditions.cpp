@@ -99,6 +99,7 @@ namespace decompiler {
 	static bool copy_local = true;
 	static bool expr_fixed = true;
 	static bool keep_destination = true;
+	static bool shared_results = true;
 	static bool origin_numbers = true;
 
 	static bool has_call ( const builder& b, int32_t e, int32_t depth ) {
@@ -122,6 +123,101 @@ namespace decompiler {
 		}
 
 		return false;
+
+	}
+
+	static int32_t occurrences ( const builder& b, int32_t e, int64_t var, int32_t depth ) {
+
+		if ( e < 0 || depth > 64 )
+			return 0;
+
+		const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+		int32_t found = node.kind == op::VAR && node.value == var ? 1 : 0;
+
+		found += occurrences ( b, node.a, var, depth + 1 ) + occurrences ( b, node.b, var, depth + 1 ) + occurrences ( b, node.c, var, depth + 1 );
+
+		for ( int32_t i = 0; i < node.arg_count; i++ )
+			found += occurrences ( b, b.args [ static_cast < size_t > ( node.first_arg + i ) ], var, depth + 1 );
+
+		return found;
+
+	}
+
+	static bool writes_between ( const builder& b, int32_t block, uint32_t mask, uint64_t from, uint64_t to ) {
+
+		const block_code& item = b.code [ static_cast < size_t > ( block ) ];
+
+		for ( int32_t i = item.writes_first; i < item.writes_first + item.writes_count && i < b.write_at.count ( ); i++ ) {
+
+			uint64_t at = b.write_at [ static_cast < size_t > ( i ) ];
+
+			if ( at > from && at < to && ( b.write_regs [ static_cast < size_t > ( i ) ] & mask ) )
+				return true;
+
+		}
+
+		return false;
+
+	}
+
+	static bool holds_through ( const builder& b, uint32_t mask, int32_t from_block, uint64_t from, int32_t to_block, uint64_t to ) {
+
+		if ( from_block == to_block && to > from )
+			return !writes_between ( b, from_block, mask, from, to );
+
+		if ( writes_between ( b, to_block, mask, 0, to ) )
+			return false;
+
+		int32_t total = b.code.count ( );
+		base::list < uint8_t > seen;
+		base::list < int32_t > work;
+
+		seen.fill ( static_cast < size_t > ( total ), 0 );
+		work.push ( to_block );
+
+		while ( !work.empty ( ) ) {
+
+			int32_t at = work [ work.size ( ) - 1 ];
+			int32_t found = 0;
+
+			work.pop ( );
+
+			for ( const analysis::edge& link : b.graph.edges ) {
+
+				if ( link.to != at )
+					continue;
+
+				found++;
+
+				if ( link.from < 0 || link.from >= total )
+					return false;
+
+				if ( link.from == from_block ) {
+
+					if ( writes_between ( b, from_block, mask, from, ~0ull ) )
+						return false;
+
+					continue;
+
+				}
+
+				if ( seen [ static_cast < size_t > ( link.from ) ] )
+					continue;
+
+				if ( writes_between ( b, link.from, mask, 0, ~0ull ) )
+					return false;
+
+				seen [ static_cast < size_t > ( link.from ) ] = 1;
+				work.push ( link.from );
+
+			}
+
+			if ( !found || found != b.code [ static_cast < size_t > ( at ) ].preds )
+				return false;
+
+		}
+
+		return true;
 
 	}
 
@@ -595,6 +691,115 @@ namespace decompiler {
 
 					while ( produced >= 0 && exprs [ static_cast < size_t > ( produced ) ].kind == op::CAST )
 						produced = exprs [ static_cast < size_t > ( produced ) ].a;
+
+					if ( produced >= 0 && exprs [ static_cast < size_t > ( produced ) ].kind == op::CALL && origin.address < line.address && shared_results ) {
+
+						int32_t copy_index = single [ static_cast < size_t > ( v ) ];
+						base::list < int32_t > owner;
+
+						owner.fill ( static_cast < size_t > ( statements.count ( ) ), -1 );
+
+						for ( int32_t k = 0; k < code.count ( ); k++ ) {
+
+							const block_code& block = code [ static_cast < size_t > ( k ) ];
+
+							for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ )
+								owner [ static_cast < size_t > ( s ) ] = k;
+
+						}
+
+						int32_t copy_block = owner [ static_cast < size_t > ( copy_index ) ];
+						uint64_t copied_at = line.origin ? line.origin : line.address;
+						uint32_t mask = 1u << vars [ static_cast < size_t > ( source.value ) ].family;
+						int32_t outside = 0;
+						int32_t mine = 0;
+						int32_t moved = 0;
+						base::list < int32_t > carried_lines;
+						base::list < int32_t > carried_blocks;
+
+						for ( int32_t s = 0; s < statements.count ( ) && copy_block >= 0; s++ ) {
+
+							const statement& other = statements [ static_cast < size_t > ( s ) ];
+
+							if ( s == copy_index || other.kind == stmt::NOP || other.kind == stmt::ASM )
+								continue;
+
+							bool defines = other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR;
+							int32_t here = occurrences ( *this, other.right, v, 0 ) + ( defines ? 0 : occurrences ( *this, other.left, v, 0 ) );
+							int32_t theirs = occurrences ( *this, other.right, source.value, 0 ) + ( defines ? 0 : occurrences ( *this, other.left, source.value, 0 ) );
+							int32_t at = owner [ static_cast < size_t > ( s ) ];
+
+							if ( theirs && at != copy_block )
+								outside += theirs;
+
+							mine += here;
+
+							if ( !here || at < 0 || !holds_through ( *this, mask, copy_block, copied_at, at, other.address ) )
+								continue;
+
+							carried_lines.push ( s );
+							moved += here;
+
+							if ( at != copy_block )
+								outside += here;
+
+						}
+
+						for ( int32_t k = 0; k < code.count ( ) && copy_block >= 0 && k < graph.blocks.count ( ); k++ ) {
+
+							const block_code& block = code [ static_cast < size_t > ( k ) ];
+							int32_t here = occurrences ( *this, block.condition, v, 0 ) + occurrences ( *this, block.selector, v, 0 ) + occurrences ( *this, block.returned, v, 0 );
+							int32_t theirs = occurrences ( *this, block.condition, source.value, 0 ) + occurrences ( *this, block.selector, source.value, 0 ) + occurrences ( *this, block.returned, source.value, 0 );
+
+							if ( theirs && k != copy_block )
+								outside += theirs;
+
+							mine += here;
+
+							if ( !here || !holds_through ( *this, mask, copy_block, copied_at, k, graph.blocks [ static_cast < size_t > ( k ) ].end - 1 ) )
+								continue;
+
+							carried_blocks.push ( k );
+							moved += here;
+
+							if ( k != copy_block )
+								outside += here;
+
+						}
+
+						if ( outside > 0 && mine > moved ) {
+
+							for ( int32_t s : carried_lines ) {
+
+								statement& other = statements [ static_cast < size_t > ( s ) ];
+								bool defines = other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR;
+
+								if ( !defines )
+									other.left = substitute ( *this, other.left, v, line.right, 0 );
+
+								other.right = substitute ( *this, other.right, v, line.right, 0 );
+
+							}
+
+							for ( int32_t k : carried_blocks ) {
+
+								block_code& block = code [ static_cast < size_t > ( k ) ];
+
+								block.condition = substitute ( *this, block.condition, v, line.right, 0 );
+								block.selector = substitute ( *this, block.selector, v, line.right, 0 );
+								block.returned = substitute ( *this, block.returned, v, line.right, 0 );
+
+							}
+
+							uses [ static_cast < size_t > ( source.value ) ] += moved;
+							uses [ static_cast < size_t > ( v ) ] -= moved;
+							changed = changed || moved > 0;
+
+							continue;
+
+						}
+
+					}
 
 					if ( produced >= 0 && exprs [ static_cast < size_t > ( produced ) ].kind == op::CALL && origin.address < line.address ) {
 

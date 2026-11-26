@@ -147,6 +147,8 @@ namespace decompiler {
 		int32_t flag_b = -1;
 		uint8_t flag_size = 4;
 		int32_t preds = 0;
+		int32_t writes_first = 0;
+		int32_t writes_count = 0;
 
 	};
 
@@ -212,6 +214,8 @@ namespace decompiler {
 		base::list < base::text > var_structs;
 		base::list < uint64_t > number_at;
 		base::list < uint64_t > ghost_at;
+		base::list < uint64_t > write_at;
+		base::list < uint32_t > write_regs;
 		uint64_t result_at = 0;
 		int32_t return_points = 0;
 		uint8_t param_bits [ 16 ] = { };

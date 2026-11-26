@@ -5134,6 +5134,35 @@ namespace decompiler {
 
 		}
 
+		write_at.clear ( );
+		write_regs.clear ( );
+
+		for ( int32_t index = 0; index < count; index++ ) {
+
+			const base::list < x86::instruction >& list = listings [ static_cast < size_t > ( index ) ];
+			block_code& entry = code [ static_cast < size_t > ( index ) ];
+
+			entry.writes_first = write_at.count ( );
+
+			for ( int32_t i = 0; i < list.count ( ); i++ ) {
+
+				uint32_t d = ins_defs [ static_cast < size_t > ( index ) ] [ static_cast < size_t > ( i ) ];
+
+				if ( list [ static_cast < size_t > ( i ) ].name == mnemonic::call )
+					d |= long_mode ? 0xF07u : 0x7u;
+
+				if ( !d )
+					continue;
+
+				write_at.push ( list [ static_cast < size_t > ( i ) ].address );
+				write_regs.push ( d );
+
+			}
+
+			entry.writes_count = write_at.count ( ) - entry.writes_first;
+
+		}
+
 		machine state;
 
 		state.b = this;
