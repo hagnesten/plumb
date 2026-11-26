@@ -213,4 +213,10 @@ namespace analysis {
 
 	uint64_t rank ( const uint64_t* words, const uint32_t* directory, uint64_t index );
 
+	int32_t ones ( uint64_t value );
+
+	int32_t lowest ( uint64_t value );
+
+	bool bit ( const uint64_t* words, uint64_t index );
+
 }

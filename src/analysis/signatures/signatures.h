@@ -47,4 +47,42 @@ namespace analysis {
 
 	bool function_key ( const database& db, int32_t index, uint64_t& key, bool strict = true );
 
+	int32_t hex_value ( wchar_t c );
+
+	void add_byte ( pattern& out, uint8_t value, bool fixed );
+
+	struct scan_task {
+
+		const uint8_t* data;
+		uint64_t length;
+		uint64_t offset;
+
+	};
+
+	struct scan_job {
+
+		const pattern* find;
+		base::list < scan_task > tasks;
+		volatile long next;
+		volatile long found;
+		int32_t limit;
+		int32_t anchor;
+
+	};
+
+	struct scan_worker {
+
+		scan_job* job;
+		base::list < uint64_t > hits;
+
+	};
+
+	unsigned long __stdcall scan_entry ( void* parameter );
+
+	int32_t scan_offsets ( const loader::binary& file, const pattern& find, bool code_only, base::list < uint64_t >& hits, int32_t limit );
+
+	void wildcard ( pattern& out, size_t from, int32_t at, int32_t size );
+
+	bool grow_unique ( const database& db, uint64_t start, uint64_t limit, int32_t max_bytes, pattern& out, int32_t& matches );
+
 }
