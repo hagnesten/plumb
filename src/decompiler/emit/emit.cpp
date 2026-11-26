@@ -608,6 +608,8 @@ namespace decompiler {
 	static bool brace_before_else = true;
 	static bool power_hex = true;
 	static bool wide_negatives = true;
+	static bool void_equals = true;
+	static bool void_stores = true;
 	static bool plain_negatives = true;
 	static bool unsigned_results = true;
 	static bool step_carriers = true;
@@ -4769,8 +4771,14 @@ namespace decompiler {
 					bool signed_compare = compare && ( item.bits & SIGNED ) && item.kind != op::EQ && item.kind != op::NE && !( item.bits & FLOATING );
 
 					bool negative_bound = false;
+					bool void_equal = void_equals && flow_casts && !no_casts && ( item.kind == op::EQ || item.kind == op::NE ) && void_element_load ( item.b ) && lhs.kind == op::VAR && pointer_step ( item.a ) == 0 && lhs.value >= 0 && lhs.value < b.vars.count ( ) && !( lhs.bits & FLOATING ) && !( lhs.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( lhs.value ) ].empty ( ) );
 
-					if ( cast_lhs ) {
+					if ( void_equal ) {
+
+						out.put ( L"(void *)", syntax::TYPE );
+						value ( item.a, 14, bitwise );
+
+					} else if ( cast_lhs ) {
 
 						out.put ( lhs.size == 1 ? L"(unsigned __int8)" : ( lhs.size == 2 ? L"(unsigned __int16)" : ( lhs.size == 4 ? L"(unsigned int)" : L"(unsigned __int64)" ) ), syntax::TYPE );
 						value ( item.a, 14, bitwise );
@@ -4817,7 +4825,7 @@ namespace decompiler {
 
 						operand = held;
 
-					} else if ( compare && flow_casts && void_element_load ( item.b ) && lhs.kind == op::VAR && pointer_step ( item.a ) == 0 && lhs.value >= 0 && lhs.value < b.vars.count ( ) ) {
+					} else if ( compare && !void_equal && flow_casts && void_element_load ( item.b ) && lhs.kind == op::VAR && pointer_step ( item.a ) == 0 && lhs.value >= 0 && lhs.value < b.vars.count ( ) ) {
 
 						out.put ( ( b.vars [ static_cast < size_t > ( lhs.value ) ].bits & UNSIGNED ) ? L"(unsigned __int64)" : L"(__int64)", syntax::TYPE );
 						value ( item.b, 14 );
@@ -5597,6 +5605,11 @@ namespace decompiler {
 							value ( item.right, 14 );
 
 						}
+
+					} else if ( void_stores && flow_casts && !no_casts && left.kind == op::LOAD && void_element_load ( item.left ) && right.kind == op::VAR && right.size == 8 && pointer_step ( item.right ) == 0 && !( right.bits & ( FLOATING | POINTER ) ) && right.value >= 0 && right.value < b.vars.count ( ) && !( b.vars [ static_cast < size_t > ( right.value ) ].bits & ( FLOATING | POINTER ) ) && !( right.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( right.value ) ].empty ( ) ) ) {
+
+						out.put ( L"(void *)", syntax::TYPE );
+						value ( item.right, 14 );
 
 					} else if ( flow_casts && left.kind == op::VAR && left.size == 8 && pointer_step ( item.left ) == 0 && void_element_load ( item.right ) && !( left.bits & FLOATING ) && !( left.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( left.value ) ].empty ( ) ) ) {
 
