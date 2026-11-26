@@ -1874,6 +1874,7 @@ namespace decompiler {
 
 	static bool sign_ops = true;
 	static bool sign_copies = true;
+	static bool widened_returns = true;
 	static bool inline_switches = true;
 	static bool sign_pointers = true;
 
@@ -1949,6 +1950,24 @@ namespace decompiler {
 
 			note_signs ( *this, item.condition, marks, 0 );
 			note_signs ( *this, item.returned, marks, 0 );
+
+			if ( widened_returns && long_mode && returns_value && !returns_float && !has_prototype && result_width == 0 && result_text.empty ( ) && item.returned >= 0 ) {
+
+				int32_t back = item.returned;
+
+				while ( back >= 0 && exprs [ static_cast < size_t > ( back ) ].kind == op::CAST )
+					back = exprs [ static_cast < size_t > ( back ) ].a;
+
+				if ( back >= 0 && exprs [ static_cast < size_t > ( back ) ].kind == op::VAR ) {
+
+					int64_t v = exprs [ static_cast < size_t > ( back ) ].value;
+
+					if ( v >= 0 && v < marks.count ( ) && vars [ static_cast < size_t > ( v ) ].size == 4 && vars [ static_cast < size_t > ( v ) ].kind == var_kind::REGISTER )
+						marks [ static_cast < size_t > ( v ) ] |= 1;
+
+				}
+
+			}
 
 		}
 
