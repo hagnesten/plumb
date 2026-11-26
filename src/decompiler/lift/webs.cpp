@@ -1309,6 +1309,62 @@ namespace decompiler {
 	static bool ghost_param_copies = true;
 	static bool ghost_float_copies = false;
 	static bool register_param_ghosts = true;
+	static bool preserved_ghosts = true;
+
+	static bool reads_var ( const builder& b, int32_t e, int64_t var, int32_t depth ) {
+
+		if ( e < 0 || depth > 96 )
+			return false;
+
+		const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+		if ( ( node.kind == op::VAR || node.kind == op::ADDRESS ) && node.value == var )
+			return true;
+
+		if ( reads_var ( b, node.a, var, depth + 1 ) || reads_var ( b, node.b, var, depth + 1 ) || reads_var ( b, node.c, var, depth + 1 ) )
+			return true;
+
+		for ( int32_t i = 0; i < node.arg_count; i++ ) {
+
+			if ( reads_var ( b, b.args [ static_cast < size_t > ( node.first_arg + i ) ], var, depth + 1 ) )
+				return true;
+
+		}
+
+		return false;
+
+	}
+
+	static bool read_later ( const builder& b, int64_t var, uint64_t after ) {
+
+		for ( const statement& line : b.statements ) {
+
+			if ( line.kind == stmt::NOP || line.kind == stmt::ASM || line.address <= after )
+				continue;
+
+			if ( reads_var ( b, line.right, var, 0 ) )
+				return true;
+
+			if ( !( line.kind == stmt::ASSIGN && line.left >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR ) && reads_var ( b, line.left, var, 0 ) )
+				return true;
+
+		}
+
+		for ( int32_t k = 0; k < b.code.count ( ) && k < b.graph.blocks.count ( ); k++ ) {
+
+			const block_code& block = b.code [ static_cast < size_t > ( k ) ];
+
+			if ( b.graph.blocks [ static_cast < size_t > ( k ) ].end - 1 <= after )
+				continue;
+
+			if ( reads_var ( b, block.condition, var, 0 ) || reads_var ( b, block.selector, var, 0 ) || reads_var ( b, block.returned, var, 0 ) )
+				return true;
+
+		}
+
+		return false;
+
+	}
 
 	void builder::coalesce_copies ( ) {
 
@@ -1373,7 +1429,12 @@ namespace decompiler {
 
 			line.kind = stmt::NOP;
 
-			if ( ghost_param_copies && ( ghost_float_copies || vars [ static_cast < size_t > ( copy ) ].family < 16 ) && ( !long_mode || !register_param_ghosts || from.position < 4 ) ) {
+			int32_t family = vars [ static_cast < size_t > ( copy ) ].family;
+			bool preserved = family == 3 || family == 5 || family == 6 || family == 7 || ( family >= 12 && family < 16 );
+			uint64_t copied_at = line.origin ? line.origin : line.address;
+			bool dies = copied_at != function && !read_later ( *this, source, copied_at );
+
+			if ( ghost_param_copies && ( ghost_float_copies || family < 16 ) && ( !long_mode || !register_param_ghosts || from.position < 4 ) && ( !preserved_ghosts || preserved || dies || !long_mode ) ) {
 
 				vars [ static_cast < size_t > ( copy ) ].ghost = true;
 				vars [ static_cast < size_t > ( copy ) ].born = line.origin ? line.origin : line.address;
