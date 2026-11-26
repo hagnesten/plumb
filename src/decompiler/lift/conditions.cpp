@@ -89,6 +89,7 @@ namespace decompiler {
 	static bool ghost_exprs = false;
 	static bool calls_keep_exprs = true;
 	static bool ghost_call_copies = false;
+	static bool ghost_forwards = false;
 	static bool ghost_sinks = false;
 	static bool copy_fixed = true;
 	static bool copy_into = true;
@@ -759,7 +760,7 @@ namespace decompiler {
 									line.left = substitute ( *this, line.left, x, value, 0 );
 
 								head.kind = stmt::NOP;
-								vars [ static_cast < size_t > ( x ) ].ghost = true;
+								vars [ static_cast < size_t > ( x ) ].ghost = ghost_forwards;
 								vars [ static_cast < size_t > ( x ) ].born = head.origin ? head.origin : head.address;
 								changed = true;
 								previous = -1;
