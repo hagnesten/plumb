@@ -616,6 +616,7 @@ namespace decompiler {
 	static bool latch_continues = true;
 	static bool born_numbers = true;
 	static bool result_ghosts = true;
+	static bool expression_returns = true;
 	static bool plain_negatives = true;
 	static bool unsigned_results = true;
 	static bool step_carriers = true;
@@ -11583,7 +11584,7 @@ namespace decompiler {
 				const expr& back = b.exprs [ static_cast < size_t > ( item.returned ) ];
 				int32_t var = back.kind == op::VAR ? static_cast < int32_t > ( back.value ) : -1;
 
-				if ( back.kind == op::CONST )
+				if ( back.kind == op::CONST || ( expression_returns && var < 0 ) )
 					continue;
 
 				if ( var < 0 || b.vars [ static_cast < size_t > ( var ) ].kind != var_kind::REGISTER || b.vars [ static_cast < size_t > ( var ) ].family != 0 || ( chosen >= 0 && chosen != var ) ) {
