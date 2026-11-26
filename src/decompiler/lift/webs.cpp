@@ -1021,6 +1021,7 @@ namespace decompiler {
 
 	static bool select_params = true;
 	static bool select_inside = true;
+	static bool joined_params = true;
 
 	void builder::coalesce_selects ( ) {
 
@@ -1066,6 +1067,109 @@ namespace decompiler {
 			count ( count, block.returned, 0 );
 
 		}
+
+		auto holds = [ & ] ( auto& self, int32_t e, int64_t var, int32_t depth ) -> bool {
+
+			if ( e < 0 || depth > 96 )
+				return false;
+
+			const expr& node = exprs [ static_cast < size_t > ( e ) ];
+
+			if ( ( node.kind == op::VAR || node.kind == op::ADDRESS ) && node.value == var )
+				return true;
+
+			if ( self ( self, node.a, var, depth + 1 ) || self ( self, node.b, var, depth + 1 ) || self ( self, node.c, var, depth + 1 ) )
+				return true;
+
+			for ( int32_t i = 0; i < node.arg_count; i++ ) {
+
+				if ( self ( self, args [ static_cast < size_t > ( node.first_arg + i ) ], var, depth + 1 ) )
+					return true;
+
+			}
+
+			return false;
+
+		};
+
+		auto line_reads = [ & ] ( int32_t s, int64_t var ) -> bool {
+
+			const statement& other = statements [ static_cast < size_t > ( s ) ];
+
+			if ( other.kind == stmt::NOP || other.kind == stmt::ASM )
+				return false;
+
+			if ( holds ( holds, other.right, var, 0 ) )
+				return true;
+
+			return !( other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR ) && holds ( holds, other.left, var, 0 );
+
+		};
+
+		auto read_after = [ & ] ( int64_t var, int32_t index ) -> bool {
+
+			int32_t blocks = code.count ( );
+			int32_t home = -1;
+
+			for ( int32_t k = 0; k < blocks && home < 0; k++ ) {
+
+				if ( index >= code [ static_cast < size_t > ( k ) ].first && index < code [ static_cast < size_t > ( k ) ].first + code [ static_cast < size_t > ( k ) ].count )
+					home = k;
+
+			}
+
+			if ( home < 0 )
+				return true;
+
+			base::list < uint8_t > reach;
+			base::list < int32_t > work;
+
+			reach.fill ( static_cast < size_t > ( blocks ), 0 );
+			work.push ( home );
+
+			while ( !work.empty ( ) ) {
+
+				int32_t at = work [ work.size ( ) - 1 ];
+
+				work.pop ( );
+
+				for ( const analysis::edge& link : graph.edges ) {
+
+					if ( link.from != at || link.to < 0 || link.to >= blocks || reach [ static_cast < size_t > ( link.to ) ] )
+						continue;
+
+					reach [ static_cast < size_t > ( link.to ) ] = 1;
+					work.push ( link.to );
+
+				}
+
+			}
+
+			for ( int32_t k = 0; k < blocks; k++ ) {
+
+				const block_code& block = code [ static_cast < size_t > ( k ) ];
+
+				if ( k != home && !reach [ static_cast < size_t > ( k ) ] )
+					continue;
+
+				for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ ) {
+
+					if ( k == home && s <= index && !reach [ static_cast < size_t > ( k ) ] )
+						continue;
+
+					if ( s != index && line_reads ( s, var ) )
+						return true;
+
+				}
+
+				if ( holds ( holds, block.condition, var, 0 ) || holds ( holds, block.selector, var, 0 ) || holds ( holds, block.returned, var, 0 ) )
+					return true;
+
+			}
+
+			return false;
+
+		};
 
 		for ( const statement& line : statements ) {
 
@@ -1136,7 +1240,9 @@ namespace decompiler {
 
 				}
 
-				if ( !written && writes_into == 1 && local [ static_cast < size_t > ( from ) ] == reads [ static_cast < size_t > ( from ) ] ) {
+				bool joined = joined_params && !read_after ( from, static_cast < int32_t > ( &line - statements.data ( ) ) );
+
+				if ( !written && writes_into == 1 && ( joined || local [ static_cast < size_t > ( from ) ] == reads [ static_cast < size_t > ( from ) ] ) ) {
 
 					for ( expr& node : exprs ) {
 
