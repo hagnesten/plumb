@@ -647,6 +647,7 @@ namespace decompiler {
 
 	static bool narrow_by_callee = true;
 	static bool narrow_copies = true;
+	static bool narrow_truncations = true;
 	static bool narrow_extra_args = true;
 	static bool narrow_pointer_bits = true;
 
@@ -769,10 +770,50 @@ namespace decompiler {
 
 		};
 
+		base::list < int32_t > trunc_to;
+		base::list < int32_t > trunc_from;
+		base::list < uint8_t > trunc_width;
+
+		auto truncating = [ & ] ( const statement& line, int32_t& to, int32_t& from ) {
+
+			if ( !narrow_truncations || line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 )
+				return false;
+
+			const expr& left = exprs [ static_cast < size_t > ( line.left ) ];
+			const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
+
+			if ( left.kind != op::VAR || left.value < 0 || left.value >= total || source.kind != op::CAST || source.a < 0 || source.size > 4 || ( source.bits & ( FLOATING | POINTER ) ) )
+				return false;
+
+			const expr& inner = exprs [ static_cast < size_t > ( source.a ) ];
+
+			if ( inner.kind != op::VAR || inner.value < 0 || inner.value >= total || inner.value == left.value || inner.size <= source.size || ( inner.bits & FLOATING ) )
+				return false;
+
+			to = static_cast < int32_t > ( left.value );
+			from = static_cast < int32_t > ( inner.value );
+
+			return !blocked [ static_cast < size_t > ( to ) ] && !blocked [ static_cast < size_t > ( from ) ];
+
+		};
+
 		for ( const statement& line : statements ) {
 
 			if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
 				continue;
+
+			int32_t to = -1;
+			int32_t from = -1;
+
+			if ( truncating ( line, to, from ) ) {
+
+				trunc_to.push ( to );
+				trunc_from.push ( from );
+				trunc_width.push ( exprs [ static_cast < size_t > ( line.right ) ].size );
+
+				continue;
+
+			}
 
 			walk ( walk, line.left, 0, 0 );
 			walk ( walk, line.right, 0, 0 );
@@ -796,6 +837,16 @@ namespace decompiler {
 				continue;
 
 			bool defines = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+			int32_t trunc_target = -1;
+			int32_t trunc_source = -1;
+
+			if ( truncating ( line, trunc_target, trunc_source ) ) {
+
+				defined [ static_cast < size_t > ( trunc_target ) ] = 1;
+
+				continue;
+
+			}
 
 			if ( defines ) {
 
@@ -873,6 +924,31 @@ namespace decompiler {
 				}
 
 			}
+
+			for ( int32_t k = 0; k < trunc_to.count ( ); k++ ) {
+
+				size_t to = static_cast < size_t > ( trunc_to [ static_cast < size_t > ( k ) ] );
+				size_t from = static_cast < size_t > ( trunc_from [ static_cast < size_t > ( k ) ] );
+				uint8_t width = trunc_width [ static_cast < size_t > ( k ) ];
+				uint8_t through = blocked [ to ] || !widest [ to ] ? width : base::min ( widest [ to ], width );
+
+				if ( through > widest [ from ] ) {
+
+					widest [ from ] = through;
+					moved = true;
+
+				}
+
+			}
+
+		}
+
+		for ( int32_t k = 0; k < trunc_to.count ( ); k++ ) {
+
+			size_t to = static_cast < size_t > ( trunc_to [ static_cast < size_t > ( k ) ] );
+
+			if ( !blocked [ to ] && !widest [ to ] )
+				widest [ to ] = trunc_width [ static_cast < size_t > ( k ) ];
 
 		}
 
