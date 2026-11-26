@@ -831,6 +831,7 @@ namespace decompiler {
 	static bool filled_returns = true;
 	static bool block_writers = true;
 	static bool negated_carry = true;
+	static bool block_origins = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -1693,6 +1694,9 @@ namespace decompiler {
 				regs [ i ] = -1;
 				reads [ i ] = 0;
 
+				if ( block_origins )
+					reg_at [ i ] = 0;
+
 			}
 
 			forget_kept ( );
@@ -2416,7 +2420,7 @@ namespace decompiler {
 
 			int32_t made_line = emit ( stmt::ASSIGN, b->make ( op::VAR, b->vars [ static_cast < size_t > ( var ) ].size, -1, -1, var ), source, address );
 
-			if ( !address && slot >= 0 && slot < 32 && reg_at [ slot ] )
+			if ( ( !address || block_origins ) && slot >= 0 && slot < 32 && reg_at [ slot ] )
 				b->statements [ static_cast < size_t > ( made_line ) ].origin = reg_at [ slot ];
 
 			b->vars [ static_cast < size_t > ( var ) ].assigned = true;

@@ -1268,7 +1268,7 @@ namespace decompiler {
 			if ( ghost_param_copies ) {
 
 				vars [ static_cast < size_t > ( copy ) ].ghost = true;
-				vars [ static_cast < size_t > ( copy ) ].born = line.address ? line.address : line.origin;
+				vars [ static_cast < size_t > ( copy ) ].born = line.origin ? line.origin : line.address;
 
 			}
 
