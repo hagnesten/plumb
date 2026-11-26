@@ -8,7 +8,7 @@ namespace ui {
 		render::canvas& c = canvas;
 		float k = height / 78.0f;
 		float stroke = base::max ( 5.0f * k, 1.25f );
-		float thin = base::max ( 3.0f * k, 1.0f );
+		float shaft = base::max ( 6.0f * k, 1.25f );
 		render::color brace = ink ( tone::INK_FAINT );
 		render::color line = ink ( tone::INK_SOFT );
 		render::color brass = render::rgb ( 0xE0A43A );
@@ -56,10 +56,15 @@ namespace ui {
 
 		}
 
-		math::vec2 hook = at ( 64.0f, 24.0f );
+		math::vec2 grip = at ( 64.0f, 26.0f );
+		math::vec2 cup = at ( 44.0f, 62.0f );
+		math::vec2 rim = at ( 38.0f, 88.0f );
 
-		c.fill ( math::rect ( hook.x - thin * 0.5f, hook.y - thin * 0.5f, thin, 28.0f * k + thin ), thin * 0.5f, line );
-		c.polygon ( at ( 64.0f, 52.0f ), at ( 78.0f, 68.0f ), at ( 64.0f, 100.0f ), at ( 50.0f, 68.0f ), 0.0f, brass );
+		c.fill ( math::rect ( grip.x - shaft * 0.5f, grip.y - shaft * 0.5f, shaft, 42.0f * k + shaft ), shaft * 0.5f, line );
+		c.push_clip ( math::rect ( cup.x - 1.0f, cup.y - 1.0f, 40.0f * k + 2.0f, 28.0f * k + 1.0f ) );
+		c.fill ( math::rect ( cup.x, cup.y, 40.0f * k, 56.0f * k ), 20.0f * k, brass );
+		c.pop_clip ( );
+		c.fill ( math::rect ( rim.x, rim.y, 52.0f * k, 10.0f * k ), 5.0f * k, render::rgb ( 0xB8822A ) );
 
 	}
 
