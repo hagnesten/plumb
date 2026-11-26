@@ -101,6 +101,7 @@ namespace decompiler {
 	static bool keep_destination = true;
 	static bool shared_results = true;
 	static bool intact_exprs = true;
+	static bool sink_past_moves = true;
 	static bool calls_intact = true;
 	static bool broken_keep = false;
 	static bool origin_numbers = true;
@@ -126,6 +127,52 @@ namespace decompiler {
 		}
 
 		return false;
+
+	}
+
+	static bool register_only ( const builder& b, int32_t e, int32_t depth ) {
+
+		if ( e < 0 )
+			return true;
+
+		if ( depth > 64 )
+			return false;
+
+		const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+		switch ( node.kind ) {
+
+			case op::CONST:
+				return true;
+
+			case op::VAR: {
+
+				if ( node.value < 0 || node.value >= b.vars.count ( ) )
+					return false;
+
+				var_kind kind = b.vars [ static_cast < size_t > ( node.value ) ].kind;
+
+				return kind == var_kind::REGISTER || kind == var_kind::PARAMETER;
+
+			}
+
+			case op::LOAD:
+			case op::CALL:
+			case op::SET:
+			case op::ADDRESS:
+			case op::GLOBAL:
+			case op::INTRINSIC:
+				return false;
+
+			default:
+				break;
+
+		}
+
+		if ( node.arg_count )
+			return false;
+
+		return register_only ( b, node.a, depth + 1 ) && register_only ( b, node.b, depth + 1 ) && register_only ( b, node.c, depth + 1 );
 
 	}
 
@@ -2108,9 +2155,61 @@ namespace decompiler {
 			if ( last < 0 )
 				continue;
 
+			int32_t& wanted = test ? item.condition : item.returned;
+			base::list < int64_t > passed;
+
+			for ( int32_t s = last; s >= item.first && sink_past_moves; s-- ) {
+
+				const statement& other = statements [ static_cast < size_t > ( s ) ];
+
+				if ( other.kind == stmt::NOP )
+					continue;
+
+				if ( other.kind != stmt::ASSIGN || other.left < 0 || other.right < 0 || exprs [ static_cast < size_t > ( other.left ) ].kind != op::VAR ) {
+
+					last = s;
+
+					break;
+
+				}
+
+				int64_t held = exprs [ static_cast < size_t > ( other.left ) ].value;
+
+				if ( held >= 0 && held < vars.count ( ) && uses [ static_cast < size_t > ( held ) ] == 1 && writes [ static_cast < size_t > ( held ) ] == 1 && mentions ( *this, wanted, held, 0 ) ) {
+
+					last = s;
+
+					break;
+
+				}
+
+				if ( !register_only ( *this, other.right, 0 ) ) {
+
+					last = s;
+
+					break;
+
+				}
+
+				passed.push ( held );
+				last = s - 1;
+
+			}
+
+			if ( last < item.first )
+				continue;
+
 			statement& line = statements [ static_cast < size_t > ( last ) ];
 
 			if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+				continue;
+
+			bool blocked = false;
+
+			for ( int64_t held : passed )
+				blocked = blocked || mentions ( *this, line.right, held, 0 );
+
+			if ( blocked )
 				continue;
 
 			int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
