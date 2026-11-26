@@ -765,7 +765,7 @@ namespace decompiler {
 
 	}
 
-	int32_t internal_arguments ( const analysis::database& db, uint64_t function, bool long_mode, int32_t depth ) {
+	static int64_t entry_arguments ( const analysis::database& db, uint64_t function, bool long_mode, int32_t depth, bool floats ) {
 
 		int32_t callee = db.function_starting ( function );
 
@@ -778,7 +778,7 @@ namespace decompiler {
 			return -1;
 
 		static const int32_t gpr [ 4 ] = { 1, 2, 8, 9 };
-		const uint32_t arg_mask = ( 1u << 1 ) | ( 1u << 2 ) | ( 1u << 8 ) | ( 1u << 9 );
+		const uint32_t arg_mask = ( 1u << 1 ) | ( 1u << 2 ) | ( 1u << 8 ) | ( 1u << 9 ) | ( floats ? 0xF0000u : 0u );
 		int32_t count = graph.blocks.count ( );
 		base::list < uint32_t > uses;
 		base::list < uint32_t > defs;
@@ -791,7 +791,16 @@ namespace decompiler {
 		auto passed = [ & ] ( const x86::instruction& ins ) {
 
 			uint64_t target = call_target ( ins );
-			int32_t inner = target ? internal_arguments ( db, target, long_mode, depth + 1 ) : -1;
+
+			if ( floats ) {
+
+				int64_t inner = target ? entry_arguments ( db, target, long_mode, depth + 1, true ) : -1;
+
+				return inner > 0 ? static_cast < uint32_t > ( inner ) : 0u;
+
+			}
+
+			int64_t inner = target ? entry_arguments ( db, target, long_mode, depth + 1, false ) : -1;
 			uint32_t mask = 0;
 
 			for ( int32_t i = 0; i < inner && i < 4; i++ )
@@ -824,6 +833,9 @@ namespace decompiler {
 
 				if ( zeroing )
 					u = 0;
+
+				if ( floats && ins.name == mnemonic::ret )
+					u &= ~( 1u << 16 );
 
 				if ( ins.name == mnemonic::call && stack_probe ( db, ins ) ) {
 
@@ -875,6 +887,9 @@ namespace decompiler {
 		uint32_t entry = count ? live [ 0 ] & arg_mask : 0;
 		int32_t highest = 0;
 
+		if ( floats )
+			return static_cast < int64_t > ( entry );
+
 		for ( int32_t i = 0; i < 4; i++ ) {
 
 			if ( entry & ( 1u << gpr [ i ] ) )
@@ -883,6 +898,103 @@ namespace decompiler {
 		}
 
 		return highest;
+
+	}
+
+	int32_t internal_arguments ( const analysis::database& db, uint64_t function, bool long_mode, int32_t depth ) {
+
+		return static_cast < int32_t > ( entry_arguments ( db, function, long_mode, depth, false ) );
+
+	}
+
+	int64_t argument_registers ( const analysis::database& db, uint64_t function ) {
+
+		return entry_arguments ( db, function, true, 0, true );
+
+	}
+
+	int32_t stack_arguments ( const analysis::database& db, uint64_t function ) {
+
+		analysis::function_graph graph;
+
+		if ( !analysis::build_graph ( db, function, graph ) || graph.blocks.empty ( ) )
+			return -1;
+
+		int64_t frame = 0;
+		int32_t found = 0;
+		bool prologue = true;
+
+		for ( int32_t i = 0; i < graph.blocks.count ( ); i++ ) {
+
+			const analysis::block& item = graph.blocks [ static_cast < size_t > ( i ) ];
+			uint64_t at = item.start;
+
+			while ( at < item.end ) {
+
+				x86::instruction ins;
+
+				if ( !db.decode ( at, ins ) )
+					return -1;
+
+				at = ins.next ( );
+
+				if ( ins.name == mnemonic::pop )
+					continue;
+
+				if ( ins.name == mnemonic::push ) {
+
+					if ( !prologue )
+						return -1;
+
+					frame += 8;
+
+					continue;
+
+				}
+
+				if ( ins.count >= 1 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 0 ].reg == x86::RSP ) {
+
+					if ( ins.name == mnemonic::sub && prologue && ins.count == 2 && ins.operands [ 1 ].type == x86::kind::IMM ) {
+
+						frame += ins.operands [ 1 ].value;
+						prologue = false;
+
+						continue;
+
+					}
+
+					if ( ins.name == mnemonic::add && ins.count == 2 && ins.operands [ 1 ].type == x86::kind::IMM )
+						continue;
+
+					return -1;
+
+				}
+
+				for ( int32_t k = 0; k < ins.count; k++ ) {
+
+					const x86::operand& part = ins.operands [ static_cast < size_t > ( k ) ];
+
+					if ( part.type == x86::kind::REG && part.reg == x86::RBP && k == 0 && ( part.access & x86::WRITE ) )
+						return -1;
+
+					if ( part.type != x86::kind::MEM || part.base != x86::RSP || part.index != x86::NONE )
+						continue;
+
+					int64_t offset = part.value - frame - 8;
+
+					if ( offset >= 0x20 && ( offset & 7 ) == 0 )
+						found = base::max ( found, static_cast < int32_t > ( ( offset - 0x20 ) / 8 ) + 1 );
+
+				}
+
+				if ( ins.name != mnemonic::mov && ins.name != mnemonic::lea && ins.name != mnemonic::movaps && ins.name != mnemonic::movups && ins.name != mnemonic::movdqa && ins.name != mnemonic::movapd && ins.name != mnemonic::nop )
+					prologue = false;
+
+			}
+
+		}
+
+		return found;
 
 	}
 

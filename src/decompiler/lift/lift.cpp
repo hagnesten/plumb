@@ -595,6 +595,7 @@ namespace decompiler {
 	static bool select_loads = true;
 	static bool carried_flags = true;
 	static bool outgoing_args = true;
+	static bool float_calls = true;
 	static bool zero_paths = true;
 	static bool sse_extras = true;
 
@@ -3323,13 +3324,35 @@ namespace decompiler {
 
 				}
 
+				int64_t mask = -1;
+
 				if ( count >= 0 )
 					highest = count - 1;
 				else if ( direct && callee >= 0 ) {
 
 					int32_t inner = internal_arguments ( *k.db, direct, true, 0 );
+					int32_t reach = inner;
+					int32_t extra = -1;
 
-					if ( inner >= 0 )
+					if ( inner >= 0 && float_calls ) {
+
+						mask = argument_registers ( *k.db, direct );
+						extra = stack_arguments ( *k.db, direct );
+
+						for ( int32_t i = 0; i < 4 && mask > 0; i++ ) {
+
+							if ( mask & ( ( 1ll << gpr [ i ] ) | ( 1ll << ( 16 + i ) ) ) )
+								reach = base::max ( reach, i + 1 );
+
+						}
+
+					}
+
+					if ( inner >= 0 && extra > 0 )
+						highest = base::max ( reach - 1, 3 + extra );
+					else if ( inner >= 0 && extra == 0 && reach > inner )
+						highest = reach - 1;
+					else if ( inner >= 0 )
 						highest = inner < 4 && no_phantom_stack ? inner - 1 : base::max ( inner - 1, stacked );
 
 				}
@@ -3341,9 +3364,15 @@ namespace decompiler {
 
 					if ( i < 4 ) {
 
-						bool floating = regs [ 16 + i ] >= 0 && ( k.exprs [ static_cast < size_t > ( regs [ 16 + i ] ) ].bits & FLOATING ) && regs [ gpr [ i ] ] < 0;
+						bool wanted = mask > 0 && ( mask & ( 1ll << ( 16 + i ) ) ) && ( !( mask & ( 1ll << gpr [ i ] ) ) || ( regs [ 16 + i ] >= 0 && regs [ gpr [ i ] ] < 0 ) );
+						bool floating = wanted || ( regs [ 16 + i ] >= 0 && ( k.exprs [ static_cast < size_t > ( regs [ 16 + i ] ) ].bits & FLOATING ) && regs [ gpr [ i ] ] < 0 );
 
-						list.push ( floating ? regs [ 16 + i ] : family_value ( gpr [ i ] ) );
+						int32_t passed = floating ? ( regs [ 16 + i ] >= 0 ? regs [ 16 + i ] : family_value ( 16 + i ) ) : family_value ( gpr [ i ] );
+
+						if ( wanted && passed >= 0 && k.exprs [ static_cast < size_t > ( passed ) ].kind == op::CONST && k.exprs [ static_cast < size_t > ( passed ) ].value == 0 && ( k.exprs [ static_cast < size_t > ( passed ) ].size != 4 || !( k.exprs [ static_cast < size_t > ( passed ) ].bits & FLOATING ) ) )
+							passed = k.make ( op::CAST, 4, k.constant ( 0, 4 ), -1, 0, FLOATING );
+
+						list.push ( passed );
 
 					} else if ( stack_args [ i ] >= 0 ) {
 

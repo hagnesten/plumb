@@ -325,6 +325,10 @@ namespace decompiler {
 
 	int32_t internal_arguments ( const analysis::database& db, uint64_t function, bool long_mode, int32_t depth );
 
+	int64_t argument_registers ( const analysis::database& db, uint64_t function );
+
+	int32_t stack_arguments ( const analysis::database& db, uint64_t function );
+
 	bool callee_parameter_type ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, int32_t index, wchar_t* out, int32_t room );
 
 	bool stack_probe ( const analysis::database& db, const x86::instruction& ins );
