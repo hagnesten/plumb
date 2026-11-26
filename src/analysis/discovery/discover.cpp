@@ -1,4 +1,6 @@
 #include "analysis/database.h"
+#include "base/sort/sort.h"
+#include "base/clock/clock.h"
 #include <windows.h>
 
 namespace analysis {

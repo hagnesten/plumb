@@ -1,4 +1,6 @@
 #include "ui/app.h"
+#include "base/strings/strings.h"
+#include "base/colors/colors.h"
 #include "ui/icons.h"
 
 namespace ui {

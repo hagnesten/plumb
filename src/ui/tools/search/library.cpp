@@ -1,6 +1,8 @@
 #include "ui/app.h"
 #include "analysis/signatures.h"
-#include "base/files.h"
+#include "base/files/files.h"
+#include "base/sort/sort.h"
+#include "base/strings/strings.h"
 #include <windows.h>
 
 namespace ui {

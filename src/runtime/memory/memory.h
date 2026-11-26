@@ -10,9 +10,17 @@ extern "C" {
 
 	void runtime_release ( void* block );
 
-	void runtime_exit ( int code );
+	void* memset ( void* target, int value, runtime_size count );
 
-	int __cdecl atexit ( void ( __cdecl* callback ) ( ) );
+	void* memcpy ( void* target, const void* source, runtime_size count );
+
+	void* memmove ( void* target, const void* source, runtime_size count );
+
+	int memcmp ( const void* left, const void* right, runtime_size count );
+
+	runtime_size strlen ( const char* text );
+
+	runtime_size wcslen ( const wchar_t* text );
 
 }
 
@@ -30,5 +38,3 @@ inline void operator delete ( void*, void* ) noexcept {
 }
 
 #endif
-
-int program_main ( );

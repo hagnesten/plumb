@@ -1,7 +1,8 @@
 #include "ui/app.h"
 #include "ui/tokens.h"
-#include "base/json.h"
-#include "base/files.h"
+#include "base/json/json.h"
+#include "base/files/files.h"
+#include "base/strings/strings.h"
 #include <windows.h>
 
 namespace ui {

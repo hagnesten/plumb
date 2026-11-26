@@ -1,4 +1,5 @@
 #include "ui/scripting.h"
+#include "base/strings/strings.h"
 #include "analysis/signatures.h"
 
 namespace ui {

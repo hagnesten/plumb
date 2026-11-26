@@ -1,4 +1,5 @@
 #include "analysis/graph.h"
+#include "base/sort/sort.h"
 
 namespace analysis {
 

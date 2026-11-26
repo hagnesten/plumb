@@ -1,6 +1,7 @@
 #pragma once
 
-#include "base/base.h"
+#include "base/list/list.h"
+#include "base/text/text.h"
 #include "loader/binary.h"
 #include "x86/x86.h"
 

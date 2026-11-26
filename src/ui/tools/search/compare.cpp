@@ -1,4 +1,7 @@
 #include "ui/app.h"
+#include "base/sort/sort.h"
+#include "base/clock/clock.h"
+#include "base/strings/strings.h"
 #include "analysis/signatures.h"
 #include "loader/symbols.h"
 

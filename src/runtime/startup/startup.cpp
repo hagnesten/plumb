@@ -1,4 +1,4 @@
-#include "runtime/runtime.h"
+#include "runtime/startup/startup.h"
 
 extern "C" {
 

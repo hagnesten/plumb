@@ -1,4 +1,4 @@
-#include "runtime/runtime.h"
+#include "runtime/memory/memory.h"
 
 extern "C" {
 

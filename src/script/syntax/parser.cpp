@@ -1,4 +1,5 @@
 #include "script/script.h"
+#include "base/strings/strings.h"
 
 namespace script {
 

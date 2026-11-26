@@ -1,4 +1,6 @@
 #include "ui/app.h"
+#include "base/sort/sort.h"
+#include "base/strings/strings.h"
 #include <windows.h>
 
 namespace ui {

@@ -1,4 +1,5 @@
 #include "analysis/database.h"
+#include "base/strings/strings.h"
 
 namespace analysis {
 

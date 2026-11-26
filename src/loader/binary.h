@@ -1,6 +1,8 @@
 #pragma once
 
-#include "base/base.h"
+#include "base/list/list.h"
+#include "base/text/text.h"
+#include "base/writer/writer.h"
 
 namespace loader {
 

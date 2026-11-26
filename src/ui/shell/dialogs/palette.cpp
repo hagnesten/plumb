@@ -1,4 +1,5 @@
 #include "ui/app.h"
+#include "base/strings/strings.h"
 #include "ui/icons.h"
 #include <windows.h>
 

@@ -1,4 +1,5 @@
 #include "ui/app.h"
+#include "base/strings/strings.h"
 #include "ui/format.h"
 #include "ui/tokens.h"
 

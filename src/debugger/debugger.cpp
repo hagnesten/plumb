@@ -1,4 +1,6 @@
 #include "debugger/debugger.h"
+#include "base/text/text.h"
+#include "base/strings/strings.h"
 #include "x86/x86.h"
 #include <windows.h>
 #include <tlhelp32.h>

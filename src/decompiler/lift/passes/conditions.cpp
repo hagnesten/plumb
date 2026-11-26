@@ -1,4 +1,5 @@
 #include "decompiler/internal.h"
+#include "base/strings/strings.h"
 
 namespace decompiler {
 

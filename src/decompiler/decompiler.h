@@ -1,6 +1,7 @@
 #pragma once
 
-#include "base/base.h"
+#include "base/list/list.h"
+#include "base/writer/writer.h"
 #include "loader/binary.h"
 #include "analysis/database.h"
 

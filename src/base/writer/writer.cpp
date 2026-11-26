@@ -1,5 +1,4 @@
-#include "base/base.h"
-#include <windows.h>
+#include "base/writer/writer.h"
 
 namespace base {
 
@@ -171,67 +170,6 @@ namespace base {
 			add ( L'+' );
 
 		return fixed ( value, decimals );
-
-	}
-
-	double seconds ( ) {
-
-		static int64_t frequency = 0;
-		LARGE_INTEGER now;
-
-		if ( !frequency ) {
-
-			LARGE_INTEGER value;
-
-			QueryPerformanceFrequency ( &value );
-			frequency = value.QuadPart;
-
-		}
-
-		QueryPerformanceCounter ( &now );
-
-		return static_cast < double > ( now.QuadPart ) / static_cast < double > ( frequency );
-
-	}
-
-	uint64_t ticks ( ) {
-
-		LARGE_INTEGER now;
-
-		QueryPerformanceCounter ( &now );
-
-		return static_cast < uint64_t > ( now.QuadPart );
-
-	}
-
-	void pause ( int32_t milliseconds ) {
-
-		Sleep ( static_cast < DWORD > ( milliseconds ) );
-
-	}
-
-	void random::seed ( uint64_t value ) {
-
-		state = value ? value : 0x9E3779B97F4A7C15ull;
-
-	}
-
-	uint64_t random::next ( ) {
-
-		state += 0x9E3779B97F4A7C15ull;
-
-		uint64_t z = state;
-
-		z = ( z ^ ( z >> 30 ) ) * 0xBF58476D1CE4E5B9ull;
-		z = ( z ^ ( z >> 27 ) ) * 0x94D049BB133111EBull;
-
-		return z ^ ( z >> 31 );
-
-	}
-
-	float random::unit ( ) {
-
-		return static_cast < float > ( next ( ) >> 40 ) / 16777216.0f;
 
 	}
 

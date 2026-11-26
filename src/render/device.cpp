@@ -1,4 +1,5 @@
 #include "render/render.h"
+#include "base/strings/strings.h"
 #include <windows.h>
 #include <d3d11.h>
 #include <dxgi1_3.h>

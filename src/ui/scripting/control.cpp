@@ -1,4 +1,6 @@
 #include "ui/scripting.h"
+#include "base/clock/clock.h"
+#include "base/strings/strings.h"
 #include <windows.h>
 
 namespace ui {

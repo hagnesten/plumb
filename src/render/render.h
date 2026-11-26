@@ -1,7 +1,7 @@
 #pragma once
 
-#include "base/base.h"
-#include "base/math.h"
+#include "base/list/list.h"
+#include "base/math/math.h"
 
 struct HWND__;
 struct ID3D11Device;

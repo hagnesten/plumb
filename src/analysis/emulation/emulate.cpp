@@ -1,4 +1,5 @@
 #include "analysis/emulate.h"
+#include "base/strings/strings.h"
 
 namespace analysis {
 

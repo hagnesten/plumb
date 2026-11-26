@@ -1,5 +1,8 @@
 #include "ui/app.h"
-#include "base/files.h"
+#include "base/files/files.h"
+#include "base/clock/clock.h"
+#include "base/strings/strings.h"
+#include "runtime/startup/startup.h"
 #include <windows.h>
 #include <objbase.h>
 #include <dwmapi.h>
