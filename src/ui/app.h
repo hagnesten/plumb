@@ -6,7 +6,7 @@
 #include "analysis/database/database.h"
 #include "analysis/signatures/signatures.h"
 #include "decompiler/decompiler.h"
-#include "script/script.h"
+#include "script/engine/engine.h"
 #include "ui/metrics.h"
 
 namespace json {

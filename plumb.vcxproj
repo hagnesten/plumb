@@ -85,12 +85,12 @@
     <ClCompile Include="src\runtime\startup\startup.cpp">
       <AdditionalOptions Condition="'$(plumb_lto)'=='true'">%(AdditionalOptions) -fno-lto</AdditionalOptions>
     </ClCompile>
-    <ClCompile Include="src\script\engine\builtins.cpp" />
+    <ClCompile Include="src\script\builtins\builtins.cpp" />
     <ClCompile Include="src\script\engine\engine.cpp" />
     <ClCompile Include="src\script\jit\jit.cpp" />
-    <ClCompile Include="src\script\syntax\lexer.cpp" />
-    <ClCompile Include="src\script\syntax\parser.cpp" />
-    <ClCompile Include="src\script\syntax\resolver.cpp" />
+    <ClCompile Include="src\script\lexer\lexer.cpp" />
+    <ClCompile Include="src\script\parser\parser.cpp" />
+    <ClCompile Include="src\script\resolver\resolver.cpp" />
     <ClCompile Include="src\ui\app\app.cpp" />
     <ClCompile Include="src\ui\app\commands.cpp" />
     <ClCompile Include="src\ui\app\input.cpp" />
@@ -176,7 +176,16 @@
     <ClInclude Include="src\runtime\memory\memory.h" />
     <ClInclude Include="src\runtime\rounding\rounding.h" />
     <ClInclude Include="src\runtime\startup\startup.h" />
-    <ClInclude Include="src\script\script.h" />
+    <ClInclude Include="src\script\builtins\builtins.h" />
+    <ClInclude Include="src\script\engine\engine.h" />
+    <ClInclude Include="src\script\host\host.h" />
+    <ClInclude Include="src\script\jit\jit.h" />
+    <ClInclude Include="src\script\lexer\lexer.h" />
+    <ClInclude Include="src\script\parser\parser.h" />
+    <ClInclude Include="src\script\resolver\resolver.h" />
+    <ClInclude Include="src\script\tokens\tokens.h" />
+    <ClInclude Include="src\script\tree\tree.h" />
+    <ClInclude Include="src\script\values\values.h" />
     <ClInclude Include="src\ui\app.h" />
     <ClInclude Include="src\ui\format.h" />
     <ClInclude Include="src\ui\icons.h" />

@@ -1,4 +1,5 @@
-#include "script/script.h"
+#include "script/jit/jit.h"
+#include "script/engine/engine.h"
 #include <windows.h>
 
 namespace script {

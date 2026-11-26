@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ui/app.h"
-#include "script/script.h"
+#include "script/engine/engine.h"
 #include "x86/instruction/instruction.h"
 #include "x86/decoder/decoder.h"
 #include "x86/printer/printer.h"

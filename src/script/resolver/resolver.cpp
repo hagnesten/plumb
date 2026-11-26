@@ -1,4 +1,4 @@
-#include "script/script.h"
+#include "script/resolver/resolver.h"
 
 namespace script {
 

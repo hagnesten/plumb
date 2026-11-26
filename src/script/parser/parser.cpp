@@ -1,4 +1,4 @@
-#include "script/script.h"
+#include "script/parser/parser.h"
 #include "base/strings/strings.h"
 
 namespace script {
