@@ -594,6 +594,7 @@ namespace decompiler {
 	static bool joined_moves = true;
 	static bool select_loads = true;
 	static bool carried_flags = true;
+	static bool outgoing_args = true;
 	static bool zero_paths = true;
 	static bool sse_extras = true;
 
@@ -2175,7 +2176,7 @@ namespace decompiler {
 
 		}
 
-		bool aliases ( int32_t e, bool stack, int64_t target, uint8_t size, int32_t depth ) const {
+		bool aliases ( int32_t e, bool stack, int64_t target, uint8_t size, int32_t depth, bool outgoing = false ) const {
 
 			if ( e < 0 )
 				return false;
@@ -2185,7 +2186,7 @@ namespace decompiler {
 
 			const expr& item = b->exprs [ static_cast < size_t > ( e ) ];
 
-			if ( item.kind == op::LOAD || item.kind == op::CALL || item.kind == op::INTRINSIC )
+			if ( item.kind == op::CALL || item.kind == op::INTRINSIC || ( item.kind == op::LOAD && !outgoing ) )
 				return true;
 
 			if ( item.kind == op::GLOBAL ) {
@@ -2213,12 +2214,12 @@ namespace decompiler {
 
 			}
 
-			if ( aliases ( item.a, stack, target, size, depth + 1 ) || aliases ( item.b, stack, target, size, depth + 1 ) || aliases ( item.c, stack, target, size, depth + 1 ) )
+			if ( aliases ( item.a, stack, target, size, depth + 1, outgoing ) || aliases ( item.b, stack, target, size, depth + 1, outgoing ) || aliases ( item.c, stack, target, size, depth + 1, outgoing ) )
 				return true;
 
 			for ( int32_t i = 0; i < item.arg_count; i++ ) {
 
-				if ( aliases ( b->args [ static_cast < size_t > ( item.first_arg + i ) ], stack, target, size, depth + 1 ) )
+				if ( aliases ( b->args [ static_cast < size_t > ( item.first_arg + i ) ], stack, target, size, depth + 1, outgoing ) )
 					return true;
 
 			}
@@ -2264,7 +2265,7 @@ namespace decompiler {
 				if ( !b->contains_load ( regs [ slot ] ) )
 					continue;
 
-				if ( where && !aliases ( regs [ slot ], where == 2, target, size, 0 ) )
+				if ( where && !aliases ( regs [ slot ], where >= 2, target, size, 0, where == 3 ) )
 					continue;
 
 				materialize ( slot, 0 );
@@ -2641,7 +2642,7 @@ namespace decompiler {
 			if ( m.rip_relative ( ) )
 				flush ( live, 1, static_cast < int64_t > ( ins.next ( ) + static_cast < uint64_t > ( m.value ) ), size );
 			else if ( stack_slot ( m, spot ) )
-				flush ( live, 2, spot, size );
+				flush ( live, outgoing_args && b->long_mode && spot - delta >= 0x20 && spot - delta < 0x20 + 8 * 12 ? 3 : 2, spot, size );
 			else
 				flush ( live );
 
