@@ -614,6 +614,7 @@ namespace decompiler {
 	static bool integer_stores = true;
 	static bool float_views = true;
 	static bool latch_continues = true;
+	static bool born_numbers = true;
 	static bool plain_negatives = true;
 	static bool unsigned_results = true;
 	static bool step_carriers = true;
@@ -841,6 +842,13 @@ namespace decompiler {
 
 				if ( v >= 0 && v < first_def.count ( ) && at < first_def [ static_cast < size_t > ( v ) ] )
 					first_def [ static_cast < size_t > ( v ) ] = at;
+
+			}
+
+			for ( int32_t v = 0; v < b.vars.count ( ) && born_numbers; v++ ) {
+
+				if ( first_def [ static_cast < size_t > ( v ) ] == ~0ull && b.vars [ static_cast < size_t > ( v ) ].born )
+					first_def [ static_cast < size_t > ( v ) ] = b.vars [ static_cast < size_t > ( v ) ].born;
 
 			}
 

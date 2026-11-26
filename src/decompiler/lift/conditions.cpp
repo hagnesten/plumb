@@ -2941,6 +2941,9 @@ namespace decompiler {
 						if ( !direct && !comma_uses )
 							continue;
 
+						if ( !vars [ static_cast < size_t > ( v ) ].born )
+							vars [ static_cast < size_t > ( v ) ].born = line.origin ? line.origin : line.address;
+
 						if ( !direct )
 							next.condition = comma_test ( *this, next.condition, v, line.left, line.right );
 						else if ( exprs [ static_cast < size_t > ( line.right ) ].kind == op::CALL )
