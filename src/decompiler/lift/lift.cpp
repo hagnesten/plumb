@@ -825,6 +825,7 @@ namespace decompiler {
 	static bool flush_by_definition = true;
 	static bool sized_regs = true;
 	static bool same_guards = true;
+	static bool shared_sources = true;
 
 	void builder::merge_stack_slots ( ) {
 
@@ -2355,7 +2356,7 @@ namespace decompiler {
 
 			for ( int32_t other = 0; other < 32; other++ ) {
 
-				if ( other == slot || regs [ other ] < 0 || !b->references ( regs [ other ], var, -1 ) )
+				if ( other == slot || regs [ other ] < 0 || !b->references ( regs [ other ], var, shared_sources ? source : -1 ) )
 					continue;
 
 				if ( busy & ( 1u << other ) )
@@ -2394,6 +2395,13 @@ namespace decompiler {
 					return;
 
 				}
+
+			}
+
+			for ( int32_t other = 0; other < 32 && shared_sources; other++ ) {
+
+				if ( other != slot && regs [ other ] >= 0 && b->references ( regs [ other ], var, source ) )
+					regs [ other ] = spill ( regs [ other ], address );
 
 			}
 
@@ -2467,6 +2475,48 @@ namespace decompiler {
 		void write_memory ( const x86::instruction& ins, const x86::operand& m, uint8_t size, int32_t value ) {
 
 			int64_t spot = 0;
+			int32_t holder = -1;
+			int32_t first_made = b->statements.count ( );
+			uint8_t value_width = value >= 0 ? b->exprs [ static_cast < size_t > ( value ) ].size : 0;
+
+			for ( int32_t s = 0; s < 32 && value >= 0 && holder < 0 && shared_sources; s++ ) {
+
+				if ( regs [ s ] == value )
+					holder = s;
+
+			}
+
+			auto refresh = [ & ] ( ) {
+
+				if ( holder < 0 || regs [ holder ] == value )
+					return;
+
+				bool stale = false;
+
+				for ( int32_t i = first_made; i < b->statements.count ( ) && !stale; i++ ) {
+
+					const statement& made = b->statements [ static_cast < size_t > ( i ) ];
+
+					if ( made.kind == stmt::ASSIGN && made.left >= 0 && b->exprs [ static_cast < size_t > ( made.left ) ].kind == op::VAR && b->references ( value, static_cast < int32_t > ( b->exprs [ static_cast < size_t > ( made.left ) ].value ), -1 ) )
+						stale = true;
+
+				}
+
+				if ( !stale )
+					return;
+
+				if ( regs [ holder ] >= 0 ) {
+
+					value = regs [ holder ];
+
+					return;
+
+				}
+
+				value = b->var_expr ( b->register_var ( holder ), value_width );
+				holder = -1;
+
+			};
 
 			if ( m.rip_relative ( ) )
 				flush ( live, 1, static_cast < int64_t > ( ins.next ( ) + static_cast < uint64_t > ( m.value ) ), size );
@@ -2474,6 +2524,8 @@ namespace decompiler {
 				flush ( live, 2, spot, size );
 			else
 				flush ( live );
+
+			refresh ( );
 
 			for ( int32_t s = 0; s < 32 && value >= 0; s++ ) {
 
@@ -2604,6 +2656,9 @@ namespace decompiler {
 			}
 
 			int32_t address = address_of ( ins, m );
+
+			refresh ( );
+
 			const expr& where = b->exprs [ static_cast < size_t > ( address ) ];
 
 			if ( where.kind == op::CONST && ( where.bits & POINTER ) ) {
