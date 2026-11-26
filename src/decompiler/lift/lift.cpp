@@ -284,6 +284,7 @@ namespace decompiler {
 	}
 
 	static bool late_divisions = true;
+	static bool quiet_nops = true;
 
 	void builder::fold_divisions ( ) {
 
@@ -1498,6 +1499,9 @@ namespace decompiler {
 
 		use = 0;
 		def = 0;
+
+		if ( ins.name == mnemonic::nop && quiet_nops )
+			return;
 
 		for ( int32_t i = 0; i < ins.count; i++ ) {
 
