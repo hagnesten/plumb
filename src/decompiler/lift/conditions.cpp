@@ -88,6 +88,7 @@ namespace decompiler {
 	static bool ghost_folds = false;
 	static bool ghost_exprs = false;
 	static bool calls_keep_exprs = true;
+	static bool ghost_call_copies = false;
 	static bool ghost_sinks = false;
 	static bool copy_fixed = true;
 	static bool copy_into = true;
@@ -677,7 +678,7 @@ namespace decompiler {
 
 						if ( copy_into && line.kind == stmt::ASSIGN && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.right ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.right ) ].value == x && exprs [ static_cast < size_t > ( line.right ) ].size == exprs [ static_cast < size_t > ( head.left ) ].size && exprs [ static_cast < size_t > ( line.left ) ].size == exprs [ static_cast < size_t > ( head.left ) ].size && plain ( exprs [ static_cast < size_t > ( line.left ) ].value ) && !( ( vars [ static_cast < size_t > ( exprs [ static_cast < size_t > ( line.left ) ].value ) ].bits ^ vars [ static_cast < size_t > ( x ) ].bits ) & FLOATING ) ) {
 
-							vars [ static_cast < size_t > ( x ) ].ghost = true;
+							vars [ static_cast < size_t > ( x ) ].ghost = ghost_call_copies || feed.kind != op::CALL;
 							vars [ static_cast < size_t > ( x ) ].born = head.origin ? head.origin : head.address;
 							head.left = line.left;
 							line.kind = stmt::NOP;
