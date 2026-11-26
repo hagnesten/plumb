@@ -285,6 +285,7 @@ namespace decompiler {
 
 	static bool late_divisions = true;
 	static bool quiet_nops = true;
+	static bool held_sums = true;
 
 	void builder::fold_divisions ( ) {
 
@@ -1913,9 +1914,81 @@ namespace decompiler {
 
 		}
 
+		bool holds_reg ( int32_t node, int32_t slot ) {
+
+			if ( node < 0 || slot < 0 || slot >= 16 )
+				return false;
+
+			if ( regs [ slot ] >= 0 )
+				return same_tree ( *b, node, regs [ slot ], 0 );
+
+			const expr& item = b->exprs [ static_cast < size_t > ( node ) ];
+
+			return item.kind == op::VAR && b->family_var [ slot ] >= 0 && item.value == b->family_var [ slot ];
+
+		}
+
+		int32_t held_sum ( const x86::operand& m ) {
+
+			int64_t ignored = 0;
+
+			if ( m.base == x86::NONE || m.index == x86::NONE || stack_base ( m.base, ignored ) )
+				return -1;
+
+			int32_t base_slot = slot_of ( x86::resize_register ( m.base, 8 ) );
+			int32_t index_slot = slot_of ( x86::resize_register ( m.index, 8 ) );
+
+			if ( base_slot < 0 || index_slot < 0 || base_slot >= 16 || index_slot >= 16 )
+				return -1;
+
+			auto scaled_index = [ & ] ( int32_t node ) {
+
+				if ( m.scale <= 1 )
+					return holds_reg ( node, index_slot );
+
+				if ( node < 0 )
+					return false;
+
+				const expr& item = b->exprs [ static_cast < size_t > ( node ) ];
+
+				if ( item.kind != op::MUL || item.b < 0 || b->exprs [ static_cast < size_t > ( item.b ) ].kind != op::CONST || b->exprs [ static_cast < size_t > ( item.b ) ].value != m.scale )
+					return false;
+
+				return holds_reg ( item.a, index_slot );
+
+			};
+
+			for ( int32_t s = 0; s < 16; s++ ) {
+
+				if ( s == base_slot || s == index_slot || s == 4 || regs [ s ] < 0 )
+					continue;
+
+				const expr& sum = b->exprs [ static_cast < size_t > ( regs [ s ] ) ];
+
+				if ( sum.kind != op::ADD || sum.size != 8 || ( sum.bits & FLOATING ) )
+					continue;
+
+				if ( ( holds_reg ( sum.a, base_slot ) && scaled_index ( sum.b ) ) || ( m.scale <= 1 && holds_reg ( sum.b, base_slot ) && scaled_index ( sum.a ) ) )
+					return family_value ( s );
+
+			}
+
+			return -1;
+
+		}
+
 		int32_t address_of ( const x86::instruction& ins, const x86::operand& m ) {
 
 			uint64_t absolute = 0;
+
+			if ( held_sums ) {
+
+				int32_t held = held_sum ( m );
+
+				if ( held >= 0 )
+					return m.value ? b->binary ( op::ADD, held, b->constant ( m.value, 8 ), 8 ) : held;
+
+			}
 
 			if ( m.rip_relative ( ) || ( m.base == x86::NONE && m.index == x86::NONE ) ) {
 
