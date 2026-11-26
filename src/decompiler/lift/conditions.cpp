@@ -101,6 +101,8 @@ namespace decompiler {
 	static bool keep_destination = true;
 	static bool shared_results = true;
 	static bool intact_exprs = true;
+	static bool calls_intact = true;
+	static bool broken_keep = false;
 	static bool origin_numbers = true;
 
 	static bool has_call ( const builder& b, int32_t e, int32_t depth ) {
@@ -621,7 +623,10 @@ namespace decompiler {
 
 				}
 
-				if ( crosses_call )
+				if ( crosses_call && !( calls_intact && intact ) )
+					continue;
+
+				if ( broken_keep && intact_exprs && line.sources && !intact )
 					continue;
 
 				line.kind = stmt::NOP;
