@@ -379,4 +379,8 @@ namespace math {
 
 	float median ( float* values, int32_t count );
 
+	uint32_t float_bits ( float value );
+
+	float bits_float ( uint32_t bits );
+
 }

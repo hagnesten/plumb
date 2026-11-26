@@ -41,4 +41,8 @@ namespace x86 {
 
 	void build_register_names ( );
 
+	extern const char* register_names [ REG_COUNT ];
+
+	extern char vector_names [ 104 ] [ 6 ];
+
 }

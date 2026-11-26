@@ -90,4 +90,24 @@ namespace json {
 
 	};
 
+	struct reader {
+
+		const char* at;
+		const char* end;
+		int32_t depth = 0;
+
+		void skip ( );
+
+		bool literal ( const char* word );
+
+		static void put_utf8 ( base::list < char >& out, uint32_t code );
+
+		bool hex4 ( uint32_t& code );
+
+		bool string ( base::list < char >& out );
+
+		bool parse ( value& out );
+
+	};
+
 }

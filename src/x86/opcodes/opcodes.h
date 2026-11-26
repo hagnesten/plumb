@@ -96,4 +96,20 @@ namespace x86 {
 
 	void build_x87 ( );
 
+	form make ( mnemonic name, uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t flags );
+
+	void one ( int32_t code, mnemonic name, uint8_t a = NO, uint8_t b = NO, uint8_t c = NO, uint16_t flags = 0 );
+
+	void one_group ( int32_t code, uint8_t group, uint8_t a, uint8_t b, uint16_t flags );
+
+	void put ( int32_t map, int32_t code, uint8_t prefixes, mnemonic name, uint8_t a = NO, uint8_t b = NO, uint8_t c = NO, uint8_t d = NO, uint16_t flags = MODRM );
+
+	void put_group ( int32_t map, int32_t code, uint8_t prefixes, uint8_t group, uint8_t a, uint8_t b, uint16_t flags );
+
+	void in_group ( uint8_t group, int32_t reg, mnemonic name, uint8_t a = NO, uint8_t b = NO, uint8_t c = NO, uint16_t flags = 0 );
+
+	void simd ( int32_t code, mnemonic name, bool mmx );
+
+	void arith ( int32_t code, mnemonic packed_single, bool scalar );
+
 }

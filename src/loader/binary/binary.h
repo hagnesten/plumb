@@ -211,4 +211,6 @@ namespace loader {
 
 	const wchar_t* directory_name ( int32_t index );
 
+	extern const wchar_t* directory_names [ ];
+
 }

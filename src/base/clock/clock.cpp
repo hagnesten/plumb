@@ -1,42 +1,38 @@
 #include "base/clock/clock.h"
 #include <windows.h>
 
-namespace base {
+double base::seconds ( ) {
 
-	double seconds ( ) {
+	static int64_t frequency = 0;
+	LARGE_INTEGER now;
 
-		static int64_t frequency = 0;
-		LARGE_INTEGER now;
+	if ( !frequency ) {
 
-		if ( !frequency ) {
+		LARGE_INTEGER value;
 
-			LARGE_INTEGER value;
-
-			QueryPerformanceFrequency ( &value );
-			frequency = value.QuadPart;
-
-		}
-
-		QueryPerformanceCounter ( &now );
-
-		return static_cast < double > ( now.QuadPart ) / static_cast < double > ( frequency );
+		QueryPerformanceFrequency ( &value );
+		frequency = value.QuadPart;
 
 	}
 
-	uint64_t ticks ( ) {
+	QueryPerformanceCounter ( &now );
 
-		LARGE_INTEGER now;
+	return static_cast < double > ( now.QuadPart ) / static_cast < double > ( frequency );
 
-		QueryPerformanceCounter ( &now );
+}
 
-		return static_cast < uint64_t > ( now.QuadPart );
+uint64_t base::ticks ( ) {
 
-	}
+	LARGE_INTEGER now;
 
-	void pause ( int32_t milliseconds ) {
+	QueryPerformanceCounter ( &now );
 
-		Sleep ( static_cast < DWORD > ( milliseconds ) );
+	return static_cast < uint64_t > ( now.QuadPart );
 
-	}
+}
+
+void base::pause ( int32_t milliseconds ) {
+
+	Sleep ( static_cast < DWORD > ( milliseconds ) );
 
 }

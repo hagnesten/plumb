@@ -166,4 +166,10 @@ namespace x86 {
 
 	void build_mnemonic_names ( );
 
+	extern const char* const mnemonic_list [ ];
+
+	extern const char* names [ static_cast < int32_t > ( mnemonic::COUNT ) ];
+
+	extern char name_storage [ 40000 ];
+
 }
