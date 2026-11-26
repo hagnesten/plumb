@@ -1202,6 +1202,7 @@ namespace decompiler {
 
 	static bool ghost_param_copies = true;
 	static bool ghost_float_copies = false;
+	static bool register_param_ghosts = true;
 
 	void builder::coalesce_copies ( ) {
 
@@ -1266,7 +1267,7 @@ namespace decompiler {
 
 			line.kind = stmt::NOP;
 
-			if ( ghost_param_copies && ( ghost_float_copies || vars [ static_cast < size_t > ( copy ) ].family < 16 ) ) {
+			if ( ghost_param_copies && ( ghost_float_copies || vars [ static_cast < size_t > ( copy ) ].family < 16 ) && ( !long_mode || !register_param_ghosts || from.position < 4 ) ) {
 
 				vars [ static_cast < size_t > ( copy ) ].ghost = true;
 				vars [ static_cast < size_t > ( copy ) ].born = line.origin ? line.origin : line.address;
