@@ -8053,6 +8053,7 @@ namespace decompiler {
 			}
 
 			carried.clear ( );
+			out.terminal = -1;
 			emitted.fill ( static_cast < size_t > ( count ), 0 );
 			labeled.fill ( static_cast < size_t > ( count ), 0 );
 
