@@ -1726,14 +1726,44 @@ namespace decompiler {
 
 		int32_t emit ( stmt kind, int32_t left, int32_t right, uint64_t address ) {
 
+			uint32_t sources = register_sources ( right, 0 );
+			uint32_t target = kind == stmt::ASSIGN && left >= 0 && b->exprs [ static_cast < size_t > ( left ) ].kind == op::VAR ? register_sources ( left, 0 ) : 0;
 			statement& item = b->statements.emplace ( );
 
 			item.kind = kind;
 			item.left = left;
 			item.right = right;
 			item.address = address;
+			item.sources = sources;
+			item.target = target;
 
 			return b->statements.count ( ) - 1;
+
+		}
+
+		uint32_t register_sources ( int32_t e, int32_t depth ) const {
+
+			if ( e < 0 || depth > 64 )
+				return 0;
+
+			const expr& node = b->exprs [ static_cast < size_t > ( e ) ];
+			uint32_t mask = 0;
+
+			if ( node.kind == op::VAR && node.value >= 0 && node.value < b->vars.count ( ) ) {
+
+				int32_t family = b->vars [ static_cast < size_t > ( node.value ) ].family;
+
+				if ( family >= 0 && family < 32 )
+					mask |= 1u << family;
+
+			}
+
+			mask |= register_sources ( node.a, depth + 1 ) | register_sources ( node.b, depth + 1 ) | register_sources ( node.c, depth + 1 );
+
+			for ( int32_t i = 0; i < node.arg_count; i++ )
+				mask |= register_sources ( b->args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+			return mask;
 
 		}
 

@@ -100,6 +100,7 @@ namespace decompiler {
 	static bool expr_fixed = true;
 	static bool keep_destination = true;
 	static bool shared_results = true;
+	static bool intact_exprs = true;
 	static bool origin_numbers = true;
 
 	static bool has_call ( const builder& b, int32_t e, int32_t depth ) {
@@ -504,6 +505,8 @@ namespace decompiler {
 
 				uint64_t def_at = line.address;
 				uint64_t use_at = 0;
+				int32_t use_block = -1;
+				int32_t def_block = -1;
 
 				for ( int32_t k = 0; k < code.count ( ) && !use_at; k++ ) {
 
@@ -524,8 +527,12 @@ namespace decompiler {
 						if ( !( other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR ) )
 							count_vars ( *this, other.left, seen, 0 );
 
-						if ( seen [ static_cast < size_t > ( v ) ] )
+						if ( seen [ static_cast < size_t > ( v ) ] ) {
+
 							use_at = other.address ? other.address : 1;
+							use_block = k;
+
+						}
 
 					}
 
@@ -538,13 +545,25 @@ namespace decompiler {
 						count_vars ( *this, block.selector, seen, 0 );
 						count_vars ( *this, block.returned, seen, 0 );
 
-						if ( seen [ static_cast < size_t > ( v ) ] && k < graph.blocks.count ( ) )
+						if ( seen [ static_cast < size_t > ( v ) ] && k < graph.blocks.count ( ) ) {
+
 							use_at = graph.blocks [ static_cast < size_t > ( k ) ].end - 1;
+							use_block = k;
+
+						}
 
 					}
 
 				}
 
+				for ( int32_t k = 0; k < code.count ( ) && def_block < 0; k++ ) {
+
+					if ( single [ static_cast < size_t > ( v ) ] >= code [ static_cast < size_t > ( k ) ].first && single [ static_cast < size_t > ( v ) ] < code [ static_cast < size_t > ( k ) ].first + code [ static_cast < size_t > ( k ) ].count )
+						def_block = k;
+
+				}
+
+				bool intact = intact_exprs && !( line.sources & line.target ) && def_block >= 0 && use_block >= 0 && line.address && use_at > 1 && holds_through ( *this, line.sources, def_block, line.address - 1, use_block, use_at );
 				bool hoisted_out = false;
 
 				for ( const analysis::edge& link : graph.edges ) {
@@ -561,7 +580,7 @@ namespace decompiler {
 					bool use_inside = use_at >= head && use_at < tail;
 					bool def_inside = def_at >= head && def_at < tail;
 
-					if ( use_inside && !def_inside )
+					if ( use_inside && !def_inside && !intact )
 						hoisted_out = true;
 
 				}
