@@ -613,6 +613,7 @@ namespace decompiler {
 	static bool derived_types = true;
 	static bool integer_stores = true;
 	static bool float_views = true;
+	static bool latch_continues = true;
 	static bool plain_negatives = true;
 	static bool unsigned_results = true;
 	static bool step_carriers = true;
@@ -6180,6 +6181,7 @@ namespace decompiler {
 			int32_t loop = -1;
 			int32_t exit = -1;
 			int32_t outer = -1;
+			int32_t latch = -1;
 
 		};
 
@@ -6204,6 +6206,15 @@ namespace decompiler {
 
 				if ( stop != target )
 					jump_line ( L"break", address );
+
+				return true;
+
+			}
+
+			if ( target == context.latch && context.latch >= 0 ) {
+
+				if ( stop != target )
+					jump_line ( L"continue", address );
 
 				return true;
 
@@ -6236,7 +6247,10 @@ namespace decompiler {
 
 				if ( emitted [ static_cast < size_t > ( block ) ] ) {
 
-					go_to ( block, 0 );
+					if ( block == context.latch && context.latch >= 0 )
+						jump_line ( L"continue", 0 );
+					else
+						go_to ( block, 0 );
 
 					break;
 
@@ -7694,6 +7708,10 @@ namespace decompiler {
 						}
 
 						emitted [ static_cast < size_t > ( latch ) ] = 1;
+
+						if ( empty_block ( latch ) && latch_continues )
+							inner.latch = latch;
+
 						region ( start, latch, inner );
 
 						if ( !empty_block ( latch ) )
@@ -7711,6 +7729,10 @@ namespace decompiler {
 					open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
 
 					emitted [ static_cast < size_t > ( latch ) ] = 1;
+
+					if ( plain && latch_continues )
+						inner.latch = latch;
+
 					region ( start, latch, inner );
 
 					if ( !plain ) {
