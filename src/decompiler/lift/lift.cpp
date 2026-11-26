@@ -589,6 +589,7 @@ namespace decompiler {
 	static bool negate_pairs = true;
 	static bool float_flips = true;
 	static bool joined_sets = true;
+	static bool joined_moves = true;
 	static bool select_loads = true;
 	static bool zero_paths = true;
 	static bool sse_extras = true;
@@ -4996,6 +4997,14 @@ namespace decompiler {
 				const x86::instruction& ins = list [ static_cast < size_t > ( k ) ];
 
 				if ( static_cast < int32_t > ( ins.name ) >= static_cast < int32_t > ( mnemonic::seto ) && static_cast < int32_t > ( ins.name ) <= static_cast < int32_t > ( mnemonic::setg ) && ins.condition != 0xFF ) {
+
+					found = k;
+
+					break;
+
+				}
+
+				if ( joined_moves && static_cast < int32_t > ( ins.name ) >= static_cast < int32_t > ( mnemonic::cmovo ) && static_cast < int32_t > ( ins.name ) <= static_cast < int32_t > ( mnemonic::cmovg ) && ins.condition != 0xFF ) {
 
 					found = k;
 
