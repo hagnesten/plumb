@@ -611,6 +611,7 @@ namespace decompiler {
 	static bool void_equals = true;
 	static bool void_stores = true;
 	static bool derived_types = true;
+	static bool integer_stores = true;
 	static bool plain_negatives = true;
 	static bool unsigned_results = true;
 	static bool step_carriers = true;
@@ -5579,7 +5580,7 @@ namespace decompiler {
 
 					out.put ( L" = ", syntax::OPERATOR );
 
-					if ( right.kind == op::CONST && !( right.bits & POINTER ) && ( left.size == 4 || left.size == 8 ) && float_target ( item.left ) )
+					if ( right.kind == op::CONST && !( right.bits & POINTER ) && ( left.size == 4 || left.size == 8 ) && ( left.kind == op::LOAD && integer_stores ? ( left.bits & FLOATING ) != 0 : float_target ( item.left ) ) )
 						real ( right.value, left.size == 4 ? 4 : 8 );
 					else if ( right.kind == op::LOAD && right.size < left.size && !( left.bits & FLOATING ) && !float_target ( item.left ) )
 						extended_load ( right, 2, UNSIGNED );
