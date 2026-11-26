@@ -1,5 +1,7 @@
 #pragma once
 
+#include "base/types/types.h"
+
 #define PLUMB_MNEMONICS( X ) \
 	X ( invalid ) \
 	X ( aaa ) X ( aad ) X ( aam ) X ( aas ) X ( adc ) X ( adcx ) X ( add ) X ( adox ) X ( and_ ) X ( andn ) X ( arpl ) \
@@ -146,3 +148,22 @@
 	X ( vfmaddps ) X ( vfmaddpd ) X ( vfmaddss ) X ( vfmaddsd ) X ( vfmsubps ) X ( vfmsubpd ) X ( vfmsubss ) X ( vfmsubsd ) \
 	X ( vfnmaddps ) X ( vfnmaddpd ) X ( vfnmaddss ) X ( vfnmaddsd ) X ( vfnmsubps ) X ( vfnmsubpd ) X ( vfnmsubss ) X ( vfnmsubsd ) \
 	X ( vsm3rnds2 )
+
+namespace x86 {
+
+#define PLUMB_ENUM( value ) value,
+
+	enum class mnemonic : uint16_t {
+
+		PLUMB_MNEMONICS ( PLUMB_ENUM )
+		COUNT
+
+	};
+
+#undef PLUMB_ENUM
+
+	const char* mnemonic_name ( mnemonic value );
+
+	void build_mnemonic_names ( );
+
+}

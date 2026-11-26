@@ -1,4 +1,5 @@
 #include "decompiler/internal.h"
+#include "x86/printer/printer.h"
 
 namespace decompiler {
 

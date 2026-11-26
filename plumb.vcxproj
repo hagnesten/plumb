@@ -72,8 +72,8 @@
     <ClCompile Include="src\decompiler\types\types.cpp" />
     <ClCompile Include="src\host\headless\capture.cpp" />
     <ClCompile Include="src\host\main.cpp" />
-    <ClCompile Include="src\loader\binary.cpp" />
-    <ClCompile Include="src\loader\symbols.cpp" />
+    <ClCompile Include="src\loader\binary\binary.cpp" />
+    <ClCompile Include="src\loader\symbols\symbols.cpp" />
     <ClCompile Include="src\render\canvas.cpp" />
     <ClCompile Include="src\render\device.cpp" />
     <ClCompile Include="src\runtime\memory\memory.cpp" />
@@ -131,10 +131,14 @@
     <ClCompile Include="src\ui\views\hex.cpp" />
     <ClCompile Include="src\ui\views\pseudocode.cpp" />
     <ClCompile Include="src\ui\views\tabs.cpp" />
-    <ClCompile Include="src\x86\assembler\assemble.cpp" />
-    <ClCompile Include="src\x86\decoder\decode.cpp" />
-    <ClCompile Include="src\x86\decoder\forms.cpp" />
-    <ClCompile Include="src\x86\printer\format.cpp" />
+    <ClCompile Include="src\x86\assembler\assembler.cpp" />
+    <ClCompile Include="src\x86\decoder\decoder.cpp" />
+    <ClCompile Include="src\x86\forms\forms.cpp" />
+    <ClCompile Include="src\x86\instruction\instruction.cpp" />
+    <ClCompile Include="src\x86\mnemonics\mnemonics.cpp" />
+    <ClCompile Include="src\x86\opcodes\opcodes.cpp" />
+    <ClCompile Include="src\x86\printer\printer.cpp" />
+    <ClCompile Include="src\x86\registers\registers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\analysis\database.h" />
@@ -157,8 +161,8 @@
     <ClInclude Include="src\debugger\debugger.h" />
     <ClInclude Include="src\decompiler\decompiler.h" />
     <ClInclude Include="src\decompiler\internal.h" />
-    <ClInclude Include="src\loader\binary.h" />
-    <ClInclude Include="src\loader\symbols.h" />
+    <ClInclude Include="src\loader\binary\binary.h" />
+    <ClInclude Include="src\loader\symbols\symbols.h" />
     <ClInclude Include="src\render\render.h" />
     <ClInclude Include="src\runtime\memory\memory.h" />
     <ClInclude Include="src\runtime\rounding\rounding.h" />
@@ -170,9 +174,14 @@
     <ClInclude Include="src\ui\metrics.h" />
     <ClInclude Include="src\ui\scripting.h" />
     <ClInclude Include="src\ui\tokens.h" />
-    <ClInclude Include="src\x86\decoder\forms.h" />
-    <ClInclude Include="src\x86\mnemonics.h" />
-    <ClInclude Include="src\x86\x86.h" />
+    <ClInclude Include="src\x86\assembler\assembler.h" />
+    <ClInclude Include="src\x86\decoder\decoder.h" />
+    <ClInclude Include="src\x86\forms\forms.h" />
+    <ClInclude Include="src\x86\instruction\instruction.h" />
+    <ClInclude Include="src\x86\mnemonics\mnemonics.h" />
+    <ClInclude Include="src\x86\opcodes\opcodes.h" />
+    <ClInclude Include="src\x86\printer\printer.h" />
+    <ClInclude Include="src\x86\registers\registers.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\plumb.manifest" />

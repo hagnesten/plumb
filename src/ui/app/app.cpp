@@ -1,6 +1,7 @@
 #include "ui/app.h"
 #include "ui/icons.h"
 #include "base/files/files.h"
+#include "x86/decoder/decoder.h"
 #include "base/clock/clock.h"
 #include "base/strings/strings.h"
 #include <windows.h>

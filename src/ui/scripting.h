@@ -2,7 +2,9 @@
 
 #include "ui/app.h"
 #include "script/script.h"
-#include "x86/x86.h"
+#include "x86/instruction/instruction.h"
+#include "x86/decoder/decoder.h"
+#include "x86/printer/printer.h"
 
 namespace ui {
 

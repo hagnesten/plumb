@@ -2,7 +2,7 @@
 
 #include "debugger/debugger.h"
 #include "render/render.h"
-#include "loader/binary.h"
+#include "loader/binary/binary.h"
 #include "analysis/database.h"
 #include "analysis/signatures.h"
 #include "decompiler/decompiler.h"

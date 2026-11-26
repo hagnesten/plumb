@@ -2,8 +2,8 @@
 
 #include "base/list/list.h"
 #include "base/text/text.h"
-#include "loader/binary.h"
-#include "x86/x86.h"
+#include "loader/binary/binary.h"
+#include "x86/instruction/instruction.h"
 
 namespace analysis {
 

@@ -1,7 +1,10 @@
 #ifdef PLUMB_DEBUG
 
 #include "ui/app.h"
-#include "x86/x86.h"
+#include "x86/instruction/instruction.h"
+#include "x86/decoder/decoder.h"
+#include "x86/printer/printer.h"
+#include "x86/assembler/assembler.h"
 #include "analysis/database.h"
 #include "base/files/files.h"
 #include "base/clock/clock.h"

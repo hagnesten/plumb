@@ -1,6 +1,7 @@
 #pragma once
 
-#include "loader/binary.h"
+#include "loader/binary/binary.h"
+#include "base/writer/writer.h"
 
 namespace loader {
 

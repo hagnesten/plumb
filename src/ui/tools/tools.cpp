@@ -1,5 +1,6 @@
 #include "ui/app.h"
 #include "base/clock/clock.h"
+#include "x86/printer/printer.h"
 #include "base/strings/strings.h"
 #include "ui/icons.h"
 

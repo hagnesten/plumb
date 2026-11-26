@@ -4,7 +4,7 @@
 #include "base/sort/sort.h"
 #include "base/clock/clock.h"
 #include "base/strings/strings.h"
-#include "loader/symbols.h"
+#include "loader/symbols/symbols.h"
 #include <windows.h>
 
 namespace ui {

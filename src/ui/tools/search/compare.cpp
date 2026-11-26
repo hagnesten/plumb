@@ -3,7 +3,7 @@
 #include "base/clock/clock.h"
 #include "base/strings/strings.h"
 #include "analysis/signatures.h"
-#include "loader/symbols.h"
+#include "loader/symbols/symbols.h"
 
 namespace ui {
 

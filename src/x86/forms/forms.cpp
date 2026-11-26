@@ -1,4 +1,4 @@
-#include "x86/decoder/forms.h"
+#include "x86/forms/forms.h"
 
 namespace x86 {
 

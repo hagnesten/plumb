@@ -1,4 +1,5 @@
-#include "x86/x86.h"
+#include "x86/assembler/assembler.h"
+#include "x86/decoder/decoder.h"
 
 namespace x86 {
 

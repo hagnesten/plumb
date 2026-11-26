@@ -1,6 +1,7 @@
 #pragma once
 
-#include "x86/x86.h"
+#include "base/types/types.h"
+#include "x86/mnemonics/mnemonics.h"
 
 namespace x86 {
 

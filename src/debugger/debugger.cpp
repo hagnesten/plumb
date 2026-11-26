@@ -1,7 +1,8 @@
 #include "debugger/debugger.h"
 #include "base/text/text.h"
 #include "base/strings/strings.h"
-#include "x86/x86.h"
+#include "x86/instruction/instruction.h"
+#include "x86/decoder/decoder.h"
 #include <windows.h>
 #include <tlhelp32.h>
 

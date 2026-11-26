@@ -1,5 +1,6 @@
 #include "analysis/emulate.h"
 #include "base/strings/strings.h"
+#include "x86/decoder/decoder.h"
 
 namespace analysis {
 
