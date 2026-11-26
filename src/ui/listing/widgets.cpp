@@ -6,65 +6,24 @@ namespace ui {
 	void app::draw_brand ( math::vec2 center, float height ) {
 
 		render::canvas& c = canvas;
-		float k = height / 78.0f;
-		float stroke = base::max ( 5.0f * k, 1.25f );
-		float shaft = base::max ( 5.0f * k, 1.25f );
-		render::color brace = ink ( tone::INK_FAINT );
-		render::color line = ink ( tone::INK_SOFT );
-		render::color brass = render::rgb ( 0xE0A43A );
+		float k = height / 108.0f;
+		float shaft = base::max ( 11.0f * k, 1.5f );
 
 		auto at = [ & ] ( float x, float y ) {
 
-			return math::vec2 ( center.x + ( x - 64.0f ) * k, center.y + ( y - 63.0f ) * k );
+			return math::vec2 ( center.x + ( x - 64.0f ) * k, center.y + ( y - 60.0f ) * k );
 
 		};
 
-		for ( int32_t side = 0; side < 2; side++ ) {
+		math::vec2 grip = at ( 64.0f, 12.0f );
+		math::vec2 cup = at ( 30.0f, 62.0f );
+		math::vec2 rim = at ( 20.0f, 98.0f );
 
-			float mirror = side ? -1.0f : 1.0f;
-
-			auto spot = [ & ] ( float x, float y ) {
-
-				return at ( 64.0f + mirror * ( x - 64.0f ), y );
-
-			};
-
-			auto arc = [ & ] ( float x, float y, float radius, float start, float sweep ) {
-
-				c.ring ( spot ( x, y ), radius * k + stroke * 0.5f, stroke, side ? 1.0f - start - sweep : start, sweep, brace );
-
-			};
-
-			auto bar = [ & ] ( float x, float from, float to ) {
-
-				math::vec2 high = spot ( x, from );
-				math::vec2 low = spot ( x, to );
-
-				c.fill ( math::rect ( high.x - stroke * 0.5f, high.y - 0.3f, stroke, low.y - high.y + 0.6f ), 0.0f, brace );
-
-			};
-
-			arc ( 38.0f, 38.0f, 10.0f, 0.75f, 0.25f );
-			bar ( 28.0f, 38.0f, 56.0f );
-			arc ( 20.0f, 56.0f, 8.0f, 0.25f, 0.25f );
-			arc ( 20.0f, 72.0f, 8.0f, 0.0f, 0.25f );
-			bar ( 28.0f, 72.0f, 90.0f );
-			arc ( 38.0f, 90.0f, 10.0f, 0.5f, 0.25f );
-			c.circle ( spot ( 38.0f, 28.0f ), stroke * 0.5f, brace );
-			c.circle ( spot ( 38.0f, 100.0f ), stroke * 0.5f, brace );
-			c.circle ( spot ( 20.0f, 64.0f ), stroke * 0.5f, brace );
-
-		}
-
-		math::vec2 grip = at ( 64.0f, 39.0f );
-		math::vec2 cup = at ( 50.0f, 65.0f );
-		math::vec2 rim = at ( 45.0f, 83.0f );
-
-		c.fill ( math::rect ( grip.x - shaft * 0.5f, grip.y - shaft * 0.5f, shaft, 30.0f * k + shaft ), shaft * 0.5f, line );
-		c.push_clip ( math::rect ( cup.x - 1.0f, cup.y - 1.0f, 28.0f * k + 2.0f, 20.0f * k + 1.0f ) );
-		c.fill ( math::rect ( cup.x, cup.y, 28.0f * k, 40.0f * k ), 14.0f * k, brass );
+		c.fill ( math::rect ( grip.x - shaft * 0.5f, grip.y - shaft * 0.5f, shaft, 68.0f * k + shaft ), shaft * 0.5f, ink ( tone::INK_SOFT ) );
+		c.push_clip ( math::rect ( cup.x - 1.0f, cup.y - 1.0f, 68.0f * k + 2.0f, 38.0f * k + 1.0f ) );
+		c.fill ( math::rect ( cup.x, cup.y, 68.0f * k, 76.0f * k ), 34.0f * k, render::rgb ( 0xE0A43A ) );
 		c.pop_clip ( );
-		c.fill ( math::rect ( rim.x, rim.y, 38.0f * k, 8.0f * k ), 4.0f * k, render::rgb ( 0xB8822A ) );
+		c.fill ( math::rect ( rim.x, rim.y, 88.0f * k, 16.0f * k ), 8.0f * k, render::rgb ( 0xB8822A ) );
 
 	}
 
