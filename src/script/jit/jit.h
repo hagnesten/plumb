@@ -140,4 +140,85 @@ namespace script {
 
 	};
 
+	enum jit_register : int32_t {
+
+		RAX,
+		RCX,
+		RDX,
+		RBX,
+		RSP,
+		RBP,
+		RSI,
+		RDI,
+		R8,
+		R9,
+		R10,
+		R11,
+		R12,
+		R13,
+		R14,
+		R15,
+
+	};
+
+	enum jit_condition : int32_t {
+
+		ALWAYS = -1,
+		BELOW = 2,
+		EQUAL = 4,
+		NOT_EQUAL = 5,
+		ABOVE = 7,
+		LESS = 12,
+		GREATER_EQUAL = 13,
+		LESS_EQUAL = 14,
+		GREATER = 15,
+
+	};
+
+	constexpr int32_t value_size = static_cast < int32_t > ( sizeof ( value ) );
+
+	constexpr int32_t value_type = static_cast < int32_t > ( __builtin_offsetof ( value, type ) );
+
+	constexpr int32_t value_number = static_cast < int32_t > ( __builtin_offsetof ( value, number ) );
+
+	constexpr int32_t value_ref = static_cast < int32_t > ( __builtin_offsetof ( value, ref ) );
+
+	constexpr int32_t flow_next = 0;
+
+	constexpr int32_t flow_return = 3;
+
+	value from_temp ( const jit_temp& item );
+
+	void to_temp ( value item, jit_temp& out );
+
+	extern const uint8_t op_load [ ];
+
+	extern const uint8_t op_store [ ];
+
+	extern const uint8_t op_store_byte [ ];
+
+	extern const uint8_t op_zero_extend_byte [ ];
+
+	extern const uint8_t op_address [ ];
+
+	extern const uint8_t op_compare_byte_immediate [ ];
+
+	extern const uint8_t op_move_byte_immediate [ ];
+
+	extern const uint8_t op_increment [ ];
+
+	extern const uint8_t op_compare_memory [ ];
+
+	void compare_immediate32 ( compiler& c, int32_t reg, int8_t immediate );
+
+	void compare_immediate64 ( compiler& c, int32_t reg, int8_t immediate );
+
+	void push_register ( compiler& c, int32_t reg );
+
+	void pop_register ( compiler& c, int32_t reg );
+
+	void set_al ( compiler& c, int32_t condition );
+
+	int32_t comparison ( symbol mark );
+
 }

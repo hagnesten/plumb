@@ -1,505 +1,501 @@
 #include "render/canvas/canvas.h"
 
-namespace render {
+void render::premultiply ( float* target, color tint, float alpha ) {
 
-	static void premultiply ( float* target, color tint, float alpha ) {
+	float a = tint.a * alpha;
 
-		float a = tint.a * alpha;
+	target [ 0 ] = tint.r * a;
+	target [ 1 ] = tint.g * a;
+	target [ 2 ] = tint.b * a;
+	target [ 3 ] = a;
 
-		target [ 0 ] = tint.r * a;
-		target [ 1 ] = tint.g * a;
-		target [ 2 ] = tint.b * a;
-		target [ 3 ] = a;
+}
 
-	}
+void render::canvas::begin ( gpu* target_device, float dpi_scale, math::vec2 origin, float now ) {
 
-	void canvas::begin ( gpu* target_device, float dpi_scale, math::vec2 origin, float now ) {
+	device = target_device;
+	quads.clear ( );
+	commands.clear ( );
+	texts.clear ( );
+	glyphs.clear ( );
+	depth = 0;
+	stack [ 0 ].scale = dpi_scale;
+	stack [ 0 ].offset = origin;
+	stack [ 0 ].alpha = 1.0f;
+	clip_depth = 0;
+	clips [ 0 ] [ 0 ] = -100000.0f;
+	clips [ 0 ] [ 1 ] = -100000.0f;
+	clips [ 0 ] [ 2 ] = 100000.0f;
+	clips [ 0 ] [ 3 ] = 100000.0f;
+	light_strength = 0.0f;
+	snap = true;
+	scale_glyphs = false;
+	snap_origin = math::vec2 ( 0.0f, 0.0f );
+	light_at = math::vec2 ( -10000.0f, -10000.0f );
+	time = now;
 
-		device = target_device;
-		quads.clear ( );
-		commands.clear ( );
-		texts.clear ( );
-		glyphs.clear ( );
-		depth = 0;
-		stack [ 0 ].scale = dpi_scale;
-		stack [ 0 ].offset = origin;
-		stack [ 0 ].alpha = 1.0f;
-		clip_depth = 0;
-		clips [ 0 ] [ 0 ] = -100000.0f;
-		clips [ 0 ] [ 1 ] = -100000.0f;
-		clips [ 0 ] [ 2 ] = 100000.0f;
-		clips [ 0 ] [ 3 ] = 100000.0f;
-		light_strength = 0.0f;
-		snap = true;
-		scale_glyphs = false;
-		snap_origin = math::vec2 ( 0.0f, 0.0f );
-		light_at = math::vec2 ( -10000.0f, -10000.0f );
-		time = now;
+}
 
-	}
+void render::canvas::push ( math::vec2 pivot, float scale_by, float alpha_by, math::vec2 offset ) {
 
-	void canvas::push ( math::vec2 pivot, float scale_by, float alpha_by, math::vec2 offset ) {
+	const transform& top = stack [ depth ];
+	transform next;
+	float lx = pivot.x * ( 1.0f - scale_by ) + offset.x;
+	float ly = pivot.y * ( 1.0f - scale_by ) + offset.y;
 
-		const transform& top = stack [ depth ];
-		transform next;
-		float lx = pivot.x * ( 1.0f - scale_by ) + offset.x;
-		float ly = pivot.y * ( 1.0f - scale_by ) + offset.y;
+	next.scale = top.scale * scale_by;
+	next.offset = math::vec2 ( lx * top.scale + top.offset.x, ly * top.scale + top.offset.y );
+	next.alpha = top.alpha * alpha_by;
 
-		next.scale = top.scale * scale_by;
-		next.offset = math::vec2 ( lx * top.scale + top.offset.x, ly * top.scale + top.offset.y );
-		next.alpha = top.alpha * alpha_by;
+	if ( depth < 31 )
+		depth++;
 
-		if ( depth < 31 )
-			depth++;
+	stack [ depth ] = next;
 
-		stack [ depth ] = next;
+}
 
-	}
+void render::canvas::push_alpha ( float alpha_by ) {
 
-	void canvas::push_alpha ( float alpha_by ) {
+	push ( math::vec2 ( 0.0f, 0.0f ), 1.0f, alpha_by );
 
-		push ( math::vec2 ( 0.0f, 0.0f ), 1.0f, alpha_by );
+}
 
-	}
+void render::canvas::pop ( ) {
 
-	void canvas::pop ( ) {
+	if ( depth > 0 )
+		depth--;
 
-		if ( depth > 0 )
-			depth--;
+}
 
-	}
+void render::canvas::push_clip ( math::rect area ) {
 
-	void canvas::push_clip ( math::rect area ) {
+	math::vec2 low = screen ( math::vec2 ( area.x, area.y ) );
+	math::vec2 high = screen ( math::vec2 ( area.right ( ), area.bottom ( ) ) );
+	const float* current = clips [ clip_depth ];
+	int32_t next = base::min ( clip_depth + 1, 31 );
 
-		math::vec2 low = screen ( math::vec2 ( area.x, area.y ) );
-		math::vec2 high = screen ( math::vec2 ( area.right ( ), area.bottom ( ) ) );
-		const float* current = clips [ clip_depth ];
-		int32_t next = base::min ( clip_depth + 1, 31 );
+	clips [ next ] [ 0 ] = base::max ( current [ 0 ], math::round ( low.x ) );
+	clips [ next ] [ 1 ] = base::max ( current [ 1 ], math::round ( low.y ) );
+	clips [ next ] [ 2 ] = base::min ( current [ 2 ], math::round ( high.x ) );
+	clips [ next ] [ 3 ] = base::min ( current [ 3 ], math::round ( high.y ) );
+	clip_depth = next;
 
-		clips [ next ] [ 0 ] = base::max ( current [ 0 ], math::round ( low.x ) );
-		clips [ next ] [ 1 ] = base::max ( current [ 1 ], math::round ( low.y ) );
-		clips [ next ] [ 2 ] = base::min ( current [ 2 ], math::round ( high.x ) );
-		clips [ next ] [ 3 ] = base::min ( current [ 3 ], math::round ( high.y ) );
-		clip_depth = next;
+}
 
-	}
+void render::canvas::pop_clip ( ) {
 
-	void canvas::pop_clip ( ) {
+	if ( clip_depth > 0 )
+		clip_depth--;
 
-		if ( clip_depth > 0 )
-			clip_depth--;
+}
 
-	}
+math::vec2 render::canvas::screen ( math::vec2 p ) const {
 
-	math::vec2 canvas::screen ( math::vec2 p ) const {
+	const transform& top = stack [ depth ];
 
-		const transform& top = stack [ depth ];
+	return math::vec2 ( p.x * top.scale + top.offset.x, p.y * top.scale + top.offset.y );
 
-		return math::vec2 ( p.x * top.scale + top.offset.x, p.y * top.scale + top.offset.y );
+}
 
-	}
+float render::canvas::scale ( ) const {
 
-	float canvas::scale ( ) const {
+	return stack [ depth ].scale;
 
-		return stack [ depth ].scale;
+}
 
-	}
+float render::canvas::alpha ( ) const {
 
-	float canvas::alpha ( ) const {
+	return stack [ depth ].alpha;
 
-		return stack [ depth ].alpha;
+}
 
-	}
+void render::canvas::add_command ( int32_t type, int32_t index ) {
 
-	void canvas::add_command ( int32_t type, int32_t index ) {
+	if ( type == 0 && !commands.empty ( ) ) {
 
-		if ( type == 0 && !commands.empty ( ) ) {
+		command& last = commands.back ( );
 
-			command& last = commands.back ( );
+		if ( last.type == 0 && last.first + last.count == index ) {
 
-			if ( last.type == 0 && last.first + last.count == index ) {
+			last.count++;
 
-				last.count++;
-
-				return;
-
-			}
+			return;
 
 		}
 
-		command item = { type, index, 1 };
-
-		commands.push ( item );
-
 	}
 
-	quad& canvas::emit ( kind type, math::rect area, float radius ) {
+	command item = { type, index, 1 };
 
-		const transform& top = stack [ depth ];
-		int32_t index = quads.count ( );
-		quad& item = quads.emplace ( );
-		math::vec2 at = screen ( math::vec2 ( area.x, area.y ) );
+	commands.push ( item );
 
-		item.rect [ 0 ] = at.x;
-		item.rect [ 1 ] = at.y;
-		item.rect [ 2 ] = area.w * top.scale;
-		item.rect [ 3 ] = area.h * top.scale;
-		item.shape [ 0 ] = radius * top.scale;
-		item.shape [ 3 ] = static_cast < float > ( type );
+}
 
-		for ( int32_t i = 0; i < 4; i++ )
-			item.clip [ i ] = clips [ clip_depth ] [ i ];
+render::quad& render::canvas::emit ( kind type, math::rect area, float radius ) {
 
-		add_command ( 0, index );
+	const transform& top = stack [ depth ];
+	int32_t index = quads.count ( );
+	quad& item = quads.emplace ( );
+	math::vec2 at = screen ( math::vec2 ( area.x, area.y ) );
 
-		return item;
+	item.rect [ 0 ] = at.x;
+	item.rect [ 1 ] = at.y;
+	item.rect [ 2 ] = area.w * top.scale;
+	item.rect [ 3 ] = area.h * top.scale;
+	item.shape [ 0 ] = radius * top.scale;
+	item.shape [ 3 ] = static_cast < float > ( type );
 
-	}
+	for ( int32_t i = 0; i < 4; i++ )
+		item.clip [ i ] = clips [ clip_depth ] [ i ];
 
-	void canvas::fill ( math::rect area, float radius, color tint ) {
+	add_command ( 0, index );
 
-		if ( tint.a * alpha ( ) <= 0.0f || area.w <= 0.0f || area.h <= 0.0f )
-			return;
+	return item;
 
-		quad& item = emit ( kind::FILL, area, radius );
+}
 
-		premultiply ( item.fill, tint, alpha ( ) );
+void render::canvas::fill ( math::rect area, float radius, color tint ) {
 
-	}
+	if ( tint.a * alpha ( ) <= 0.0f || area.w <= 0.0f || area.h <= 0.0f )
+		return;
 
-	void canvas::soft ( math::rect area, float radius, float softness, color tint ) {
+	quad& item = emit ( kind::FILL, area, radius );
 
-		if ( tint.a * alpha ( ) <= 0.0f )
-			return;
+	premultiply ( item.fill, tint, alpha ( ) );
 
-		quad& item = emit ( kind::FILL, area, radius );
+}
 
-		item.shape [ 1 ] = softness * scale ( );
-		premultiply ( item.fill, tint, alpha ( ) );
+void render::canvas::soft ( math::rect area, float radius, float softness, color tint ) {
 
-	}
+	if ( tint.a * alpha ( ) <= 0.0f )
+		return;
 
-	void canvas::outline ( math::rect area, float radius, color inside, float width, color border ) {
+	quad& item = emit ( kind::FILL, area, radius );
 
-		if ( ( inside.a + border.a ) * alpha ( ) <= 0.0f )
-			return;
+	item.shape [ 1 ] = softness * scale ( );
+	premultiply ( item.fill, tint, alpha ( ) );
 
-		quad& item = emit ( kind::FILL, area, radius );
+}
 
-		item.shape [ 2 ] = width * scale ( );
-		premultiply ( item.fill, inside, alpha ( ) );
-		premultiply ( item.stroke, border, alpha ( ) );
+void render::canvas::outline ( math::rect area, float radius, color inside, float width, color border ) {
 
-	}
+	if ( ( inside.a + border.a ) * alpha ( ) <= 0.0f )
+		return;
 
-	void canvas::shadow ( math::rect area, float radius, float blur, color tint, math::vec2 offset ) {
+	quad& item = emit ( kind::FILL, area, radius );
 
-		if ( tint.a * alpha ( ) <= 0.0f )
-			return;
+	item.shape [ 2 ] = width * scale ( );
+	premultiply ( item.fill, inside, alpha ( ) );
+	premultiply ( item.stroke, border, alpha ( ) );
 
-		area.x += offset.x;
-		area.y += offset.y;
+}
 
-		quad& item = emit ( kind::SHADOW, area, radius );
+void render::canvas::shadow ( math::rect area, float radius, float blur, color tint, math::vec2 offset ) {
 
-		item.shape [ 1 ] = base::max ( blur * scale ( ), 0.5f );
-		premultiply ( item.fill, tint, alpha ( ) );
+	if ( tint.a * alpha ( ) <= 0.0f )
+		return;
 
-	}
+	area.x += offset.x;
+	area.y += offset.y;
 
-	void canvas::glass ( math::rect area, float radius, const glass_style& style, float alpha_by ) {
+	quad& item = emit ( kind::SHADOW, area, radius );
 
-		float a = alpha ( ) * alpha_by;
+	item.shape [ 1 ] = base::max ( blur * scale ( ), 0.5f );
+	premultiply ( item.fill, tint, alpha ( ) );
 
-		if ( a <= 0.0f )
-			return;
+}
 
-		quad& item = emit ( kind::GLASS, area, radius );
+void render::canvas::glass ( math::rect area, float radius, const glass_style& style, float alpha_by ) {
 
-		premultiply ( item.fill, style.tint, 1.0f );
-		item.data [ 0 ] = style.bevel * scale ( );
-		item.data [ 1 ] = style.refraction * scale ( );
-		item.data [ 2 ] = style.frost;
-		item.data [ 3 ] = style.dispersion;
-		item.extra [ 0 ] = style.highlight;
-		item.extra [ 1 ] = a;
+	float a = alpha ( ) * alpha_by;
 
-	}
+	if ( a <= 0.0f )
+		return;
 
-	void canvas::image ( math::rect area, float radius, int32_t slice, float alpha_by, float angle ) {
+	quad& item = emit ( kind::GLASS, area, radius );
 
-		float a = alpha ( ) * alpha_by;
+	premultiply ( item.fill, style.tint, 1.0f );
+	item.data [ 0 ] = style.bevel * scale ( );
+	item.data [ 1 ] = style.refraction * scale ( );
+	item.data [ 2 ] = style.frost;
+	item.data [ 3 ] = style.dispersion;
+	item.extra [ 0 ] = style.highlight;
+	item.extra [ 1 ] = a;
 
-		if ( a <= 0.0f || slice < 0 )
-			return;
+}
 
-		quad& item = emit ( kind::IMAGE, area, radius );
-
-		item.fill [ 0 ] = a;
-		item.fill [ 1 ] = a;
-		item.fill [ 2 ] = a;
-		item.fill [ 3 ] = a;
-		item.data [ 0 ] = 0.0f;
-		item.data [ 1 ] = 0.0f;
-		item.data [ 2 ] = 1.0f;
-		item.data [ 3 ] = 1.0f;
-		item.extra [ 0 ] = static_cast < float > ( slice );
-		item.extra [ 1 ] = angle;
+void render::canvas::image ( math::rect area, float radius, int32_t slice, float alpha_by, float angle ) {
 
-	}
+	float a = alpha ( ) * alpha_by;
 
-	void canvas::thumb ( math::rect area, float radius, int32_t slice, float alpha_by, float angle ) {
+	if ( a <= 0.0f || slice < 0 )
+		return;
 
-		float a = alpha ( ) * alpha_by;
+	quad& item = emit ( kind::IMAGE, area, radius );
 
-		if ( a <= 0.0f || slice < 0 )
-			return;
+	item.fill [ 0 ] = a;
+	item.fill [ 1 ] = a;
+	item.fill [ 2 ] = a;
+	item.fill [ 3 ] = a;
+	item.data [ 0 ] = 0.0f;
+	item.data [ 1 ] = 0.0f;
+	item.data [ 2 ] = 1.0f;
+	item.data [ 3 ] = 1.0f;
+	item.extra [ 0 ] = static_cast < float > ( slice );
+	item.extra [ 1 ] = angle;
 
-		quad& item = emit ( kind::IMAGE, area, radius );
+}
 
-		item.fill [ 0 ] = a;
-		item.fill [ 1 ] = a;
-		item.fill [ 2 ] = a;
-		item.fill [ 3 ] = a;
-		item.data [ 0 ] = 0.0f;
-		item.data [ 1 ] = 0.0f;
-		item.data [ 2 ] = 1.0f;
-		item.data [ 3 ] = 1.0f;
-		item.extra [ 0 ] = static_cast < float > ( slice );
-		item.extra [ 1 ] = angle;
-		item.extra [ 2 ] = 1.0f;
+void render::canvas::thumb ( math::rect area, float radius, int32_t slice, float alpha_by, float angle ) {
 
-	}
+	float a = alpha ( ) * alpha_by;
 
-	void canvas::texture ( math::rect area, float radius, math::rect uv, float alpha_by ) {
+	if ( a <= 0.0f || slice < 0 )
+		return;
 
-		float a = alpha ( ) * alpha_by;
+	quad& item = emit ( kind::IMAGE, area, radius );
 
-		if ( a <= 0.0f )
-			return;
+	item.fill [ 0 ] = a;
+	item.fill [ 1 ] = a;
+	item.fill [ 2 ] = a;
+	item.fill [ 3 ] = a;
+	item.data [ 0 ] = 0.0f;
+	item.data [ 1 ] = 0.0f;
+	item.data [ 2 ] = 1.0f;
+	item.data [ 3 ] = 1.0f;
+	item.extra [ 0 ] = static_cast < float > ( slice );
+	item.extra [ 1 ] = angle;
+	item.extra [ 2 ] = 1.0f;
 
-		quad& item = emit ( kind::TEXTURE, area, radius );
+}
 
-		item.fill [ 3 ] = a;
-		item.data [ 0 ] = uv.x;
-		item.data [ 1 ] = uv.y;
-		item.data [ 2 ] = uv.right ( );
-		item.data [ 3 ] = uv.bottom ( );
+void render::canvas::texture ( math::rect area, float radius, math::rect uv, float alpha_by ) {
 
-	}
+	float a = alpha ( ) * alpha_by;
 
-	void canvas::gradient ( math::rect area, float radius, math::vec2 from, math::vec2 to, color start, color end ) {
+	if ( a <= 0.0f )
+		return;
 
-		if ( ( start.a + end.a ) * alpha ( ) <= 0.0f )
-			return;
+	quad& item = emit ( kind::TEXTURE, area, radius );
 
-		quad& item = emit ( kind::GRADIENT, area, radius );
-		math::vec2 a = screen ( from );
-		math::vec2 b = screen ( to );
+	item.fill [ 3 ] = a;
+	item.data [ 0 ] = uv.x;
+	item.data [ 1 ] = uv.y;
+	item.data [ 2 ] = uv.right ( );
+	item.data [ 3 ] = uv.bottom ( );
 
-		premultiply ( item.fill, start, alpha ( ) );
-		premultiply ( item.stroke, end, alpha ( ) );
-		item.data [ 0 ] = a.x;
-		item.data [ 1 ] = a.y;
-		item.data [ 2 ] = b.x;
-		item.data [ 3 ] = b.y;
+}
 
-	}
+void render::canvas::gradient ( math::rect area, float radius, math::vec2 from, math::vec2 to, color start, color end ) {
 
-	void canvas::polygon ( math::vec2 a, math::vec2 b, math::vec2 c, math::vec2 d, float rounding, color tint ) {
+	if ( ( start.a + end.a ) * alpha ( ) <= 0.0f )
+		return;
 
-		if ( tint.a * alpha ( ) <= 0.0f )
-			return;
+	quad& item = emit ( kind::GRADIENT, area, radius );
+	math::vec2 a = screen ( from );
+	math::vec2 b = screen ( to );
 
-		float x0 = base::min ( base::min ( a.x, b.x ), base::min ( c.x, d.x ) ) - rounding - 1.0f;
-		float y0 = base::min ( base::min ( a.y, b.y ), base::min ( c.y, d.y ) ) - rounding - 1.0f;
-		float x1 = base::max ( base::max ( a.x, b.x ), base::max ( c.x, d.x ) ) + rounding + 1.0f;
-		float y1 = base::max ( base::max ( a.y, b.y ), base::max ( c.y, d.y ) ) + rounding + 1.0f;
-		quad& item = emit ( kind::POLYGON, math::rect ( x0, y0, x1 - x0, y1 - y0 ), rounding );
-		math::vec2 sa = screen ( a );
-		math::vec2 sb = screen ( b );
-		math::vec2 sc = screen ( c );
-		math::vec2 sd = screen ( d );
+	premultiply ( item.fill, start, alpha ( ) );
+	premultiply ( item.stroke, end, alpha ( ) );
+	item.data [ 0 ] = a.x;
+	item.data [ 1 ] = a.y;
+	item.data [ 2 ] = b.x;
+	item.data [ 3 ] = b.y;
 
-		premultiply ( item.fill, tint, alpha ( ) );
-		item.data [ 0 ] = sa.x;
-		item.data [ 1 ] = sa.y;
-		item.data [ 2 ] = sb.x;
-		item.data [ 3 ] = sb.y;
-		item.extra [ 0 ] = sc.x;
-		item.extra [ 1 ] = sc.y;
-		item.extra [ 2 ] = sd.x;
-		item.extra [ 3 ] = sd.y;
+}
 
-	}
+void render::canvas::polygon ( math::vec2 a, math::vec2 b, math::vec2 c, math::vec2 d, float rounding, color tint ) {
 
-	void canvas::ring ( math::vec2 center, float radius, float width, float start, float sweep, color tint ) {
+	if ( tint.a * alpha ( ) <= 0.0f )
+		return;
 
-		if ( tint.a * alpha ( ) <= 0.0f )
-			return;
+	float x0 = base::min ( base::min ( a.x, b.x ), base::min ( c.x, d.x ) ) - rounding - 1.0f;
+	float y0 = base::min ( base::min ( a.y, b.y ), base::min ( c.y, d.y ) ) - rounding - 1.0f;
+	float x1 = base::max ( base::max ( a.x, b.x ), base::max ( c.x, d.x ) ) + rounding + 1.0f;
+	float y1 = base::max ( base::max ( a.y, b.y ), base::max ( c.y, d.y ) ) + rounding + 1.0f;
+	quad& item = emit ( kind::POLYGON, math::rect ( x0, y0, x1 - x0, y1 - y0 ), rounding );
+	math::vec2 sa = screen ( a );
+	math::vec2 sb = screen ( b );
+	math::vec2 sc = screen ( c );
+	math::vec2 sd = screen ( d );
 
-		quad& item = emit ( kind::RING, math::rect ( center.x - radius, center.y - radius, radius * 2.0f, radius * 2.0f ), radius );
+	premultiply ( item.fill, tint, alpha ( ) );
+	item.data [ 0 ] = sa.x;
+	item.data [ 1 ] = sa.y;
+	item.data [ 2 ] = sb.x;
+	item.data [ 3 ] = sb.y;
+	item.extra [ 0 ] = sc.x;
+	item.extra [ 1 ] = sc.y;
+	item.extra [ 2 ] = sd.x;
+	item.extra [ 3 ] = sd.y;
 
-		item.shape [ 2 ] = width * scale ( );
-		premultiply ( item.fill, tint, alpha ( ) );
-		item.data [ 0 ] = start;
-		item.data [ 1 ] = sweep;
+}
 
-	}
+void render::canvas::ring ( math::vec2 center, float radius, float width, float start, float sweep, color tint ) {
 
-	void canvas::circle ( math::vec2 center, float radius, color tint ) {
+	if ( tint.a * alpha ( ) <= 0.0f )
+		return;
 
-		fill ( math::rect ( center.x - radius, center.y - radius, radius * 2.0f, radius * 2.0f ), radius, tint );
+	quad& item = emit ( kind::RING, math::rect ( center.x - radius, center.y - radius, radius * 2.0f, radius * 2.0f ), radius );
 
-	}
+	item.shape [ 2 ] = width * scale ( );
+	premultiply ( item.fill, tint, alpha ( ) );
+	item.data [ 0 ] = start;
+	item.data [ 1 ] = sweep;
 
-	float canvas::text ( const wchar_t* value, font role, math::vec2 at, color tint, align placement, float max_width ) {
+}
 
-		if ( !value || !value [ 0 ] )
-			return 0.0f;
+void render::canvas::circle ( math::vec2 center, float radius, color tint ) {
 
-		text_entry* entry = device->layout ( value, role, max_width );
+	fill ( math::rect ( center.x - radius, center.y - radius, radius * 2.0f, radius * 2.0f ), radius, tint );
 
-		if ( !entry->layout )
-			return 0.0f;
+}
 
-		float a = tint.a * alpha ( );
+float render::canvas::text ( const wchar_t* value, font role, math::vec2 at, color tint, align placement, float max_width ) {
 
-		if ( a <= 0.003f )
-			return entry->width;
+	if ( !value || !value [ 0 ] )
+		return 0.0f;
 
-		const transform& rest = stack [ 0 ];
-		float glyph = scale_glyphs ? stack [ depth ].scale : rest.scale;
-		float lead = placement == align::CENTER ? entry->width * 0.5f : ( placement == align::RIGHT ? entry->width : 0.0f );
-		float rise = entry->baseline - entry->cap * 0.5f;
-		math::vec2 anchor = screen ( at );
-		math::vec2 p ( anchor.x - lead * glyph, anchor.y - rise * glyph );
-		text_item item;
+	text_entry* entry = device->layout ( value, role, max_width );
 
-		if ( snap ) {
+	if ( !entry->layout )
+		return 0.0f;
 
-			float rest_x = ( at.x - lead ) * rest.scale + rest.offset.x - snap_origin.x;
-			float rest_y = ( at.y - rise ) * rest.scale + rest.offset.y - snap_origin.y;
+	float a = tint.a * alpha ( );
 
-			p.x += math::round ( rest_x ) - rest_x;
-			p.y += math::round ( rest_y ) - rest_y;
-
-		}
-
-		item.layout = entry->layout;
-		item.x = p.x;
-		item.y = p.y;
-		item.scale = glyph;
-		item.tint = color ( tint.r, tint.g, tint.b, a );
-
-		for ( int32_t i = 0; i < 4; i++ )
-			item.clip [ i ] = clips [ clip_depth ] [ i ];
-
-		float spill = entry->height * glyph * 0.3f + 3.0f;
-
-		item.bounds [ 0 ] = p.x - spill;
-		item.bounds [ 1 ] = p.y - spill;
-		item.bounds [ 2 ] = p.x + entry->width * glyph + spill;
-		item.bounds [ 3 ] = p.y + entry->height * glyph + spill;
-		texts.push ( item );
-		add_command ( 1, texts.count ( ) - 1 );
-
+	if ( a <= 0.003f )
 		return entry->width;
 
+	const transform& rest = stack [ 0 ];
+	float glyph = scale_glyphs ? stack [ depth ].scale : rest.scale;
+	float lead = placement == align::CENTER ? entry->width * 0.5f : ( placement == align::RIGHT ? entry->width : 0.0f );
+	float rise = entry->baseline - entry->cap * 0.5f;
+	math::vec2 anchor = screen ( at );
+	math::vec2 p ( anchor.x - lead * glyph, anchor.y - rise * glyph );
+	text_item item;
+
+	if ( snap ) {
+
+		float rest_x = ( at.x - lead ) * rest.scale + rest.offset.x - snap_origin.x;
+		float rest_y = ( at.y - rise ) * rest.scale + rest.offset.y - snap_origin.y;
+
+		p.x += math::round ( rest_x ) - rest_x;
+		p.y += math::round ( rest_y ) - rest_y;
+
 	}
 
-	float canvas::paragraph ( const wchar_t* value, font role, math::vec2 at, float width, color tint ) {
+	item.layout = entry->layout;
+	item.x = p.x;
+	item.y = p.y;
+	item.scale = glyph;
+	item.tint = color ( tint.r, tint.g, tint.b, a );
 
-		if ( !value || !value [ 0 ] )
-			return 0.0f;
+	for ( int32_t i = 0; i < 4; i++ )
+		item.clip [ i ] = clips [ clip_depth ] [ i ];
 
-		text_entry* entry = device->layout ( value, role, width, true );
+	float spill = entry->height * glyph * 0.3f + 3.0f;
 
-		if ( !entry->layout )
-			return 0.0f;
+	item.bounds [ 0 ] = p.x - spill;
+	item.bounds [ 1 ] = p.y - spill;
+	item.bounds [ 2 ] = p.x + entry->width * glyph + spill;
+	item.bounds [ 3 ] = p.y + entry->height * glyph + spill;
+	texts.push ( item );
+	add_command ( 1, texts.count ( ) - 1 );
 
-		float a = tint.a * alpha ( );
+	return entry->width;
 
-		if ( a <= 0.003f )
-			return entry->height;
+}
 
-		math::vec2 p = screen ( at );
-		float glyph = scale_glyphs ? stack [ depth ].scale : stack [ 0 ].scale;
-		text_item item;
+float render::canvas::paragraph ( const wchar_t* value, font role, math::vec2 at, float width, color tint ) {
 
-		item.layout = entry->layout;
-		item.x = p.x;
-		item.y = p.y;
-		item.scale = glyph;
-		item.tint = color ( tint.r, tint.g, tint.b, a );
+	if ( !value || !value [ 0 ] )
+		return 0.0f;
 
-		for ( int32_t i = 0; i < 4; i++ )
-			item.clip [ i ] = clips [ clip_depth ] [ i ];
+	text_entry* entry = device->layout ( value, role, width, true );
 
-		float spill = 8.0f * glyph + 3.0f;
+	if ( !entry->layout )
+		return 0.0f;
 
-		item.bounds [ 0 ] = p.x - spill;
-		item.bounds [ 1 ] = p.y - spill;
-		item.bounds [ 2 ] = p.x + base::max ( width, entry->width ) * glyph + spill;
-		item.bounds [ 3 ] = p.y + entry->height * glyph + spill;
-		texts.push ( item );
-		add_command ( 1, texts.count ( ) - 1 );
+	float a = tint.a * alpha ( );
 
+	if ( a <= 0.003f )
 		return entry->height;
 
-	}
+	math::vec2 p = screen ( at );
+	float glyph = scale_glyphs ? stack [ depth ].scale : stack [ 0 ].scale;
+	text_item item;
 
-	float canvas::measure ( const wchar_t* value, font role ) {
+	item.layout = entry->layout;
+	item.x = p.x;
+	item.y = p.y;
+	item.scale = glyph;
+	item.tint = color ( tint.r, tint.g, tint.b, a );
 
-		if ( !value || !value [ 0 ] )
-			return 0.0f;
+	for ( int32_t i = 0; i < 4; i++ )
+		item.clip [ i ] = clips [ clip_depth ] [ i ];
 
-		return device->layout ( value, role, 0.0f )->width;
+	float spill = 8.0f * glyph + 3.0f;
 
-	}
+	item.bounds [ 0 ] = p.x - spill;
+	item.bounds [ 1 ] = p.y - spill;
+	item.bounds [ 2 ] = p.x + base::max ( width, entry->width ) * glyph + spill;
+	item.bounds [ 3 ] = p.y + entry->height * glyph + spill;
+	texts.push ( item );
+	add_command ( 1, texts.count ( ) - 1 );
 
-	void canvas::icon ( uint32_t code, math::vec2 center, float size, color tint ) {
+	return entry->height;
 
-		float a = tint.a * alpha ( );
+}
 
-		if ( a <= 0.003f )
-			return;
+float render::canvas::measure ( const wchar_t* value, font role ) {
 
-		const glyph_entry* entry = device->glyph ( code );
+	if ( !value || !value [ 0 ] )
+		return 0.0f;
 
-		if ( !entry )
-			return;
+	return device->layout ( value, role, 0.0f )->width;
 
-		math::vec2 p = screen ( math::vec2 ( center.x - entry->middle_x * size, center.y + entry->middle_y * size ) );
-		glyph_item item;
+}
 
-		item.index = entry->index;
-		item.size = size;
-		item.x = p.x;
-		item.y = p.y;
-		item.scale = scale ( );
-		item.tint = color ( tint.r, tint.g, tint.b, a );
+void render::canvas::icon ( uint32_t code, math::vec2 center, float size, color tint ) {
 
-		for ( int32_t i = 0; i < 4; i++ )
-			item.clip [ i ] = clips [ clip_depth ] [ i ];
+	float a = tint.a * alpha ( );
 
-		math::vec2 middle = screen ( center );
-		float reach = size * item.scale * 0.85f + 3.0f;
+	if ( a <= 0.003f )
+		return;
 
-		item.bounds [ 0 ] = middle.x - reach;
-		item.bounds [ 1 ] = middle.y - reach;
-		item.bounds [ 2 ] = middle.x + reach;
-		item.bounds [ 3 ] = middle.y + reach;
-		glyphs.push ( item );
-		add_command ( 2, glyphs.count ( ) - 1 );
+	const glyph_entry* entry = device->glyph ( code );
 
-	}
+	if ( !entry )
+		return;
 
-	void canvas::light ( math::vec2 at, float strength ) {
+	math::vec2 p = screen ( math::vec2 ( center.x - entry->middle_x * size, center.y + entry->middle_y * size ) );
+	glyph_item item;
 
-		light_at = screen ( at );
-		light_strength = strength;
+	item.index = entry->index;
+	item.size = size;
+	item.x = p.x;
+	item.y = p.y;
+	item.scale = scale ( );
+	item.tint = color ( tint.r, tint.g, tint.b, a );
 
-	}
+	for ( int32_t i = 0; i < 4; i++ )
+		item.clip [ i ] = clips [ clip_depth ] [ i ];
+
+	math::vec2 middle = screen ( center );
+	float reach = size * item.scale * 0.85f + 3.0f;
+
+	item.bounds [ 0 ] = middle.x - reach;
+	item.bounds [ 1 ] = middle.y - reach;
+	item.bounds [ 2 ] = middle.x + reach;
+	item.bounds [ 3 ] = middle.y + reach;
+	glyphs.push ( item );
+	add_command ( 2, glyphs.count ( ) - 1 );
+
+}
+
+void render::canvas::light ( math::vec2 at, float strength ) {
+
+	light_at = screen ( at );
+	light_strength = strength;
 
 }

@@ -178,4 +178,52 @@ namespace render {
 
 	};
 
+	template < typename type >
+	static void drop ( type*& value ) {
+
+		if ( value ) {
+
+			value->Release ( );
+			value = nullptr;
+
+		}
+
+	}
+
+	struct frame_data {
+
+		float target_size [ 2 ];
+		float source_size [ 2 ];
+		float light [ 4 ];
+		float tuning [ 4 ];
+
+	};
+
+	struct post_data {
+
+		float texel [ 2 ];
+		float spread;
+		float unused;
+		float colors [ 4 ] [ 4 ];
+		float params [ 4 ];
+
+	};
+
+	bool resource ( int32_t id, const void*& data, uint32_t& size );
+
+	struct font_role {
+
+		int32_t family;
+		int32_t weight;
+		float size;
+		float tracking;
+
+	};
+
+	int32_t round_up ( int32_t value, int32_t step );
+
+	bool make_content ( IDCompositionDevice* composition, output& target, int32_t target_width, int32_t target_height );
+
+	uint64_t text_key ( const wchar_t* text, font role, float max_width );
+
 }

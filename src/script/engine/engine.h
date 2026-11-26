@@ -195,4 +195,14 @@ namespace script {
 
 	symbol compound_operator ( symbol mark );
 
+	void append ( base::list < wchar_t >& out, const wchar_t* text, int32_t length = -1 );
+
+	void append_unsigned ( base::list < wchar_t >& out, uint64_t value, int32_t radix, bool upper, int32_t width, wchar_t pad );
+
+	void append_signed ( base::list < wchar_t >& out, int64_t value );
+
+	void describe_into ( const engine& owner, value item, base::list < wchar_t >& out, bool quoted, int32_t depth );
+
+	bool fast_arithmetic ( symbol mark, int64_t x, int64_t y, int64_t& out );
+
 }

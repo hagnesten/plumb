@@ -1,6 +1,7 @@
 #pragma once
 
 #include "render/gpu/gpu.h"
+#include "base/list/list.h"
 
 namespace render {
 
@@ -92,5 +93,7 @@ namespace render {
 		int32_t clip_depth = 0;
 
 	};
+
+	void premultiply ( float* target, color tint, float alpha );
 
 }
