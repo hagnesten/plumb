@@ -210,6 +210,8 @@ namespace decompiler {
 		c_prototype prototype;
 		base::list < base::text > var_types;
 		base::list < base::text > var_structs;
+		base::list < uint64_t > number_at;
+		base::list < uint64_t > ghost_at;
 		uint8_t param_bits [ 16 ] = { };
 		bool returns_value = false;
 		bool bare_return = false;

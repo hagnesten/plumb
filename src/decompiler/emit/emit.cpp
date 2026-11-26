@@ -908,6 +908,25 @@ namespace decompiler {
 
 			}
 
+			if ( b.names && b.names->number_notes ( ) ) {
+
+				b.number_at.clear ( );
+				b.number_at.fill ( b.vars.size ( ), 0 );
+				b.ghost_at.clear ( );
+
+				for ( int32_t v : order ) {
+
+					uint64_t at = def_of ( v ) == ~0ull ? 0 : def_of ( v );
+
+					if ( v < 0 || ( b.vars [ static_cast < size_t > ( v ) ].ghost && var_number [ static_cast < size_t > ( v ) ] < 0 ) )
+						b.ghost_at.push ( at );
+					else
+						b.number_at [ static_cast < size_t > ( v ) ] = at;
+
+				}
+
+			}
+
 			next_number = next;
 
 			return changed;
@@ -11858,6 +11877,21 @@ namespace decompiler {
 		head.out.finish ( );
 		head.out.indent = 1;
 
+		if ( b.names && b.names->number_notes ( ) && !b.ghost_at.empty ( ) ) {
+
+			base::writer ghosts;
+
+			ghosts.add ( L"// ghosts" );
+
+			for ( uint64_t at : b.ghost_at )
+				ghosts.add ( L" " ).hex ( at );
+
+			head.out.begin ( b.function );
+			head.out.put ( ghosts.text ( ), syntax::COMMENT );
+			head.out.finish ( );
+
+		}
+
 		int32_t declared = 0;
 		base::list < int32_t > shown_vars;
 		int64_t lowest = 0;
@@ -11956,6 +11990,9 @@ namespace decompiler {
 					note.add ( wide [ item.family ] );
 				else
 					note.add ( item.size == 2 ? word [ item.family ] : ( item.size == 1 ? byte [ item.family ] : dword [ item.family ] ) );
+
+				if ( b.names && b.names->number_notes ( ) && v < b.number_at.count ( ) )
+					note.add ( L" @" ).hex ( b.number_at [ static_cast < size_t > ( v ) ] );
 
 				head.out.put ( note.text ( ), syntax::COMMENT );
 

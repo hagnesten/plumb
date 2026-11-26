@@ -153,6 +153,12 @@ namespace decompiler {
 
 		}
 
+		virtual bool number_notes ( ) {
+
+			return false;
+
+		}
+
 		virtual bool expand_ternary ( ) {
 
 			return false;

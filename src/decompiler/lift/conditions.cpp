@@ -86,6 +86,8 @@ namespace decompiler {
 	}
 
 	static bool ghost_folds = false;
+	static bool ghost_exprs = false;
+	static bool calls_keep_exprs = true;
 	static bool ghost_sinks = false;
 	static bool copy_fixed = true;
 	static bool copy_into = true;
@@ -468,8 +470,44 @@ namespace decompiler {
 				if ( hoisted_out || !use_at )
 					continue;
 
+				bool crosses_call = false;
+
+				for ( int32_t s = single [ static_cast < size_t > ( v ) ] + 1; s < statements.count ( ) && calls_keep_exprs; s++ ) {
+
+					const statement& other = statements [ static_cast < size_t > ( s ) ];
+
+					if ( other.kind == stmt::NOP || other.kind == stmt::ASM )
+						continue;
+
+					if ( other.address && use_at > 1 && other.address > use_at )
+						break;
+
+					base::list < int32_t > seen;
+
+					seen.fill ( static_cast < size_t > ( total ), 0 );
+					count_vars ( *this, other.right, seen, 0 );
+
+					if ( !( other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR ) )
+						count_vars ( *this, other.left, seen, 0 );
+
+					if ( seen [ static_cast < size_t > ( v ) ] )
+						break;
+
+					if ( has_call ( *this, other.right, 0 ) || ( other.kind != stmt::ASSIGN && has_call ( *this, other.left, 0 ) ) ) {
+
+						crosses_call = true;
+
+						break;
+
+					}
+
+				}
+
+				if ( crosses_call )
+					continue;
+
 				line.kind = stmt::NOP;
-				vars [ static_cast < size_t > ( v ) ].ghost = true;
+				vars [ static_cast < size_t > ( v ) ].ghost = ghost_exprs;
 				vars [ static_cast < size_t > ( v ) ].born = line.address ? line.address : line.origin;
 
 				for ( statement& other : statements ) {

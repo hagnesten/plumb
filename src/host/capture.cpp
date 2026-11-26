@@ -740,6 +740,12 @@ struct plain_names : decompiler::namer {
 
 	}
 
+	bool number_notes ( ) override {
+
+		return argument ( L"--numbers" ) != nullptr;
+
+	}
+
 	bool expand_ternary ( ) override {
 
 		const wchar_t* style = argument ( L"--ternary" );
