@@ -17,7 +17,7 @@ void ui::app::draw_listing ( math::rect area ) {
 
 	c.fill ( area, 0.0f, ink ( tone::BASE ) );
 	scroll_region ( id, area );
-	now->listing_scroll.target -= take_wheel ( id ) * 3.0f;
+	now->listing_scroll.target -= take_wheel ( id, 1 ) * 3.0f;
 	glide ( now->listing_scroll, static_cast < float > ( total_rows ) - visible + 3.0f, row_h );
 	interact ( id, area, surface );
 

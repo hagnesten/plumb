@@ -339,12 +339,19 @@ void ui::app::mouse_leave ( ) {
 
 }
 
-void ui::app::mouse_wheel ( float steps, bool horizontal ) {
+void ui::app::mouse_wheel ( float steps, bool horizontal, bool control ) {
 
 	if ( horizontal )
 		wheel_side += steps;
-	else
+	else {
+
+		if ( control != wheel_control )
+			wheel_steps = 0.0f;
+
 		wheel_steps += steps;
+		wheel_control = control;
+
+	}
 
 	pending = base::max ( pending, 2 );
 
@@ -426,9 +433,18 @@ bool ui::app::over ( math::rect area ) const {
 
 }
 
+math::rect ui::app::view_to_screen ( math::rect area ) const {
+
+	if ( view_scale == 1.0f )
+		return area;
+
+	return math::rect ( view_pivot.x + ( area.x - view_pivot.x ) * view_scale, view_pivot.y + ( area.y - view_pivot.y ) * view_scale, area.w * view_scale, area.h * view_scale );
+
+}
+
 bool ui::app::interact ( uint64_t id, math::rect area, widget& item, hit kind ) {
 
-	hit_rect entry = { id, area, kind };
+	hit_rect entry = { id, view_to_screen ( area ), kind };
 
 	next_hits.push ( entry );
 	settle ( item.hover, hot == id ? 1.0f : 0.0f );
@@ -440,13 +456,13 @@ bool ui::app::interact ( uint64_t id, math::rect area, widget& item, hit kind ) 
 
 void ui::app::scroll_region ( uint64_t id, math::rect area ) {
 
-	hit_rect entry = { id, area, hit::CLIENT };
+	hit_rect entry = { id, view_to_screen ( area ), hit::CLIENT };
 
 	next_scrolls.push ( entry );
 
 }
 
-float ui::app::take_wheel ( uint64_t id ) {
+float ui::app::take_wheel ( uint64_t id, int32_t zoom_group ) {
 
 	if ( scroll_hot != id || wheel_steps == 0.0f )
 		return 0.0f;
@@ -455,7 +471,28 @@ float ui::app::take_wheel ( uint64_t id ) {
 
 	wheel_steps = 0.0f;
 
+	if ( zoom_group > 0 && wheel_control ) {
+
+		zoom_text ( value, zoom_group );
+
+		return 0.0f;
+
+	}
+
 	return value;
+
+}
+
+void ui::app::zoom_text ( float steps, int32_t group ) {
+
+	float& zoom = group == 2 ? code_zoom : listing_zoom;
+
+	zoom = base::clamp ( zoom * math::exp ( steps * 0.0953f ), 0.6f, 3.0f );
+
+	if ( zoom > 0.97f && zoom < 1.03f )
+		zoom = 1.0f;
+
+	pending = base::max ( pending, 2 );
 
 }
 

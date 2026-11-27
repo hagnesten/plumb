@@ -234,7 +234,7 @@ LRESULT __stdcall host::procedure ( HWND window, UINT message, WPARAM wide, LPAR
 			return TRUE;
 
 		case WM_MOUSEWHEEL:
-			program->mouse_wheel ( static_cast < float > ( static_cast < int16_t > ( HIWORD ( wide ) ) ) / 120.0f, false );
+			program->mouse_wheel ( static_cast < float > ( static_cast < int16_t > ( HIWORD ( wide ) ) ) / 120.0f, false, ( LOWORD ( wide ) & MK_CONTROL ) != 0 );
 			return 0;
 
 		case WM_MOUSEHWHEEL:

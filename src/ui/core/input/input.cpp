@@ -715,7 +715,7 @@ void ui::app::handle_keys ( ) {
 
 			}
 
-			int64_t page = static_cast < int64_t > ( panes [ focused_pane ].body.h / metric::code_row ) - 2;
+			int64_t page = static_cast < int64_t > ( panes [ focused_pane ].body.h / ( metric::code_row * listing_zoom ) ) - 2;
 			int64_t move = 0;
 
 			if ( code == VK_LEFT || code == VK_RIGHT ) {
@@ -775,7 +775,7 @@ void ui::app::handle_keys ( ) {
 				continue;
 
 			int32_t count = code_view->lines.count ( );
-			int32_t page = static_cast < int32_t > ( panes [ focused_pane ].body.h / metric::code_row ) - 2;
+			int32_t page = static_cast < int32_t > ( panes [ focused_pane ].body.h / ( metric::code_row * code_zoom ) ) - 2;
 			int32_t move = 0;
 
 			if ( ( code == VK_LEFT || code == VK_RIGHT ) && count ) {
@@ -859,7 +859,7 @@ void ui::app::handle_keys ( ) {
 
 				}
 
-				float visible = panes [ focused_pane ].body.h / metric::code_row - 1.0f;
+				float visible = panes [ focused_pane ].body.h / ( metric::code_row * code_zoom ) - 1.0f;
 				float place = static_cast < float > ( now->code_line );
 
 				if ( place < now->code_scroll.target )

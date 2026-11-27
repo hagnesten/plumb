@@ -430,6 +430,11 @@ bool host::capture_mode ( ) {
 			app->mouse_wheel ( reader.number ( ), false );
 			step ( 1 );
 
+		} else if ( base::same_text ( command, L"cwheel" ) ) {
+
+			app->mouse_wheel ( reader.number ( ), false, true );
+			step ( 1 );
+
 		} else if ( base::same_text ( command, L"key" ) ) {
 
 			wchar_t name [ 64 ];

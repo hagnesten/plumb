@@ -7,6 +7,45 @@ const wchar_t* ui::view_titles [ static_cast < int32_t > ( view::COUNT ) ] = { L
 
 const uint32_t ui::view_glyphs [ static_cast < int32_t > ( view::COUNT ) ] = { icons::CODE, icons::BRANCH, icons::FORM, icons::CHIP, icons::INFO, icons::LAYERS };
 
+void ui::app::draw_zoomed ( math::rect body, float zoom, int32_t kind ) {
+
+	if ( zoom == 1.0f ) {
+
+		if ( kind == 2 )
+			draw_pseudocode ( body );
+		else
+			draw_listing ( body );
+
+		return;
+
+	}
+
+	render::canvas& c = canvas;
+	math::vec2 pivot ( body.x, body.y );
+	math::vec2 held_mouse = mouse;
+	math::vec2 held_press = press_at;
+	math::rect inner ( body.x, body.y, body.w / zoom, body.h / zoom );
+
+	mouse = math::vec2 ( pivot.x + ( mouse.x - pivot.x ) / zoom, pivot.y + ( mouse.y - pivot.y ) / zoom );
+	press_at = math::vec2 ( pivot.x + ( press_at.x - pivot.x ) / zoom, pivot.y + ( press_at.y - pivot.y ) / zoom );
+	view_scale = zoom;
+	view_pivot = pivot;
+	c.push ( pivot, zoom, 1.0f );
+	c.scale_glyphs = true;
+
+	if ( kind == 2 )
+		draw_pseudocode ( inner );
+	else
+		draw_listing ( inner );
+
+	c.scale_glyphs = false;
+	c.pop ( );
+	view_scale = 1.0f;
+	mouse = held_mouse;
+	press_at = held_press;
+
+}
+
 void ui::app::draw_panes ( ) {
 
 	render::canvas& c = canvas;
@@ -225,7 +264,7 @@ void ui::app::draw_document ( int32_t index ) {
 	switch ( current.kind ) {
 
 		case view::PSEUDOCODE:
-			draw_pseudocode ( item.body );
+			draw_zoomed ( item.body, code_zoom, 2 );
 			break;
 
 		case view::GRAPH:
@@ -245,7 +284,7 @@ void ui::app::draw_document ( int32_t index ) {
 			break;
 
 		default:
-			draw_listing ( item.body );
+			draw_zoomed ( item.body, listing_zoom, 1 );
 			break;
 
 	}

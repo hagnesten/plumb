@@ -658,7 +658,7 @@ namespace ui {
 
 		void mouse_leave ( );
 
-		void mouse_wheel ( float steps, bool horizontal );
+		void mouse_wheel ( float steps, bool horizontal, bool control = false );
 
 		void key ( uint32_t code, bool control, bool shift, bool alt );
 
@@ -943,6 +943,15 @@ namespace ui {
 		math::vec2 press_at;
 		float wheel_steps = 0.0f;
 		float wheel_side = 0.0f;
+		bool wheel_control = false;
+		float listing_zoom = 1.0f;
+		float code_zoom = 1.0f;
+		float view_scale = 1.0f;
+		math::vec2 view_pivot;
+
+		math::rect view_to_screen ( math::rect area ) const;
+
+		void draw_zoomed ( math::rect body, float zoom, int32_t kind );
 		uint64_t hot = 0;
 		uint64_t active_id = 0;
 		uint64_t clicked_id = 0;
@@ -1212,7 +1221,9 @@ namespace ui {
 
 		void scroll_region ( uint64_t id, math::rect area );
 
-		float take_wheel ( uint64_t id );
+		float take_wheel ( uint64_t id, int32_t zoom_group = 0 );
+
+		void zoom_text ( float steps, int32_t group );
 
 		void tip ( uint64_t id, const wchar_t* text, math::rect anchor );
 

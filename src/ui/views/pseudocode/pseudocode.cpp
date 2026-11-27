@@ -113,7 +113,7 @@ void ui::app::draw_pseudocode ( math::rect area ) {
 	float wheel = 0.0f;
 
 	scroll_region ( id, area );
-	wheel = take_wheel ( id );
+	wheel = take_wheel ( id, 2 );
 
 	if ( key_shift && sideways )
 		now->code_side.target -= wheel * 8.0f;
@@ -274,7 +274,7 @@ void ui::app::draw_pseudocode ( math::rect area ) {
 		if ( code->lines [ static_cast < size_t > ( now->code_line ) ].address )
 			now->cursor_address = code->lines [ static_cast < size_t > ( now->code_line ) ].address;
 
-		code_menu_at = mouse;
+		code_menu_at = view_to_screen ( math::rect ( mouse.x, mouse.y, 0.0f, 0.0f ) ).center ( );
 		menu_open = code_menu_index;
 		menu_focus = -1;
 		menu_show = 1.0f;
