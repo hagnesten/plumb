@@ -720,6 +720,30 @@ void decompiler::emitter::lvalue_or_load ( const expr& item, int32_t parent ) {
 
 		var_name ( static_cast < int32_t > ( base.value ), name );
 
+		int32_t whole = base.value >= 0 && base.value < b.vars.count ( ) ? b.vars [ static_cast < size_t > ( base.value ) ].size : 0;
+
+		if ( part_macro_slots && ( item.size == 1 || item.size == 2 || item.size == 4 ) && !( item.bits & FLOATING ) && ( whole == 8 || whole == 16 ) && k > 0 && k % item.size == 0 && k + item.size <= whole ) {
+
+			const wchar_t* unit = item.size == 4 ? L"DWORD" : ( item.size == 2 ? L"WORD" : L"BYTE" );
+			base::writer macro;
+
+			if ( item.bits & SIGNED )
+				macro.add ( L"S" );
+
+			if ( k + item.size == whole )
+				macro.add ( L"HI" ).add ( unit );
+			else
+				macro.add ( unit ).number ( k / item.size );
+
+			out.put ( macro.text ( ), syntax::FUNCTION );
+			out.put ( L"(" );
+			out.put ( name, syntax::LOCAL );
+			out.put ( L")" );
+
+			return;
+
+		}
+
 		if ( parent > 14 )
 			out.put ( L"(" );
 

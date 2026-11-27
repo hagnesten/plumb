@@ -148,6 +148,8 @@ namespace decompiler {
 
 	extern bool ida_labels;
 
+	extern bool part_macro_slots;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;
