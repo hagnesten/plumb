@@ -50,6 +50,8 @@ namespace decompiler {
 
 	extern bool void_skips;
 
+	extern bool signed_loads;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;
