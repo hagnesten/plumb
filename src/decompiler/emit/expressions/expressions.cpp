@@ -786,7 +786,7 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 					out.put ( L")" );
 					value ( argument, 14 );
 
-				} else if ( b.long_mode && !no_casts && target && passed.kind == op::VAR && passed.value >= 0 && passed.value < element.count ( ) && element [ static_cast < size_t > ( passed.value ) ] && ( callee_unsigned ( target, i ), !shape_ok ) && !( i < 4 && b.db && ( callee_pointer_shape ( *b.db, b.names, target, i, 0 ) & 0x9F ) == ( element [ static_cast < size_t > ( passed.value ) ] & 0x9F ) ) ) {
+				} else if ( b.long_mode && !no_casts && target && passed.kind == op::VAR && passed.value >= 0 && passed.value < element.count ( ) && element [ static_cast < size_t > ( passed.value ) ] && ( callee_unsigned ( target, i ), !shape_ok ) && !( i < 4 && b.db && ( callee_pointer_shape ( *b.db, b.names, target, i, 0 ) & 0x9F ) == ( element [ static_cast < size_t > ( passed.value ) ] & 0x9F ) ) && !( pointer_arg_casts && derived_same ( target, i, static_cast < int32_t > ( passed.value ) ) ) ) {
 
 					out.put ( L"(__int64)" );
 					value ( argument, 14 );

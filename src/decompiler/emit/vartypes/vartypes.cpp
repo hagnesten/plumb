@@ -569,7 +569,40 @@ bool decompiler::emitter::var_type_text ( int32_t index, wchar_t* text, int32_t 
 
 }
 
-bool decompiler::emitter::pointer_arg_cast ( uint64_t target, int32_t index, int32_t argument, wchar_t* cast, int32_t room ) {
+bool decompiler::emitter::derived_same ( uint64_t target, int32_t index, int32_t v ) {
+
+	bool pointer = false;
+	const wchar_t* wanted = derived_param ( target, index, pointer );
+	wchar_t have [ 96 ];
+
+	if ( !wanted || !pointer || !var_type_text ( v, have, 96 ) )
+		return false;
+
+	int32_t i = 0;
+	int32_t j = 0;
+
+	for ( ;; ) {
+
+		while ( have [ i ] == L' ' )
+			i++;
+
+		while ( wanted [ j ] == L' ' )
+			j++;
+
+		if ( have [ i ] != wanted [ j ] )
+			return false;
+
+		if ( !have [ i ] )
+			return true;
+
+		i++;
+		j++;
+
+	}
+
+}
+
+bool decompiler::emitter::pointer_arg_cast (uint64_t target, int32_t index, int32_t argument, wchar_t* cast, int32_t room ) {
 
 	bool pointer = false;
 	const wchar_t* wanted = derived_param ( target, index, pointer );
