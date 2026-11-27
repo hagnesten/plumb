@@ -395,7 +395,7 @@ void ui::app::draw_calls ( math::rect area ) {
 
 				base::writer fallback;
 
-				fallback.add ( L"g_" ).hex ( item.address );
+				fallback.add ( data_prefix ( item.address ) ).hex ( item.address );
 
 				for ( int32_t k = 0; k <= fallback.size ( ) && k < 200; k++ )
 					name [ k ] = fallback.text ( ) [ k ];

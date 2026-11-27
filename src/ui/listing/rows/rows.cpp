@@ -487,7 +487,7 @@ void ui::app::compose_row ( uint64_t row, const row_columns& cols, row_line& out
 			} else if ( symbol_name ( item.address, false, name, 200 ) )
 				label.add ( name );
 			else
-				label.add ( L"g_" ).hex ( item.address );
+				label.add ( data_prefix ( item.address ) ).hex ( item.address );
 
 			out.put_at ( cols.code, label.text ( ), tone::GLOBAL, item.address, true );
 			out.put ( L":", tone::OPERATOR );

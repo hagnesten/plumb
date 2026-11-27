@@ -1706,7 +1706,7 @@ bool ui::app::symbol_name ( uint64_t address, bool code, wchar_t* out, int32_t r
 
 		base::writer text;
 
-		text.add ( L"g_" ).hex ( address );
+		text.add ( data_prefix ( address ) ).hex ( address );
 		base::copy_text ( text.text ( ), out, room );
 
 		return true;
@@ -1714,5 +1714,80 @@ bool ui::app::symbol_name ( uint64_t address, bool code, wchar_t* out, int32_t r
 	}
 
 	return false;
+
+}
+
+const wchar_t* ui::app::data_prefix ( uint64_t address ) const {
+
+	uint64_t offset = 0;
+
+	if ( file.arch == loader::machine::X64 && ( address & 7 ) == 0 && file.offset_of ( address, offset ) && offset + 8 <= file.size ) {
+
+		uint64_t value = file.read64 ( offset );
+
+		if ( value && file.section_at ( value ) > 0 )
+			return L"off_";
+
+	}
+
+	if ( !db || !analysis_applied )
+		return L"unk_";
+
+	int32_t first = 0;
+	int32_t count = 0;
+
+	db->refs_to ( address, first, count );
+
+	for ( int32_t i = 0; i < count; i++ ) {
+
+		const analysis::xref& ref = db->refs [ static_cast < size_t > ( first + i ) ];
+
+		if ( ref.type != analysis::ref::READ && ref.type != analysis::ref::WRITE )
+			continue;
+
+		x86::instruction ins;
+
+		if ( !db->decode ( file.base + ref.source, ins ) )
+			continue;
+
+		uint8_t size = 0;
+		bool vector = false;
+
+		for ( int32_t k = 0; k < ins.count; k++ ) {
+
+			const x86::operand& item = ins.operands [ k ];
+
+			if ( item.type == x86::kind::MEM )
+				size = item.size;
+			else if ( item.type == x86::kind::REG && item.reg >= x86::XMM0 && item.reg < x86::YMM0 )
+				vector = true;
+
+		}
+
+		switch ( size ) {
+
+			case 1:
+				return L"byte_";
+
+			case 2:
+				return L"word_";
+
+			case 4:
+				return vector ? L"flt_" : L"dword_";
+
+			case 8:
+				return vector && ins.name != x86::mnemonic::movq ? L"dbl_" : L"qword_";
+
+			case 16:
+				return L"xmmword_";
+
+			default:
+				break;
+
+		}
+
+	}
+
+	return L"unk_";
 
 }

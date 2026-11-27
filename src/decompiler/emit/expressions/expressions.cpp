@@ -495,7 +495,7 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 			} else if ( b.names->name ( static_cast < uint64_t > ( item.value ), false, name, 200 ) ) {
 
 				if ( simd_types && item.size >= 8 && name [ 0 ] == L's' && name [ 1 ] == L'_' )
-					out.put ( base::writer ( ).add ( L"g_" ).hex ( static_cast < uint64_t > ( item.value ) ).text ( ), syntax::GLOBAL, static_cast < uint64_t > ( item.value ) );
+					out.put ( base::writer ( ).add ( item.size == 16 ? L"xmmword_" : ( item.size == 8 ? ( ( item.bits & FLOATING ) ? L"dbl_" : L"qword_" ) : L"unk_" ) ).hex ( static_cast < uint64_t > ( item.value ) ).text ( ), syntax::GLOBAL, static_cast < uint64_t > ( item.value ) );
 				else
 					out.put ( name, syntax::GLOBAL, static_cast < uint64_t > ( item.value ) );
 

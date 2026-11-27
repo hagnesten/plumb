@@ -724,6 +724,8 @@ namespace ui {
 
 		bool symbol_name ( uint64_t address, bool code, wchar_t* out, int32_t room ) const;
 
+		const wchar_t* data_prefix ( uint64_t address ) const;
+
 		bool number_text ( uint64_t at, uint64_t raw, uint8_t size, wchar_t* out, int32_t room ) const;
 
 		const local_entry* local_for ( uint64_t function, const wchar_t* key ) const;
