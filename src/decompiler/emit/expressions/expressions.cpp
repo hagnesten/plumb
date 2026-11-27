@@ -1056,6 +1056,15 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 			bool retyped =inner.kind == op::VAR && inner.value >= 0 && inner.value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( inner.value ) ].empty ( ) && b.vars [ static_cast < size_t > ( inner.value ) ].size == item.size;
 			bool shown = ( float_change || inner.size != item.size ) && !no_casts && !retyped;
 
+			if ( simd_converts && !( item.bits & FLOATING ) && item.size == 8 && inner.size == 16 && ( inner.kind == op::INTRINSIC || inner.kind == op::VAR ) ) {
+
+				value ( item.a, 15 );
+				out.put ( L".m128i_u64[0]" );
+
+				break;
+
+			}
+
 			if ( simd_converts && !( item.bits & FLOATING ) && ( item.size == 4 || item.size == 8 ) && inner.size == 16 && ( inner.kind == op::INTRINSIC || inner.kind == op::VAR ) ) {
 
 				out.put ( item.size == 8 ? L"_mm_cvtsi128_si64" : L"_mm_cvtsi128_si32", syntax::FUNCTION );
