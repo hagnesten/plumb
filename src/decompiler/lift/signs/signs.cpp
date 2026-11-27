@@ -110,13 +110,30 @@ void decompiler::builder::infer_signs ( ) {
 
 			const expr& left = exprs [ static_cast < size_t > ( line.left ) ];
 			const expr* right_node = &exprs [ static_cast < size_t > ( line.right ) ];
+			bool masked = false;
 
-			if ( masked_signs && ( right_node->kind == op::AND || ( right_node->kind == op::SHR && !( right_node->bits & SIGNED ) ) ) && right_node->a >= 0 && right_node->b >= 0 && exprs [ static_cast < size_t > ( right_node->b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( right_node->a ) ].kind == op::VAR )
+			while ( masked_casts && right_node->kind == op::CAST && !( right_node->bits & SIGNED ) && right_node->a >= 0 )
 				right_node = &exprs [ static_cast < size_t > ( right_node->a ) ];
+
+			if ( masked_signs && ( right_node->kind == op::AND || ( right_node->kind == op::SHR && !( right_node->bits & SIGNED ) ) ) && right_node->a >= 0 && right_node->b >= 0 && exprs [ static_cast < size_t > ( right_node->b ) ].kind == op::CONST ) {
+
+				const expr* inner = &exprs [ static_cast < size_t > ( right_node->a ) ];
+
+				while ( masked_casts && inner->kind == op::CAST && !( inner->bits & SIGNED ) && inner->a >= 0 )
+					inner = &exprs [ static_cast < size_t > ( inner->a ) ];
+
+				if ( inner->kind == op::VAR ) {
+
+					right_node = inner;
+					masked = true;
+
+				}
+
+			}
 
 			const expr& right = *right_node;
 
-			if ( left.kind != op::VAR || right.kind != op::VAR || left.size != 8 || right.size != 8 || left.value < 0 || right.value < 0 || left.value >= marks.count ( ) || right.value >= marks.count ( ) )
+			if ( left.kind != op::VAR || right.kind != op::VAR || left.size != 8 || ( right.size != 8 && !( masked && masked_casts ) ) || left.value < 0 || right.value < 0 || left.value >= marks.count ( ) || right.value >= marks.count ( ) )
 				continue;
 
 			uint8_t from = marks [ static_cast < size_t > ( right.value ) ];

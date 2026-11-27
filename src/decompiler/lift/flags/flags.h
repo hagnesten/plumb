@@ -56,6 +56,8 @@ namespace decompiler {
 
 	extern bool masked_signs;
 
+	extern bool masked_casts;
+
 	extern bool scaled_counters;
 
 	extern bool import_callees;

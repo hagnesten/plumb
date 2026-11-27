@@ -47,6 +47,7 @@ bool decompiler::shared_products = true;
 bool decompiler::param_copies = true;
 
 bool decompiler::masked_signs = true;
+bool decompiler::masked_casts = true;
 
 bool decompiler::scaled_counters = true;
 
