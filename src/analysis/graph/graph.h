@@ -49,8 +49,6 @@ namespace analysis {
 
 	bool build_graph ( const database& db, uint64_t function, function_graph& out );
 
-	bool insert_sorted ( base::list < uint64_t >& items, uint64_t value );
-
 	struct pending_edge {
 
 		uint64_t from;

@@ -47,8 +47,6 @@ namespace analysis {
 
 	bool function_key ( const database& db, int32_t index, uint64_t& key, bool strict = true );
 
-	int32_t hex_value ( wchar_t c );
-
 	void add_byte ( pattern& out, uint8_t value, bool fixed );
 
 	struct scan_task {

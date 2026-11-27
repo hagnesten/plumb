@@ -13,21 +13,6 @@ bool script::digit ( wchar_t c ) {
 
 }
 
-int32_t script::hex_digit ( wchar_t c ) {
-
-	if ( c >= L'0' && c <= L'9' )
-		return c - L'0';
-
-	if ( c >= L'a' && c <= L'f' )
-		return c - L'a' + 10;
-
-	if ( c >= L'A' && c <= L'F' )
-		return c - L'A' + 10;
-
-	return -1;
-
-}
-
 const script::symbol_spelling script::spellings [ ] = {
 	{ L"<<=", symbol::SHIFT_LEFT_ASSIGN }, { L">>=", symbol::SHIFT_RIGHT_ASSIGN },
 	{ L"<<", symbol::SHIFT_LEFT }, { L">>", symbol::SHIFT_RIGHT }, { L"<=", symbol::LESS_EQUAL }, { L">=", symbol::GREATER_EQUAL },
@@ -295,13 +280,13 @@ bool script::engine::lex ( const wchar_t* source, int32_t file, int32_t depth ) 
 				advance ( );
 				advance ( );
 
-				if ( hex_digit ( *at ) < 0 )
+				if ( base::hex_value ( *at ) < 0 )
 					return lex_error ( item.line, item.column, file, L"A hex number needs digits after 0x." );
 
-				while ( hex_digit ( *at ) >= 0 || *at == L'_' ) {
+				while ( base::hex_value ( *at ) >= 0 || *at == L'_' ) {
 
 					if ( *at != L'_' )
-						number = ( number << 4 ) | static_cast < uint64_t > ( hex_digit ( *at ) );
+						number = ( number << 4 ) | static_cast < uint64_t > ( base::hex_value ( *at ) );
 
 					advance ( );
 
@@ -402,10 +387,10 @@ bool script::engine::lex ( const wchar_t* source, int32_t file, int32_t depth ) 
 
 						for ( int32_t k = 0; k < wanted; k++ ) {
 
-							if ( hex_digit ( *at ) < 0 )
+							if ( base::hex_value ( *at ) < 0 )
 								return lex_error ( line, column, file, e == L'x' ? L"\\x needs two hex digits." : L"\\u needs four hex digits." );
 
-							code = code * 16 + hex_digit ( *at );
+							code = code * 16 + base::hex_value ( *at );
 							advance ( );
 
 						}

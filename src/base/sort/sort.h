@@ -2,6 +2,7 @@
 
 #include "base/types/types.h"
 #include "base/utility/utility.h"
+#include "base/list/list.h"
 
 namespace base {
 
@@ -89,6 +90,52 @@ namespace base {
 			scratch [ i ].~type ( );
 
 		runtime_release ( scratch );
+
+	}
+
+	inline int32_t lower_bound ( const list < uint64_t >& items, uint64_t value ) {
+
+		int32_t low = 0;
+		int32_t high = items.count ( );
+
+		while ( low < high ) {
+
+			int32_t middle = ( low + high ) / 2;
+
+			if ( items [ static_cast < size_t > ( middle ) ] < value )
+				low = middle + 1;
+			else
+				high = middle;
+
+		}
+
+		return low;
+
+	}
+
+	inline bool sorted_contains ( const list < uint64_t >& items, uint64_t value ) {
+
+		int32_t at = lower_bound ( items, value );
+
+		return at < items.count ( ) && items [ static_cast < size_t > ( at ) ] == value;
+
+	}
+
+	inline bool insert_sorted ( list < uint64_t >& items, uint64_t value ) {
+
+		int32_t low = lower_bound ( items, value );
+
+		if ( low < items.count ( ) && items [ static_cast < size_t > ( low ) ] == value )
+			return false;
+
+		items.push ( 0 );
+
+		for ( int32_t i = items.count ( ) - 1; i > low; i-- )
+			items [ static_cast < size_t > ( i ) ] = items [ static_cast < size_t > ( i - 1 ) ];
+
+		items [ static_cast < size_t > ( low ) ] = value;
+
+		return true;
 
 	}
 

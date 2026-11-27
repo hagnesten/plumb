@@ -24,36 +24,6 @@ int32_t analysis::function_graph::block_at ( uint64_t address ) const {
 
 }
 
-bool analysis::insert_sorted ( base::list < uint64_t >& items, uint64_t value ) {
-
-	int32_t low = 0;
-	int32_t high = items.count ( );
-
-	while ( low < high ) {
-
-		int32_t middle = ( low + high ) / 2;
-
-		if ( items [ static_cast < size_t > ( middle ) ] < value )
-			low = middle + 1;
-		else
-			high = middle;
-
-	}
-
-	if ( low < items.count ( ) && items [ static_cast < size_t > ( low ) ] == value )
-		return false;
-
-	items.push ( 0 );
-
-	for ( int32_t i = items.count ( ) - 1; i > low; i-- )
-		items [ static_cast < size_t > ( i ) ] = items [ static_cast < size_t > ( i - 1 ) ];
-
-	items [ static_cast < size_t > ( low ) ] = value;
-
-	return true;
-
-}
-
 bool analysis::build_graph ( const database& db, uint64_t function, function_graph& out ) {
 
 	out = function_graph ( );
@@ -107,7 +77,7 @@ bool analysis::build_graph ( const database& db, uint64_t function, function_gra
 
 		links.push ( link );
 
-		if ( insert_sorted ( leaders, target ) )
+		if ( base::insert_sorted ( leaders, target ) )
 			work.push ( target );
 
 	};

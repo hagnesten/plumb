@@ -121,6 +121,21 @@ namespace base {
 
 	}
 
+	inline int32_t hex_value ( wchar_t c ) {
+
+		if ( c >= L'0' && c <= L'9' )
+			return c - L'0';
+
+		if ( c >= L'a' && c <= L'f' )
+			return c - L'a' + 10;
+
+		if ( c >= L'A' && c <= L'F' )
+			return c - L'A' + 10;
+
+		return -1;
+
+	}
+
 	inline bool parse_hex ( const wchar_t* text, uint64_t& value ) {
 
 		value = 0;
@@ -134,12 +149,12 @@ namespace base {
 
 		for ( ; *text; text++, digits++ ) {
 
-			wchar_t c = fold_case ( *text );
+			int32_t digit = hex_value ( *text );
 
-			if ( digits >= 16 || !( ( c >= L'0' && c <= L'9' ) || ( c >= L'a' && c <= L'f' ) ) )
+			if ( digits >= 16 || digit < 0 )
 				return false;
 
-			value = ( value << 4 ) | static_cast < uint64_t > ( c <= L'9' ? c - L'0' : c - L'a' + 10 );
+			value = ( value << 4 ) | static_cast < uint64_t > ( digit );
 
 		}
 

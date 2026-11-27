@@ -1,20 +1,6 @@
 #include "analysis/signatures/signatures.h"
+#include "base/strings/strings.h"
 #include <windows.h>
-
-int32_t analysis::hex_value ( wchar_t c ) {
-
-	if ( c >= L'0' && c <= L'9' )
-		return c - L'0';
-
-	if ( c >= L'a' && c <= L'f' )
-		return c - L'a' + 10;
-
-	if ( c >= L'A' && c <= L'F' )
-		return c - L'A' + 10;
-
-	return -1;
-
-}
 
 void analysis::add_byte ( pattern& out, uint8_t value, bool fixed ) {
 
@@ -47,9 +33,9 @@ bool analysis::parse_pattern ( const wchar_t* text, pattern& out ) {
 
 			while ( *at && *at != L'"' ) {
 
-				if ( at [ 0 ] == L'\\' && ( at [ 1 ] == L'x' || at [ 1 ] == L'X' ) && hex_value ( at [ 2 ] ) >= 0 && hex_value ( at [ 3 ] ) >= 0 ) {
+				if ( at [ 0 ] == L'\\' && ( at [ 1 ] == L'x' || at [ 1 ] == L'X' ) && base::hex_value ( at [ 2 ] ) >= 0 && base::hex_value ( at [ 3 ] ) >= 0 ) {
 
-					add_byte ( out, static_cast < uint8_t > ( hex_value ( at [ 2 ] ) * 16 + hex_value ( at [ 3 ] ) ), true );
+					add_byte ( out, static_cast < uint8_t > ( base::hex_value ( at [ 2 ] ) * 16 + base::hex_value ( at [ 3 ] ) ), true );
 					at += 4;
 
 				} else
@@ -115,9 +101,9 @@ bool analysis::parse_pattern ( const wchar_t* text, pattern& out ) {
 			int32_t value = 0;
 			int32_t digits = 0;
 
-			while ( hex_value ( *at ) >= 0 ) {
+			while ( base::hex_value ( *at ) >= 0 ) {
 
-				value = value * 16 + hex_value ( *at );
+				value = value * 16 + base::hex_value ( *at );
 				digits++;
 				at++;
 
@@ -159,10 +145,10 @@ bool analysis::parse_pattern ( const wchar_t* text, pattern& out ) {
 			if ( at [ 0 ] == L'0' && ( at [ 1 ] == L'x' || at [ 1 ] == L'X' ) )
 				at += 2;
 
-			if ( hex_value ( at [ 0 ] ) < 0 || hex_value ( at [ 1 ] ) < 0 )
+			if ( base::hex_value ( at [ 0 ] ) < 0 || base::hex_value ( at [ 1 ] ) < 0 )
 				return false;
 
-			add_byte ( out, static_cast < uint8_t > ( hex_value ( at [ 0 ] ) * 16 + hex_value ( at [ 1 ] ) ), true );
+			add_byte ( out, static_cast < uint8_t > ( base::hex_value ( at [ 0 ] ) * 16 + base::hex_value ( at [ 1 ] ) ), true );
 			at += 2;
 
 		}
