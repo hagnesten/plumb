@@ -194,6 +194,18 @@ void decompiler::emitter::statement_line ( const statement& item ) {
 		return;
 
 	untruncate = store_untruncate && ( item.kind == stmt::STORE || item.kind == stmt::ASSIGN ) && item.left >= 0 && b.exprs [ static_cast < size_t > ( item.left ) ].kind == op::LOAD && b.exprs [ static_cast < size_t > ( item.left ) ].size == 4 && !( b.exprs [ static_cast < size_t > ( item.left ) ].bits & FLOATING );
+
+	word_store = false;
+
+	if ( narrow_store_untruncate && ( item.kind == stmt::STORE || item.kind == stmt::ASSIGN ) && item.left >= 0 && item.right >= 0 ) {
+
+		const expr& place = b.exprs [ static_cast < size_t > ( item.left ) ];
+		const expr& stored = b.exprs [ static_cast < size_t > ( item.right ) ];
+
+		if ( ( place.kind == op::LOAD || place.kind == op::GLOBAL ) && place.size == 2 && !( place.bits & FLOATING ) && stored.kind == op::CAST )
+			word_store = true;
+
+	}
 	active_var = -1;
 
 	if ( !inline_mode && index >= 0 && index < fold_at.count ( ) && fold_at [ static_cast < size_t > ( index ) ] >= 0 ) {

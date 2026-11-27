@@ -1052,6 +1052,15 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 
 			}
 
+			if ( word_store && !float_change && item.size == 2 && inner.size == 4 && ( inner.kind == op::ADD || inner.kind == op::SUB ) && !( inner.bits & FLOATING ) ) {
+
+				word_store = false;
+				value ( item.a, parent );
+
+				break;
+
+			}
+
 			if ( untruncate && !float_change && inner.kind == op::VAR && inner.size > item.size && item.size == 4 ) {
 
 				value ( item.a, parent );
