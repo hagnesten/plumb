@@ -16,6 +16,8 @@ namespace decompiler {
 
 	extern bool bittest_calls;
 
+	extern bool kept_exchanges;
+
 	extern bool ordered_cmov_loads;
 
 	extern bool quiet_nops;

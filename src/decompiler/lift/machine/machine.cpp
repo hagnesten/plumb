@@ -2437,6 +2437,30 @@ void decompiler::machine::step ( const x86::instruction& ins, uint32_t live_afte
 
 			if ( ins.operands [ 0 ].type == x86::kind::MEM ) {
 
+				int32_t slot = ins.operands [ 1 ].type == x86::kind::REG ? slot_of ( ins.operands [ 1 ].reg ) : -1;
+
+				if ( kept_exchanges && slot >= 0 && slot < 16 ) {
+
+					int32_t value = intrinsic ( I_XCHG, size, address_of ( ins, ins.operands [ 0 ] ), right );
+
+					flush ( 0xFFFFFFFFu );
+
+					if ( live & ( 1u << slot ) ) {
+
+						write ( ins, 1, value );
+						materialize ( slot, ins.address );
+
+					} else {
+
+						emit ( stmt::EXPR, -1, value, ins.address );
+						regs [ slot ] = -1;
+
+					}
+
+					return;
+
+				}
+
 				write ( ins, 1, intrinsic ( I_XCHG, size, k.make ( op::ADDRESS, 8, address_of ( ins, ins.operands [ 0 ] ), -1, -1 ), right ) );
 
 				return;
