@@ -720,6 +720,12 @@ int32_t decompiler::emitter::branch ( int32_t block, int32_t stop, const frame& 
 		else_part = taken;
 		negated = true;
 
+	} else if ( ending_fall_first && follow < 0 && !chained && other >= 0 && taken >= 0 && other != taken && item.condition >= 0 && negative_test ( item.condition ) && !emitted [ static_cast < size_t > ( other ) ] && !emitted [ static_cast < size_t > ( taken ) ] && !exit_block ( taken ) && b.code [ static_cast < size_t > ( taken ) ].end != term::RETURN ) {
+
+		then_part = other;
+		else_part = taken;
+		negated = true;
+
 	}
 
 	if ( diamond_ternary && !no_ternary && follow >= 0 && then_part >= 0 && else_part >= 0 && then_part != follow && else_part != follow ) {

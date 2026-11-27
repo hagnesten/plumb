@@ -42,6 +42,8 @@ namespace decompiler {
 
 	extern bool simd_converts;
 
+	extern bool ending_fall_first;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;
