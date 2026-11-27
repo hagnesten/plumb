@@ -14,6 +14,8 @@ bool decompiler::bittest_calls = true;
 
 bool decompiler::kept_exchanges = true;
 
+bool decompiler::tail_stack_args = true;
+
 bool decompiler::ordered_cmov_loads = true;
 
 bool decompiler::quiet_nops = true;

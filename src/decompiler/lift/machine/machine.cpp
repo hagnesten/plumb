@@ -1759,7 +1759,7 @@ int32_t decompiler::machine::call_expr ( const x86::instruction& ins, uint32_t l
 					k.statements [ static_cast < size_t > ( stack_stmt [ i ] ) ].kind = stmt::NOP;
 
 			} else
-				list.push ( k.var_expr ( k.stack_var ( delta + i * 8, 8 ), 0 ) );
+				list.push ( k.var_expr ( k.stack_var ( delta + i * 8 + ( tail_stack_args && ins.name != mnemonic::call ? 8 : 0 ), 8 ), 0 ) );
 
 		}
 
