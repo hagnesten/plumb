@@ -90,6 +90,10 @@ namespace decompiler {
 
 	extern bool signed_elements;
 
+	extern bool local_suffixes;
+
+	extern bool result_suffixes;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

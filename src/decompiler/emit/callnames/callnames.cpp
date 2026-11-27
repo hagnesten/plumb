@@ -115,6 +115,9 @@ void decompiler::name_from_calls ( builder& b, int32_t result_var ) {
 		if ( !unique_name ( taken, rest, chosen ) )
 			continue;
 
+		if ( !result_suffixes && !base::same_text ( chosen, rest ) )
+			continue;
+
 		taken.push ( base::text ( chosen ) );
 		b.call_names [ static_cast < size_t > ( v ) ].set ( chosen );
 
@@ -340,6 +343,9 @@ void decompiler::name_from_calls ( builder& b, int32_t result_var ) {
 			wchar_t chosen [ 80 ];
 
 			if ( !unique_name ( taken, rest, chosen ) )
+				continue;
+
+			if ( !local_suffixes && !base::same_text ( chosen, rest ) )
 				continue;
 
 			taken.push ( base::text ( chosen ) );
