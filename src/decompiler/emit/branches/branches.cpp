@@ -726,7 +726,7 @@ int32_t decompiler::emitter::branch ( int32_t block, int32_t stop, const frame& 
 		else_part = taken;
 		negated = true;
 
-	} else if ( fall_then && follow >= 0 && else_part != follow && other >= 0 && taken >= 0 && item.condition >= 0 && negative_test ( item.condition ) && ( !fall_then_simple || ( b.code [ static_cast < size_t > ( other ) ].end == term::FALL && b.code [ static_cast < size_t > ( other ) ].taken == follow && b.code [ static_cast < size_t > ( taken ) ].end == term::FALL && b.code [ static_cast < size_t > ( taken ) ].taken == follow ) ) ) {
+	} else if ( fall_then && follow >= 0 && else_part != follow && other >= 0 && taken >= 0 && item.condition >= 0 && negative_test ( item.condition ) && ( !fall_then_simple || ( value_falls && b.exprs [ static_cast < size_t > ( item.condition ) ].kind == op::NE && b.exprs [ static_cast < size_t > ( item.condition ) ].b >= 0 && b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( item.condition ) ].b ) ].kind != op::CONST ) || ( b.code [ static_cast < size_t > ( other ) ].end == term::FALL && b.code [ static_cast < size_t > ( other ) ].taken == follow && b.code [ static_cast < size_t > ( taken ) ].end == term::FALL && b.code [ static_cast < size_t > ( taken ) ].taken == follow ) ) ) {
 
 		then_part = other;
 		else_part = taken;

@@ -1,4 +1,4 @@
-#include "decompiler/emit/flags/flags.h"
+﻿#include "decompiler/emit/flags/flags.h"
 
 bool decompiler::logic_wrap = true;
 
@@ -59,6 +59,7 @@ bool decompiler::byte_indexes = true;
 bool decompiler::void_params = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
+bool decompiler::value_falls = true;
 
 bool decompiler::unnamed_results = true;
 

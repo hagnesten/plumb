@@ -92,6 +92,8 @@ namespace decompiler {
 
 	extern bool ida_typedefs;
 
+	extern bool value_falls;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;
