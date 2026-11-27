@@ -284,6 +284,21 @@ bool decompiler::emitter::split_global ( int32_t address, global_access& out_acc
 	return false;
 
 }
+bool decompiler::emitter::pointer_slot ( uint64_t address ) const {
+
+	uint64_t offset = 0;
+
+	if ( !b.file || !b.file->offset_of ( address, offset ) || offset + 8 > b.file->size )
+		return false;
+
+	uint64_t value = 0;
+
+	for ( int32_t i = 7; i >= 0; i-- )
+		value = ( value << 8 ) | b.file->byte ( offset + static_cast < uint64_t > ( i ) );
+
+	return value && b.file->section_at ( value ) >= 0;
+
+}
 int32_t decompiler::emitter::bare_index ( int32_t e ) const {
 
 	while ( e >= 0 && b.exprs [ static_cast < size_t > ( e ) ].kind == op::CAST )
@@ -432,6 +447,16 @@ void decompiler::emitter::collect_anchors ( ) {
 
 		}
 
+		if ( !distinct && pointer_tables && item.size == 8 && item.scale > 8 && item.scale % 8 == 0 && lowest == item.start && pointer_slot ( item.start ) ) {
+
+			item.base = item.start;
+			item.element = 8;
+			item.grouped = true;
+
+			continue;
+
+		}
+
 		if ( !distinct || element == 0 || item.scale % element != 0 || ( item.start - lowest ) % element != 0 )
 			continue;
 
@@ -500,14 +525,25 @@ bool decompiler::emitter::anchored_access ( const expr& item, int32_t parent ) {
 
 	out.put ( L"[" );
 
+	int32_t shown_index = here.index;
+
+	if ( pointer_tables && shown_index >= 0 ) {
+
+		const expr& widened = b.exprs [ static_cast < size_t > ( shown_index ) ];
+
+		if ( widened.kind == op::CAST && widened.size == 8 && widened.a >= 0 && b.exprs [ static_cast < size_t > ( widened.a ) ].size == 4 && !( widened.bits & ( FLOATING | POINTER ) ) )
+			shown_index = widened.a;
+
+	}
+
 	if ( step != 1 ) {
 
 		out.put ( base::writer ( ).number ( step ).text ( ), syntax::NUMBER );
 		out.put ( L" * ", syntax::OPERATOR );
-		value ( here.index, 13 );
+		value ( shown_index, 13 );
 
 	} else
-		value ( here.index, extra ? 11 : 0 );
+		value ( shown_index, extra ? 11 : 0 );
 
 	if ( extra ) {
 

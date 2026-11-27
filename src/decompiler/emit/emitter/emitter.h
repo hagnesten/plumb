@@ -223,6 +223,8 @@ namespace decompiler {
 
 		bool split_global ( int32_t address, global_access& out_access ) const;
 
+		bool pointer_slot ( uint64_t address ) const;
+
 		int32_t bare_index ( int32_t e ) const;
 
 		void collect_anchors ( );

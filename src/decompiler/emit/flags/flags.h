@@ -140,6 +140,8 @@ namespace decompiler {
 
 	extern bool narrow_cast_suffix;
 
+	extern bool pointer_tables;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;
