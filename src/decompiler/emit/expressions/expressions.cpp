@@ -1641,7 +1641,7 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 
 				out.put ( lhs.size == 1 ? L"(unsigned __int8)" : ( lhs.size == 2 ? L"(unsigned __int16)" : ( lhs.size == 4 ? L"(unsigned int)" : L"(unsigned __int64)" ) ), syntax::TYPE );
 				value ( item.a, 14, bitwise );
-				unsigned_compare = false;
+				unsigned_compare = narrow_cast_suffix && lhs.size <= 2;
 				negative_bound = unsigned_bounds && right.value < 0;
 
 			} else if ( unsigned_narrow && unsigned_compare && !no_casts && lhs.kind == op::CAST && lhs.a >= 0 && lhs.size < b.exprs [ static_cast < size_t > ( lhs.a ) ].size && lhs.size <= 4 && !( lhs.bits & FLOATING ) && !( b.exprs [ static_cast < size_t > ( lhs.a ) ].bits & FLOATING ) ) {
@@ -1669,7 +1669,7 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 
 			bool hex_bound = cast_hex && ( cast_lhs || offset_unsigned ) && compare && item.kind != op::EQ && item.kind != op::NE;
 
-			if ( hex_bound )
+			if ( hex_bound && !( narrow_cast_suffix && cast_lhs && lhs.size <= 2 ) )
 				unsigned_compare = false;
 
 			if ( unsigned_compare && lhs.kind == op::VAR && lhs.value >= 0 && lhs.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( lhs.value ) ].bits & UNSIGNED ) ) {

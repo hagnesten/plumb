@@ -82,6 +82,7 @@ bool decompiler::narrow_store_untruncate = true;
 bool decompiler::single_wide_strings = true;
 bool decompiler::short_fall_returns = true;
 bool decompiler::forwarded_params = true;
+bool decompiler::narrow_cast_suffix = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;

@@ -138,6 +138,8 @@ namespace decompiler {
 
 	extern bool forwarded_params;
 
+	extern bool narrow_cast_suffix;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;
