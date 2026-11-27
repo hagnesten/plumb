@@ -1229,6 +1229,9 @@ bool decompiler::builder::lift ( ) {
 	if ( store_loads )
 		reuse_store_loads ( );
 
+	if ( retested_loads )
+		retest_loads ( );
+
 	return true;
 
 }

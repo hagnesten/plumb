@@ -10,6 +10,8 @@ namespace decompiler {
 
 	extern bool store_loads;
 
+	extern bool retested_loads;
+
 	extern bool ordered_cmov_loads;
 
 	extern bool quiet_nops;

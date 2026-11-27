@@ -324,6 +324,8 @@ namespace decompiler {
 
 		void reuse_store_loads ( );
 
+		void retest_loads ( );
+
 		void scale_counters ( );
 
 		base::list < int32_t > counter_bases;

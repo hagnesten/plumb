@@ -6,6 +6,8 @@ bool decompiler::shared_cmov_constants = true;
 
 bool decompiler::store_loads = true;
 
+bool decompiler::retested_loads = true;
+
 bool decompiler::ordered_cmov_loads = true;
 
 bool decompiler::quiet_nops = true;

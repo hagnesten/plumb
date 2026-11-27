@@ -116,6 +116,99 @@ void decompiler::builder::reuse_condition_loads ( ) {
 
 }
 
+void decompiler::builder::retest_loads ( ) {
+
+	for ( block_code& block : code ) {
+
+		if ( !block.reachable || block.end != term::BRANCH || block.condition < 0 )
+			continue;
+
+		const expr& test = exprs [ static_cast < size_t > ( block.condition ) ];
+		int32_t tested = -1;
+
+		if ( ( test.kind == op::EQ || test.kind == op::NE ) && test.a >= 0 && test.b >= 0 && exprs [ static_cast < size_t > ( test.b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( test.b ) ].value == 0 )
+			tested = test.a;
+		else if ( test.kind == op::LNOT && test.a >= 0 )
+			tested = test.a;
+		else if ( test.kind == op::VAR )
+			tested = block.condition;
+
+		if ( tested < 0 || exprs [ static_cast < size_t > ( tested ) ].kind != op::VAR )
+			continue;
+
+		int64_t v = exprs [ static_cast < size_t > ( tested ) ].value;
+		int32_t last = -1;
+
+		for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ ) {
+
+			const statement& line = statements [ static_cast < size_t > ( s ) ];
+
+			if ( line.kind != stmt::NOP )
+				last = s;
+
+		}
+
+		if ( last < 0 )
+			continue;
+
+		const statement& line = statements [ static_cast < size_t > ( last ) ];
+
+		if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || exprs [ static_cast < size_t > ( line.left ) ].value != v )
+			continue;
+
+		const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
+
+		if ( source.kind != op::LOAD || ( source.bits & FLOATING ) || source.size != exprs [ static_cast < size_t > ( tested ) ].size || mentions ( *this, line.right, v, 0 ) || v < 0 || v >= vars.count ( ) || vars [ static_cast < size_t > ( v ) ].kind != var_kind::REGISTER || vars [ static_cast < size_t > ( v ) ].flags )
+			continue;
+
+		int32_t defs = 0;
+
+		for ( const statement& other : statements ) {
+
+			if ( other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( other.left ) ].value == v )
+				defs++;
+
+		}
+
+		if ( defs < 2 )
+			continue;
+
+		bool select = false;
+
+		int32_t nexts [ 2 ] = { block.taken, block.other };
+
+		for ( int32_t next : nexts ) {
+
+			if ( next < 0 || next >= code.count ( ) )
+				continue;
+
+			const block_code& after = code [ static_cast < size_t > ( next ) ];
+
+			for ( int32_t s = after.first; s < after.first + after.count && s < statements.count ( ); s++ ) {
+
+				const statement& first = statements [ static_cast < size_t > ( s ) ];
+
+				if ( first.kind == stmt::NOP )
+					continue;
+
+				if ( first.kind == stmt::ASSIGN && first.left >= 0 && exprs [ static_cast < size_t > ( first.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( first.left ) ].value == v )
+					select = true;
+
+				break;
+
+			}
+
+		}
+
+		if ( select )
+			continue;
+
+		block.condition = substitute ( *this, block.condition, v, line.right, 0 );
+
+	}
+
+}
+
 void decompiler::builder::reuse_store_loads ( ) {
 
 	for ( const block_code& block : code ) {
