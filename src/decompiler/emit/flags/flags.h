@@ -116,6 +116,8 @@ namespace decompiler {
 
 	extern bool cut_stops;
 
+	extern bool plain_register_params;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

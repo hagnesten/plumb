@@ -157,6 +157,19 @@ bool decompiler::emit ( builder& b ) {
 			if ( unsigned_results && ( item.bits & UNSIGNED ) && base::same_text ( declared, L"int" ) )
 				declared = L"unsigned int";
 
+			if ( plain_register_params && item.kind == var_kind::PARAMETER && item.position >= 0 && item.position < 4 ) {
+
+				static const wchar_t* const underlying [ ] [ 2 ] = { { L"LPCWSTR", L"const WCHAR *" }, { L"LPWSTR", L"WCHAR *" }, { L"LPCSTR", L"const CHAR *" }, { L"LPSTR", L"CHAR *" }, { L"LPVOID", L"void *" }, { L"LPCVOID", L"const void *" }, { L"HANDLE", L"void *" }, { L"PVOID", L"void *" } };
+
+				for ( const auto& pair : underlying ) {
+
+					if ( base::same_text ( declared, pair [ 0 ] ) )
+						declared = pair [ 1 ];
+
+				}
+
+			}
+
 			if ( expand_strings && item.kind != var_kind::PARAMETER ) {
 
 				if ( base::same_text ( declared, L"LPCWSTR" ) )

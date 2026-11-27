@@ -286,6 +286,9 @@ void decompiler::name_from_calls ( builder& b, int32_t result_var ) {
 			if ( backward && address )
 				continue;
 
+			if ( plain_register_params && !address && b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER && b.vars [ static_cast < size_t > ( v ) ].position >= 0 && b.vars [ static_cast < size_t > ( v ) ].position < 4 )
+				continue;
+
 			bool only_constants = b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER;
 			bool any_write = false;
 			bool call_result = false;
