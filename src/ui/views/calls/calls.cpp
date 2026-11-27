@@ -313,7 +313,15 @@ void ui::app::draw_calls ( math::rect area ) {
 
 		now->cursor_address = address;
 
-		if ( double_id == id && hovered > 0 && db->function_starting ( address ) >= 0 ) {
+		if ( double_id == id ) {
+
+			run ( command::FOLLOW );
+
+			return;
+
+		}
+
+		if ( hovered > 0 && db->function_starting ( address ) >= 0 ) {
 
 			now->back_stack.push ( now->function );
 			now->forward_stack.clear ( );
@@ -447,6 +455,6 @@ void ui::app::draw_calls ( math::rect area ) {
 
 	}
 
-	c.text ( L"Click to select   \x00B7   double-click to center   \x00B7   Enter opens the disassembly   \x00B7   F5 decompiles", render::font::SMALL, math::vec2 ( area.x + 20.0f, area.bottom ( ) - 18.0f ), ink ( tone::INK_FAINT ), render::align::LEFT, area.w - 40.0f );
+	c.text ( L"Click to center   \x00B7   double-click or Enter opens the disassembly   \x00B7   F5 decompiles", render::font::SMALL, math::vec2 ( area.x + 20.0f, area.bottom ( ) - 18.0f ), ink ( tone::INK_FAINT ), render::align::LEFT, area.w - 40.0f );
 
 }
