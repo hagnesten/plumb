@@ -5,6 +5,9 @@
 #include "base/files/files.h"
 #include "base/strings/strings.h"
 #include "base/sort/sort.h"
+#include "decompiler/apis/apis.h"
+#include "decompiler/prototypes/prototypes.h"
+#include "decompiler/lift/yields/yields.h"
 #include <windows.h>
 
 void ui::sort_marks ( base::list < mark >& items ) {
@@ -1387,10 +1390,145 @@ void ui::app::function_name ( int32_t index, wchar_t* out, int32_t room ) const 
 
 	}
 
+	if ( item.start == file.entry && file.entry ) {
+
+		base::copy_text ( file.dll ? L"DllEntryPoint" : L"start", out, room );
+
+		return;
+
+	}
+
+	if ( callback_name ( item.start, out, room ) )
+		return;
+
 	base::writer text;
 
 	text.add ( L"fn_" ).hex ( item.start );
 	base::copy_text ( text.text ( ), out, room );
+
+}
+
+bool ui::app::callback_name ( uint64_t start, wchar_t* out, int32_t room ) const {
+
+	if ( !db || !analysis_applied || file.arch != loader::machine::X64 )
+		return false;
+
+	int32_t first = 0;
+	int32_t count = 0;
+
+	db->refs_to ( start, first, count );
+
+	static const uint8_t families [ 4 ] = { 1, 2, 8, 9 };
+
+	for ( int32_t i = 0; i < count && i < 16; i++ ) {
+
+		const analysis::xref& ref = db->refs [ static_cast < size_t > ( first + i ) ];
+
+		if ( ref.type != analysis::ref::ADDRESS )
+			continue;
+
+		x86::instruction ins;
+		uint64_t at = file.base + ref.source;
+
+		if ( !db->decode ( at, ins ) || ins.name != x86::mnemonic::lea || ins.count < 2 || ins.operands [ 0 ].type != x86::kind::REG || x86::register_size ( ins.operands [ 0 ].reg ) != 8 )
+			continue;
+
+		int32_t family = x86::register_family ( ins.operands [ 0 ].reg );
+		int32_t index = -1;
+
+		for ( int32_t k = 0; k < 4; k++ ) {
+
+			if ( families [ k ] == family )
+				index = k;
+
+		}
+
+		if ( index < 0 )
+			continue;
+
+		at = ins.next ( );
+
+		for ( int32_t step = 0; step < 12; step++ ) {
+
+			x86::instruction next;
+
+			if ( !db->decode ( at, next ) )
+				break;
+
+			at = next.next ( );
+
+			if ( next.name != x86::mnemonic::call ) {
+
+				if ( next.count && next.operands [ 0 ].type == x86::kind::REG && x86::register_family ( next.operands [ 0 ].reg ) == family && next.name != x86::mnemonic::cmp && next.name != x86::mnemonic::test && next.name != x86::mnemonic::push )
+					break;
+
+				if ( next.control != x86::flow::NONE )
+					break;
+
+				continue;
+
+			}
+
+			uint64_t target = decompiler::call_target ( next );
+			const wchar_t* api = nullptr;
+
+			for ( const loader::import& item : file.imports ) {
+
+				if ( item.slot == target && !item.name.empty ( ) )
+					api = item.name.get ( );
+
+			}
+
+			int32_t callee = target ? db->function_starting ( target ) : -1;
+
+			if ( !api && callee >= 0 && ( db->functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK ) && db->functions [ static_cast < size_t > ( callee ) ].import >= 0 )
+				api = file.imports [ static_cast < size_t > ( db->functions [ static_cast < size_t > ( callee ) ].import ) ].name.get ( );
+
+			const wchar_t* text = api ? decompiler::api_prototype ( api ) : nullptr;
+			decompiler::c_prototype shape;
+			base::writer problem;
+
+			if ( !text || !decompiler::parse_prototype ( text, true, shape, problem ) || index >= shape.count )
+				break;
+
+			const wchar_t* type = shape.types [ index ];
+			const wchar_t* name = shape.names [ index ];
+			int32_t type_length = base::text_length ( type );
+			bool routine = false;
+
+			static const wchar_t* const endings [ ] = { L"ROUTINE", L"PROC", L"FILTER", L"CALLBACK", L"HANDLER", L"_proc_type", L"FUNC" };
+
+			for ( const wchar_t* ending : endings ) {
+
+				int32_t n = base::text_length ( ending );
+
+				if ( type_length >= n && base::same_text ( type + type_length - n, ending ) )
+					routine = true;
+
+			}
+
+			if ( !routine || !name [ 0 ] )
+				break;
+
+			while ( *name == L'_' )
+				name++;
+
+			if ( name [ 0 ] == L'l' && name [ 1 ] == L'p' && name [ 2 ] == L'f' && name [ 3 ] == L'n' && name [ 4 ] >= L'A' && name [ 4 ] <= L'Z' )
+				name += 4;
+			else if ( name [ 0 ] == L'l' && name [ 1 ] == L'p' && name [ 2 ] >= L'A' && name [ 2 ] <= L'Z' )
+				name += 2;
+			else if ( name [ 0 ] == L'p' && name [ 1 ] == L'f' && name [ 2 ] == L'n' && name [ 3 ] >= L'A' && name [ 3 ] <= L'Z' )
+				name += 3;
+
+			base::copy_text ( name, out, room );
+
+			return true;
+
+		}
+
+	}
+
+	return false;
 
 }
 

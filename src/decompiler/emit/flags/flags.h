@@ -80,6 +80,8 @@ namespace decompiler {
 
 	extern bool plain_sources;
 
+	extern bool known_names;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

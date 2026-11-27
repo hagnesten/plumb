@@ -217,6 +217,11 @@ void decompiler::emitter::var_name ( int32_t index, wchar_t* text ) {
 	if ( !user && item.kind == var_kind::PARAMETER && b.has_prototype && item.position >= 0 && item.position < b.prototype.count && b.prototype.names [ item.position ] [ 0 ] )
 		user = b.prototype.names [ item.position ];
 
+	wchar_t own [ 200 ];
+
+	if ( !user && known_names && item.kind == var_kind::PARAMETER && !b.has_prototype && b.names && b.names->name ( b.function, true, own, 200 ) )
+		user = known_parameter ( own, item.position );
+
 	static const wchar_t* const letters [ 10 ] = { L"i", L"j", L"k", L"m", L"n", L"ii", L"jj", L"kk", L"mm", L"nn" };
 	bool lettered = !user && index < loop_letter.count ( ) && loop_letter [ static_cast < size_t > ( index ) ] >= 0;
 

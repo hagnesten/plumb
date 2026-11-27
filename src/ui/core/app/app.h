@@ -788,6 +788,8 @@ namespace ui {
 
 		void function_name ( int32_t index, wchar_t* out, int32_t room ) const;
 
+		bool callback_name ( uint64_t start, wchar_t* out, int32_t room ) const;
+
 		int32_t string_at ( uint64_t address ) const;
 
 		bool indirect_note ( const x86::instruction& ins, base::writer& out ) const;

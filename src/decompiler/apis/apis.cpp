@@ -1060,6 +1060,41 @@ const wchar_t* decompiler::api_prototype ( const wchar_t* name ) {
 
 }
 
+const wchar_t* decompiler::known_parameter ( const wchar_t* function, int32_t position ) {
+
+	if ( !function || position < 0 || position > 3 )
+		return nullptr;
+
+	static const known_entry table [ ] = {
+
+		{ L"StartAddress", { L"lpThreadParameter", nullptr, nullptr, nullptr } },
+		{ L"ThreadProc", { L"lpParameter", nullptr, nullptr, nullptr } },
+		{ L"WndProc", { L"hWnd", L"Msg", L"wParam", L"lParam" } },
+		{ L"TopLevelExceptionFilter", { L"ExceptionInfo", nullptr, nullptr, nullptr } },
+		{ L"HandlerRoutine", { L"CtrlType", nullptr, nullptr, nullptr } },
+		{ L"DllEntryPoint", { L"hinstDLL", L"fdwReason", L"lpReserved", nullptr } },
+		{ L"DllMain", { L"hinstDLL", L"fdwReason", L"lpReserved", nullptr } },
+		{ L"WinMain", { L"hInstance", L"hPrevInstance", L"lpCmdLine", L"nShowCmd" } },
+		{ L"wWinMain", { L"hInstance", L"hPrevInstance", L"lpCmdLine", L"nShowCmd" } },
+		{ L"main", { L"argc", L"argv", L"envp", nullptr } },
+		{ L"wmain", { L"argc", L"argv", L"envp", nullptr } },
+		{ L"TlsCallback_0", { L"DllHandle", L"Reason", L"Reserved", nullptr } },
+		{ L"TlsCallback_1", { L"DllHandle", L"Reason", L"Reserved", nullptr } },
+		{ L"TlsCallback_2", { L"DllHandle", L"Reason", L"Reserved", nullptr } }
+
+	};
+
+	for ( const known_entry& item : table ) {
+
+		if ( base::same_text ( item.name, function ) )
+			return item.params [ position ];
+
+	}
+
+	return nullptr;
+
+}
+
 int32_t decompiler::import_arguments ( const wchar_t* name ) {
 
 	const wchar_t* prototype = api_prototype ( name );
