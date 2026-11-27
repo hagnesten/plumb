@@ -1226,6 +1226,9 @@ bool decompiler::builder::lift ( ) {
 	if ( condition_loads )
 		reuse_condition_loads ( );
 
+	if ( store_loads )
+		reuse_store_loads ( );
+
 	return true;
 
 }

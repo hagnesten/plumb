@@ -116,6 +116,83 @@ void decompiler::builder::reuse_condition_loads ( ) {
 
 }
 
+void decompiler::builder::reuse_store_loads ( ) {
+
+	for ( const block_code& block : code ) {
+
+		if ( !block.reachable )
+			continue;
+
+		int32_t prior = -1;
+
+		for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ ) {
+
+			statement& line = statements [ static_cast < size_t > ( s ) ];
+
+			if ( line.kind == stmt::NOP )
+				continue;
+
+			if ( line.kind == stmt::STORE && prior >= 0 && line.right >= 0 ) {
+
+				const statement& made = statements [ static_cast < size_t > ( prior ) ];
+
+				if ( made.kind == stmt::ASSIGN && made.left >= 0 && made.right >= 0 && exprs [ static_cast < size_t > ( made.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( made.right ) ].kind == op::LOAD && !( exprs [ static_cast < size_t > ( made.right ) ].bits & FLOATING ) ) {
+
+					int64_t v = exprs [ static_cast < size_t > ( made.left ) ].value;
+
+					const expr& root = exprs [ static_cast < size_t > ( line.right ) ];
+					bool direct = same ( line.right, made.right ) || ( root.kind != op::LOAD && root.kind != op::CALL && ( ( root.a >= 0 && same ( root.a, made.right ) ) || ( root.b >= 0 && same ( root.b, made.right ) ) ) );
+
+					if ( direct && v >= 0 && v < vars.count ( ) && vars [ static_cast < size_t > ( v ) ].kind == var_kind::REGISTER && !vars [ static_cast < size_t > ( v ) ].flags && vars [ static_cast < size_t > ( v ) ].size == exprs [ static_cast < size_t > ( made.right ) ].size && !mentions ( *this, made.right, v, 0 ) ) {
+
+						int32_t loaded = made.right;
+						int32_t replacement = make ( op::VAR, exprs [ static_cast < size_t > ( made.left ) ].size, -1, -1, v );
+
+						auto swap = [ & ] ( auto& self, int32_t e, int32_t depth ) -> int32_t {
+
+							if ( e < 0 || depth > 32 )
+								return e;
+
+							if ( e == loaded || same ( e, loaded ) )
+								return replacement;
+
+							expr copy = exprs [ static_cast < size_t > ( e ) ];
+
+							if ( copy.kind == op::CALL )
+								return e;
+
+							int32_t na = self ( self, copy.a, depth + 1 );
+							int32_t nb = self ( self, copy.b, depth + 1 );
+							int32_t nc = self ( self, copy.c, depth + 1 );
+
+							if ( na == copy.a && nb == copy.b && nc == copy.c )
+								return e;
+
+							copy.a = na;
+							copy.b = nb;
+							copy.c = nc;
+							exprs.push ( copy );
+
+							return exprs.count ( ) - 1;
+
+						};
+
+						line.right = swap ( swap, line.right, 0 );
+
+					}
+
+				}
+
+			}
+
+			prior = s;
+
+		}
+
+	}
+
+}
+
 void decompiler::builder::global_reloads ( ) {
 
 	int32_t total = code.count ( );

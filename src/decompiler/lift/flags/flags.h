@@ -8,6 +8,8 @@ namespace decompiler {
 
 	extern bool shared_cmov_constants;
 
+	extern bool store_loads;
+
 	extern bool ordered_cmov_loads;
 
 	extern bool quiet_nops;
