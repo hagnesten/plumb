@@ -48,6 +48,7 @@ bool decompiler::param_copies = true;
 
 bool decompiler::masked_signs = true;
 bool decompiler::masked_casts = true;
+bool decompiler::cookie_keeps_result = true;
 
 bool decompiler::scaled_counters = true;
 

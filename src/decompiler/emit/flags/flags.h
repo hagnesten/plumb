@@ -96,6 +96,10 @@ namespace decompiler {
 
 	extern bool keep_p_prefix;
 
+	extern bool cast_hex;
+
+	extern bool joined_returns;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

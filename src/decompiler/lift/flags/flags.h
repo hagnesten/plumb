@@ -58,6 +58,8 @@ namespace decompiler {
 
 	extern bool masked_casts;
 
+	extern bool cookie_keeps_result;
+
 	extern bool scaled_counters;
 
 	extern bool import_callees;

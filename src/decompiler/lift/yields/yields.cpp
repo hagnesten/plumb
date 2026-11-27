@@ -1284,6 +1284,16 @@ int32_t decompiler::yields_value ( const analysis::database& db, const loader::b
 
 			effects ( ins, long_mode, use, def );
 
+			if ( cookie_keeps_result && ( def & 1u ) && ins.name == mnemonic::call && names ) {
+
+				wchar_t callee [ 200 ];
+				uint64_t target = call_target ( ins );
+
+				if ( target && names->name ( target, true, callee, 200 ) && base::same_text ( callee, L"__security_check_cookie" ) )
+					def &= ~1u;
+
+			}
+
 			if ( def & 1u ) {
 
 				bool partial = ins.count > 0 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 0 ].reg == x86::AL;
