@@ -142,6 +142,8 @@ namespace decompiler {
 
 	extern bool pointer_tables;
 
+	extern bool plain_pre_loads;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

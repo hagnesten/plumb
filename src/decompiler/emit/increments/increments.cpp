@@ -225,7 +225,7 @@ void decompiler::emitter::plan_increments ( ) {
 
 						const expr& where = b.exprs [ static_cast < size_t > ( node.a ) ];
 
-						if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( where.a ) ].value == x && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( where.b ) ].value )
+						if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( where.a ) ].value == x && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( where.b ) ].value && !( plain_pre_loads && up && defines && unit == 1 && b.exprs [ static_cast < size_t > ( where.b ) ].value == unit && node.size == unit ) )
 							return true;
 
 					}
@@ -279,6 +279,15 @@ void decompiler::emitter::plan_increments ( ) {
 							if ( node.kind == op::LOAD && node.a >= 0 ) {
 
 								const expr& where = b.exprs [ static_cast < size_t > ( node.a ) ];
+
+								if ( plain_pre_loads && unit == 1 && where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( where.a ) ].value == x && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( where.b ) ].value == unit && node.size == unit && !( node.bits & FLOATING ) ) {
+
+									found = e;
+									inner = where.a;
+
+									return;
+
+								}
 
 								if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST ) {
 
