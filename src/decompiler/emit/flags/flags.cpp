@@ -1,4 +1,4 @@
-﻿#include "decompiler/emit/flags/flags.h"
+#include "decompiler/emit/flags/flags.h"
 
 bool decompiler::logic_wrap = true;
 
