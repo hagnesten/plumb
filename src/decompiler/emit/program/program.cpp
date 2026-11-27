@@ -538,7 +538,7 @@ bool decompiler::emit ( builder& b ) {
 			static const wchar_t* const wide [ 16 ] = { L"rax", L"rcx", L"rdx", L"rbx", L"rsp", L"rbp", L"rsi", L"rdi", L"r8", L"r9", L"r10", L"r11", L"r12", L"r13", L"r14", L"r15" };
 			static const wchar_t* const dword [ 8 ] = { L"eax", L"ecx", L"edx", L"ebx", L"esp", L"ebp", L"esi", L"edi" };
 			static const wchar_t* const word [ 8 ] = { L"ax", L"cx", L"dx", L"bx", L"sp", L"bp", L"si", L"di" };
-			static const wchar_t* const byte [ 8 ] = { L"al", L"cl", L"dl", L"bl", L"spl", L"bpl", L"sil", L"dil" };
+			static const wchar_t* const byte [ 8 ] = { L"al", L"cl", L"dl", L"bl", L"sp", L"bp", L"si", L"di" };
 			base::writer note;
 
 			note.add ( L" // " );
