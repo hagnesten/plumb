@@ -401,6 +401,21 @@ void decompiler::emitter::statement_line ( const statement& item ) {
 
 				const expr& amount = b.exprs [ static_cast < size_t > ( right.b ) ];
 
+				if ( and_zero && right.kind == op::AND && amount.kind == op::CONST && amount.value == 0 && !( right.bits & FLOATING ) ) {
+
+					if ( left.kind == op::LOAD )
+						lvalue_or_load ( left, 0 );
+					else
+						value ( item.left, 0 );
+
+					out.put ( L" = ", syntax::OPERATOR );
+					number ( 0, left.size, false, false );
+					semicolon ( );
+
+					break;
+
+				}
+
 				if ( compound && self_load && right.kind == op::ADD && amount.kind == op::CONST && !( right.bits & FLOATING ) && ( amount.value == 1 || amount.value == -1 ) ) {
 
 					out.put ( amount.value == 1 ? L"++" : L"--", syntax::OPERATOR );

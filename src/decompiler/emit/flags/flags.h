@@ -100,6 +100,8 @@ namespace decompiler {
 
 	extern bool joined_returns;
 
+	extern bool and_zero;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

@@ -63,6 +63,7 @@ bool decompiler::result_suffixes = false;
 bool decompiler::keep_p_prefix = true;
 bool decompiler::cast_hex = true;
 bool decompiler::joined_returns = true;
+bool decompiler::and_zero = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;
