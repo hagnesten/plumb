@@ -1,6 +1,5 @@
 #pragma once
 
-#include "debugger/debugger.h"
 #include "render/gpu/gpu.h"
 #include "render/canvas/canvas.h"
 #include "loader/binary/binary.h"
@@ -15,6 +14,9 @@
 #include "decompiler/literals/literals.h"
 #include "script/engine/engine.h"
 #include "ui/style/metrics/metrics.h"
+#include "debugger/control/session/session.h"
+#include "debugger/target/modules/modules.h"
+#include "debugger/traps/hardware/hardware.h"
 
 namespace json {
 

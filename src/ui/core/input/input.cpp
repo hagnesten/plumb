@@ -3,6 +3,7 @@
 #include "ui/style/icons/icons.h"
 #include "base/files/files.h"
 #include "base/strings/strings.h"
+#include "debugger/control/session/session.h"
 #include <windows.h>
 
 namespace ui {

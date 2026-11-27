@@ -2,6 +2,8 @@
 #include "ui/core/app/app.h"
 #include "ui/style/icons/icons.h"
 #include "ui/style/format/format.h"
+#include "debugger/control/session/session.h"
+#include "debugger/target/memory/memory.h"
 
 namespace ui {
 

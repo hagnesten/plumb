@@ -2,6 +2,10 @@
 #include "ui/core/app/app.h"
 #include "base/sort/sort.h"
 #include "base/strings/strings.h"
+#include "debugger/target/memory/memory.h"
+#include "debugger/target/registers/registers.h"
+#include "debugger/traps/coverage/coverage.h"
+#include "debugger/control/processes/processes.h"
 #include <windows.h>
 
 namespace ui {

@@ -4,6 +4,7 @@
 #include "x86/decoder/decoder.h"
 #include "base/clock/clock.h"
 #include "base/strings/strings.h"
+#include "debugger/control/session/session.h"
 #include <windows.h>
 
 namespace ui {

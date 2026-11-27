@@ -2,6 +2,13 @@
 #include "ui/scripting/bridge/bridge.h"
 #include "base/clock/clock.h"
 #include "base/strings/strings.h"
+#include "debugger/control/processes/processes.h"
+#include "debugger/control/session/session.h"
+#include "debugger/target/memory/memory.h"
+#include "debugger/target/modules/modules.h"
+#include "debugger/target/registers/registers.h"
+#include "debugger/traps/conditions/conditions.h"
+#include "debugger/traps/hardware/hardware.h"
 #include <windows.h>
 
 namespace ui {

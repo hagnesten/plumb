@@ -4,6 +4,7 @@
 #include "base/files/files.h"
 #include "x86/printer/printer.h"
 #include "base/strings/strings.h"
+#include "debugger/control/session/session.h"
 #include <windows.h>
 
 namespace ui {

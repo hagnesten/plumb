@@ -3,6 +3,9 @@
 #include "base/strings/strings.h"
 #include "ui/style/format/format.h"
 #include "ui/listing/tokens/tokens.h"
+#include "debugger/core/log/log.h"
+#include "debugger/traps/breakpoints/breakpoints.h"
+#include "debugger/traps/conditions/conditions.h"
 
 namespace ui {
 

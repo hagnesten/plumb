@@ -4,6 +4,8 @@
 #include "x86/printer/printer.h"
 #include "base/strings/strings.h"
 #include "ui/style/icons/icons.h"
+#include "debugger/traps/conditions/conditions.h"
+#include "debugger/traps/hardware/hardware.h"
 
 namespace ui {
 

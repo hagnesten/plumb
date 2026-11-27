@@ -1,6 +1,10 @@
 #include "ui/panels/inspector/inspector.h"
 #include "ui/core/app/app.h"
 #include "ui/style/icons/icons.h"
+#include "debugger/control/session/session.h"
+#include "debugger/target/modules/modules.h"
+#include "debugger/target/registers/registers.h"
+#include "debugger/traps/hardware/hardware.h"
 
 namespace ui {
 
