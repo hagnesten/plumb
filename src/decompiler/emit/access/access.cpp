@@ -655,6 +655,28 @@ void decompiler::emitter::lvalue_or_load ( const expr& item, int32_t parent ) {
 
 	}
 
+	if ( byte_indexes && where.kind == op::ADD && where.a >= 0 && where.b >= 0 && item.size == 1 && !( item.bits & FLOATING ) ) {
+
+		for ( int32_t side = 0; side < 2; side++ ) {
+
+			int32_t pointer = side ? where.b : where.a;
+			int32_t index = side ? where.a : where.b;
+			const expr& offset_node = b.exprs [ static_cast < size_t > ( index ) ];
+
+			if ( b.exprs [ static_cast < size_t > ( pointer ) ].kind != op::VAR || pointer_step ( pointer ) != 1 || offset_node.kind == op::CONST || ( offset_node.bits & POINTER ) || pointer_step ( index ) > 0 )
+				continue;
+
+			value ( pointer, 15 );
+			out.put ( L"[" );
+			value ( index, 0 );
+			out.put ( L"]" );
+
+			return;
+
+		}
+
+	}
+
 	if ( slot_part ( item.a ) ) {
 
 		const expr& base = b.exprs [ static_cast < size_t > ( where.a ) ];
