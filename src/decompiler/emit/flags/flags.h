@@ -120,6 +120,8 @@ namespace decompiler {
 
 	extern bool latch_conditions;
 
+	extern bool pointer_arg_casts;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

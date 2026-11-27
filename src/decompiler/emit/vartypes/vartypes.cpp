@@ -503,6 +503,167 @@ bool decompiler::emitter::callee_unsigned ( uint64_t target, int32_t index ) {
 	return shape_ok && index < shape->count && ( shape->params [ index ].bits & UNSIGNED ) && !shape->params [ index ].pointer;
 
 }
+const wchar_t* decompiler::emitter::derived_param ( uint64_t target, int32_t index, bool& pointer ) {
+
+	pointer = false;
+
+	if ( !target || !b.names || b.names->prototype ( target ) )
+		return nullptr;
+
+	if ( target != derived_target ) {
+
+		derived_target = target;
+		derived_ok = false;
+
+		const wchar_t* declared = b.names->derived ( target );
+
+		if ( declared ) {
+
+			if ( !derived_shape )
+				derived_shape = new c_prototype ( );
+
+			base::writer problem;
+
+			derived_ok = parse_prototype ( declared, b.long_mode, *derived_shape, problem );
+
+		}
+
+	}
+
+	if ( !derived_ok || index < 0 || index >= derived_shape->count || !derived_shape->types [ index ] [ 0 ] )
+		return nullptr;
+
+	pointer = derived_shape->params [ index ].pointer;
+
+	return derived_shape->types [ index ];
+
+}
+
+bool decompiler::emitter::var_type_text ( int32_t index, wchar_t* text, int32_t room ) {
+
+	if ( index < 0 || index >= b.vars.count ( ) || !out.r || room < 2 )
+		return false;
+
+	int32_t text_mark = out.r->text.count ( );
+	int32_t span_mark = out.r->spans.count ( );
+	bool was_open = out.open;
+
+	if ( !was_open )
+		return false;
+
+	var_type ( index );
+
+	int32_t length = out.r->text.count ( ) - text_mark;
+
+	if ( length >= room )
+		length = room - 1;
+
+	for ( int32_t i = 0; i < length; i++ )
+		text [ i ] = out.r->text [ static_cast < size_t > ( text_mark + i ) ];
+
+	text [ length ] = 0;
+	out.r->text.resize ( static_cast < size_t > ( text_mark ) );
+	out.r->spans.resize ( static_cast < size_t > ( span_mark ) );
+
+	return length > 0;
+
+}
+
+bool decompiler::emitter::pointer_arg_cast ( uint64_t target, int32_t index, int32_t argument, wchar_t* cast, int32_t room ) {
+
+	bool pointer = false;
+	const wchar_t* wanted = derived_param ( target, index, pointer );
+
+	if ( !wanted || argument < 0 )
+		return false;
+
+	const expr& passed = b.exprs [ static_cast < size_t > ( argument ) ];
+	int64_t v = -1;
+	bool address = false;
+
+	if ( passed.kind == op::VAR && passed.size == 8 && !( passed.bits & FLOATING ) )
+		v = passed.value;
+	else if ( passed.kind == op::ADDRESS ) {
+
+		address = true;
+		v = passed.a < 0 ? passed.value : ( b.exprs [ static_cast < size_t > ( passed.a ) ].kind == op::VAR ? b.exprs [ static_cast < size_t > ( passed.a ) ].value : -1 );
+
+	}
+
+	if ( v < 0 || v >= b.vars.count ( ) || ( !address && b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER ) )
+		return false;
+
+	bool fixed = v < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( v ) ].empty ( );
+
+	if ( address && pointer && !fixed )
+		return false;
+
+	auto squeeze = [ ] ( const wchar_t* from, wchar_t* to, int32_t space ) {
+
+		int32_t n = 0;
+
+		for ( ; *from && n < space - 1; from++ ) {
+
+			if ( *from != L' ' )
+				to [ n++ ] = *from;
+
+		}
+
+		to [ n ] = 0;
+
+	};
+
+	wchar_t have [ 96 ];
+	wchar_t plain_have [ 96 ];
+	wchar_t plain_want [ 96 ];
+
+	if ( !var_type_text ( static_cast < int32_t > ( v ), have, 90 ) )
+		return false;
+
+	squeeze ( have, plain_have, 94 );
+	squeeze ( wanted, plain_want, 96 );
+
+	int32_t have_length = base::text_length ( plain_have );
+
+	if ( address ) {
+
+		if ( b.vars [ static_cast < size_t > ( v ) ].size > 8 )
+			return false;
+
+		plain_have [ have_length ] = L'*';
+		plain_have [ have_length + 1 ] = 0;
+		have_length++;
+
+	}
+
+	if ( base::same_text ( plain_have, plain_want ) || !have_length )
+		return false;
+
+	bool have_pointer = plain_have [ have_length - 1 ] == L'*';
+
+	if ( pointer ) {
+
+		if ( !have_pointer || base::same_text ( plain_want, L"void*" ) || base::same_text ( plain_want, L"constvoid*" ) )
+			return false;
+
+	} else {
+
+		if ( !address || !base::same_text ( plain_want, L"__int64" ) )
+			return false;
+
+	}
+
+	int32_t n = 0;
+
+	for ( const wchar_t* c = wanted; *c && n < room - 1; c++ )
+		cast [ n++ ] = *c;
+
+	cast [ n ] = 0;
+
+	return true;
+
+}
+
 bool decompiler::emitter::no_return ( const expr& call ) {
 
 	wchar_t name [ 200 ];

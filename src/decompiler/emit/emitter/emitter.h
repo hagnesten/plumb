@@ -141,8 +141,17 @@ namespace decompiler {
 		uint64_t shape_target = 0;
 		bool shape_ok = false;
 		c_prototype* shape = nullptr;
+		uint64_t derived_target = 0;
+		bool derived_ok = false;
+		c_prototype* derived_shape = nullptr;
 
 		~emitter ( );
+
+		const wchar_t* derived_param ( uint64_t target, int32_t index, bool& pointer );
+
+		bool var_type_text ( int32_t index, wchar_t* text, int32_t room );
+
+		bool pointer_arg_cast ( uint64_t target, int32_t index, int32_t argument, wchar_t* cast, int32_t room );
 
 		bool callee_unsigned ( uint64_t target, int32_t index );
 

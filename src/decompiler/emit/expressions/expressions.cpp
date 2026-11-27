@@ -791,6 +791,13 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 					out.put ( L"(__int64)" );
 					value ( argument, 14 );
 
+				} else if ( pointer_arg_casts && b.long_mode && !no_casts && target && pointer_arg_cast ( target, i, argument, param_type, 64 ) ) {
+
+					out.put ( L"(" );
+					out.put ( param_type, syntax::TYPE );
+					out.put ( L")" );
+					value ( argument, 14 );
+
 				} else {
 
 					bool narrow_arg = call_untruncate && passed.size == 4 && !( passed.bits & FLOATING );

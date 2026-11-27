@@ -24,5 +24,6 @@ decompiler::emitter::emitter ( builder& owner ) : b ( owner ) {
 decompiler::emitter::~emitter ( ) {
 
 	delete shape;
+	delete derived_shape;
 
 }
