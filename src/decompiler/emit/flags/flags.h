@@ -54,6 +54,8 @@ namespace decompiler {
 
 	extern bool skip_increments;
 
+	extern bool cast_bounds;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

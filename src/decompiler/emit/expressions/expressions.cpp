@@ -1530,6 +1530,9 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 				out.put ( lhs.size == 1 ? L"(unsigned __int8)" : ( lhs.size == 2 ? L"(unsigned __int16)" : L"(unsigned int)" ), syntax::TYPE );
 				value ( lhs.a, 14, bitwise );
 
+				if ( cast_bounds && lhs.size == 4 )
+					unsigned_compare = false;
+
 			} else if ( signed_loads && signed_compare && lhs.kind == op::LOAD && !( lhs.bits & ( FLOATING | SIGNED ) ) && ( lhs.size == 1 || lhs.size == 2 || lhs.size == 4 || lhs.size == 8 ) && right.kind == op::CONST ) {
 
 				expr shown_load = lhs;
