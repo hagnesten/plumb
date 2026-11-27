@@ -78,6 +78,8 @@ namespace decompiler {
 
 	extern bool args_names;
 
+	extern bool plain_sources;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

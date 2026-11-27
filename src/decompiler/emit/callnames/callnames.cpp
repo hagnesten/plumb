@@ -282,6 +282,7 @@ void decompiler::name_from_calls ( builder& b, int32_t result_var ) {
 			bool only_constants = b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER;
 			bool any_write = false;
 			bool call_result = false;
+			bool copied_in = false;
 
 			for ( const statement& line : b.statements ) {
 
@@ -292,6 +293,9 @@ void decompiler::name_from_calls ( builder& b, int32_t result_var ) {
 
 				if ( b.exprs [ static_cast < size_t > ( line.right ) ].kind != op::CONST )
 					only_constants = false;
+
+				if ( plain_sources && ( b.exprs [ static_cast < size_t > ( line.right ) ].kind == op::CONST || b.exprs [ static_cast < size_t > ( line.right ) ].kind == op::VAR ) )
+					copied_in = true;
 
 				int32_t source = line.right;
 
@@ -304,6 +308,9 @@ void decompiler::name_from_calls ( builder& b, int32_t result_var ) {
 			}
 
 			if ( only_constants && any_write && !address )
+				continue;
+
+			if ( copied_in && !address && b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER )
 				continue;
 
 			if ( call_result && !address && unnamed_results )
