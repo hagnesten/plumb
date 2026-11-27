@@ -650,6 +650,36 @@ void decompiler::flavor_elements ( builder& b, base::list < uint8_t >& element )
 			walk ( walk, item.left, 0 );
 			walk ( walk, item.right, 0 );
 
+			int32_t right = item.right;
+
+			while ( right >= 0 && b.exprs [ static_cast < size_t > ( right ) ].kind == op::CAST && !( b.exprs [ static_cast < size_t > ( right ) ].bits & UNSIGNED ) )
+				right = b.exprs [ static_cast < size_t > ( right ) ].a;
+
+			if ( signed_elements && item.kind == stmt::ASSIGN && item.left >= 0 && right >= 0 && b.exprs [ static_cast < size_t > ( item.left ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( right ) ].kind == op::LOAD ) {
+
+				const expr& loaded = b.exprs [ static_cast < size_t > ( right ) ];
+				int64_t x = b.exprs [ static_cast < size_t > ( item.left ) ].value;
+
+				const wchar_t* typed = x >= 0 && x < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( x ) ].empty ( ) ? b.var_types [ static_cast < size_t > ( x ) ].get ( ) : nullptr;
+				bool plain = !typed || base::same_text ( typed, L"int" ) || base::same_text ( typed, L"char" ) || base::same_text ( typed, L"__int16" ) || base::same_text ( typed, L"__int64" );
+
+				int32_t base_expr = -1;
+
+				if ( loaded.a >= 0 ) {
+
+					const expr& where = b.exprs [ static_cast < size_t > ( loaded.a ) ];
+
+					base_expr = where.kind == op::ADD && where.a >= 0 ? where.a : loaded.a;
+
+				}
+
+				int32_t p = base_expr >= 0 && b.exprs [ static_cast < size_t > ( base_expr ) ].kind == op::VAR ? static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( base_expr ) ].value ) : -1;
+
+				if ( x >= 0 && x < total && p >= 0 && p < total && ( element [ static_cast < size_t > ( p ) ] & 0x9F ) == loaded.size && !( loaded.bits & FLOATING ) && !( b.vars [ static_cast < size_t > ( x ) ].bits & ( UNSIGNED | FLOATING | POINTER ) ) && plain )
+					mark ( p, 0x20 );
+
+			}
+
 		}
 
 		walk ( walk, block.condition, 0 );

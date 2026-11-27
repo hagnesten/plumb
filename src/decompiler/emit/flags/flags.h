@@ -88,6 +88,8 @@ namespace decompiler {
 
 	extern bool void_params;
 
+	extern bool signed_elements;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

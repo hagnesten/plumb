@@ -458,6 +458,8 @@ void decompiler::emitter::var_type ( int32_t index ) {
 			type_name ( 8, SIGNED, false );
 		else if ( ( shape & 0x40 ) && !( shape & 0x80 ) )
 			type_name ( shape & 0x1F, UNSIGNED, false );
+		else if ( signed_elements && ( shape & 0x20 ) && !( shape & 0x80 ) && ( shape & 0x1F ) <= 4 )
+			type_name ( shape & 0x1F, SIGNED, false );
 		else
 			type_name ( shape & 0x1F, ( shape & 0x80 ) ? FLOATING : 0, false, !( shape & 0x80 ) );
 		out.put ( L" *" );
@@ -589,6 +591,8 @@ void decompiler::emitter::pointer_cast ( int32_t v, bool twice ) {
 		type_name ( 8, SIGNED, false );
 	else if ( ( shape & 0x40 ) && !( shape & 0x80 ) )
 		type_name ( shape & 0x1F, UNSIGNED, false );
+	else if ( signed_elements && ( shape & 0x20 ) && !( shape & 0x80 ) && ( shape & 0x1F ) <= 4 )
+		type_name ( shape & 0x1F, SIGNED, false );
 	else
 		type_name ( shape & 0x1F, ( shape & 0x80 ) ? FLOATING : 0, false, !( shape & 0x80 ) );
 
