@@ -421,12 +421,20 @@ int32_t decompiler::emitter::choice ( int32_t block, int32_t stop, const frame& 
 			const variable& held = b.vars [ static_cast < size_t > ( picked.value ) ];
 
 			selector_unsigned = ( held.bits & UNSIGNED ) != 0;
-			selector_char = !selector_unsigned && picked.size == 1;
+			selector_char = picked.size == 1;
 
-		} else if ( picked.kind == op::LOAD && !( picked.bits & ( FLOATING | SIGNED ) ) )
+		} else if ( picked.kind == op::LOAD && !( picked.bits & ( FLOATING | SIGNED ) ) ) {
+
 			selector_unsigned = true;
-		else if ( picked.kind == op::CAST && ( picked.bits & UNSIGNED ) )
-			selector_unsigned = true;
+			selector_char = picked.size == 1;
+
+		}
+		else if ( picked.kind == op::CAST ) {
+
+			selector_unsigned = ( picked.bits & UNSIGNED ) != 0;
+			selector_char = picked.a >= 0 && b.exprs [ static_cast < size_t > ( picked.a ) ].size == 1;
+
+		}
 
 	}
 
