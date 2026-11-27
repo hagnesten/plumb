@@ -16,6 +16,8 @@ namespace decompiler {
 
 	const known_entry* known_function ( const wchar_t* function );
 
+	const wchar_t* buffer_element ( const wchar_t* type, int32_t& step );
+
 	const wchar_t* known_parameter ( const wchar_t* function, int32_t position );
 
 	const wchar_t* known_parameter_type ( const wchar_t* function, int32_t position );

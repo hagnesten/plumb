@@ -49,6 +49,10 @@ void decompiler::name_from_calls ( builder& b, int32_t result_var ) {
 
 	b.call_names.clear ( );
 	b.call_names.resize ( b.vars.size ( ) );
+	b.call_types.clear ( );
+	b.call_types.resize ( b.vars.size ( ) );
+	b.call_counts.clear ( );
+	b.call_counts.fill ( b.vars.size ( ), 0 );
 
 	if ( !b.names )
 		return;
@@ -340,6 +344,40 @@ void decompiler::name_from_calls ( builder& b, int32_t result_var ) {
 
 			taken.push ( base::text ( chosen ) );
 			b.call_names [ static_cast < size_t > ( v ) ].set ( chosen );
+
+			if ( address && v < b.call_types.count ( ) ) {
+
+				b.call_types [ static_cast < size_t > ( v ) ].set ( shape.types [ i ] );
+
+				for ( int32_t k = 0; k < node.arg_count && k < shape.count; k++ ) {
+
+					const wchar_t* sibling = shape.names [ k ];
+					int32_t given = b.args [ static_cast < size_t > ( node.first_arg + k ) ];
+
+					while ( given >= 0 && b.exprs [ static_cast < size_t > ( given ) ].kind == op::CAST )
+						given = b.exprs [ static_cast < size_t > ( given ) ].a;
+
+					auto prefix = [ ] ( const wchar_t* text, const wchar_t* head ) {
+
+						for ( ; *head; head++, text++ ) {
+
+							if ( *text != *head )
+								return false;
+
+						}
+
+						return true;
+
+					};
+
+					bool counting = prefix ( sibling, L"nSize" ) || prefix ( sibling, L"cch" ) || prefix ( sibling, L"nMaxCount" ) || prefix ( sibling, L"nBufferLength" ) || prefix ( sibling, L"BufferCount" ) || prefix ( sibling, L"SizeInWords" ) || prefix ( sibling, L"MaxCount" );
+
+					if ( k != i && counting && given >= 0 && b.exprs [ static_cast < size_t > ( given ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( given ) ].value > 0 && b.exprs [ static_cast < size_t > ( given ) ].value < 0x10000 )
+						b.call_counts [ static_cast < size_t > ( v ) ] = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( given ) ].value );
+
+				}
+
+			}
 
 		}
 

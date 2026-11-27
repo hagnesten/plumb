@@ -326,6 +326,8 @@ namespace decompiler {
 		void detect_variadic ( );
 
 		base::list < base::text > call_names;
+		base::list < base::text > call_types;
+		base::list < int32_t > call_counts;
 
 		bool lift ( );
 

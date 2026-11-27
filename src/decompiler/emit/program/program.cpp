@@ -514,8 +514,13 @@ bool decompiler::emit ( builder& b ) {
 		if ( is_array ) {
 
 			int32_t step = head.array_step [ static_cast < size_t > ( v ) ];
+			int32_t text_step = 0;
+			const wchar_t* element_name = buffer_arrays && v < b.call_types.count ( ) ? buffer_element ( b.call_types [ static_cast < size_t > ( v ) ].get ( ), text_step ) : nullptr;
 
-			head.out.put ( step == 8 ? L"__int64" : ( step == 4 ? L"int" : ( step == 2 ? L"__int16" : ( step == 16 ? L"__int128" : L"char" ) ) ), syntax::TYPE );
+			if ( element_name && text_step == step )
+				head.out.put ( element_name, syntax::TYPE );
+			else
+				head.out.put ( step == 8 ? L"__int64" : ( step == 4 ? L"int" : ( step == 2 ? L"__int16" : ( step == 16 ? L"__int128" : L"char" ) ) ), syntax::TYPE );
 			head.out.put ( L" " );
 
 		} else {

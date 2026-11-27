@@ -1060,6 +1060,60 @@ const wchar_t* decompiler::api_prototype ( const wchar_t* name ) {
 
 }
 
+const wchar_t* decompiler::buffer_element ( const wchar_t* type, int32_t& step ) {
+
+	step = 0;
+
+	if ( !type || !type [ 0 ] )
+		return nullptr;
+
+	static const wchar_t* const wide [ ] = { L"LPWSTR", L"PWSTR", L"LPWCH", L"PWCH", L"LPOLESTR" };
+	static const wchar_t* const narrow [ ] = { L"LPSTR", L"PSTR", L"LPCH", L"PCH" };
+
+	for ( const wchar_t* name : wide ) {
+
+		if ( base::same_text ( type, name ) ) {
+
+			step = 2;
+
+			return L"WCHAR";
+
+		}
+
+	}
+
+	for ( const wchar_t* name : narrow ) {
+
+		if ( base::same_text ( type, name ) ) {
+
+			step = 1;
+
+			return L"CHAR";
+
+		}
+
+	}
+
+	if ( base::same_text ( type, L"wchar_t *" ) ) {
+
+		step = 2;
+
+		return L"wchar_t";
+
+	}
+
+	if ( base::same_text ( type, L"char *" ) ) {
+
+		step = 1;
+
+		return L"char";
+
+	}
+
+	return nullptr;
+
+}
+
 const decompiler::known_entry* decompiler::known_function ( const wchar_t* function ) {
 
 	if ( !function )

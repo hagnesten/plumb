@@ -253,7 +253,9 @@ void decompiler::stack_arrays ( builder& b, base::list < int32_t >& array_of, ba
 		if ( last == i && accessed [ static_cast < size_t > ( head ) ] && item.size == 16 )
 			continue;
 
-		if ( head < b.call_names.count ( ) && !b.call_names [ static_cast < size_t > ( head ) ].empty ( ) )
+		int32_t text_step = 0;
+
+		if ( head < b.call_names.count ( ) && !b.call_names [ static_cast < size_t > ( head ) ].empty ( ) && !( buffer_arrays && head < b.call_types.count ( ) && buffer_element ( b.call_types [ static_cast < size_t > ( head ) ].get ( ), text_step ) ) )
 			continue;
 
 		if ( indexed_arrays && index_step [ static_cast < size_t > ( head ) ] > 1 && ( !step || !accessed [ static_cast < size_t > ( head ) ] ) ) {
@@ -306,10 +308,20 @@ void decompiler::stack_arrays ( builder& b, base::list < int32_t >& array_of, ba
 
 		}
 
+		if ( text_step ) {
+
+			step = text_step;
+			uniform = true;
+
+		}
+
 		if ( !uniform || !step || ( step != 1 && step != 2 && step != 4 && step != 8 && step != 16 ) || ( ( item.bits & FLOATING ) && step != 16 ) )
 			step = 1;
 
 		span -= span % step;
+
+		if ( text_step && head < b.call_counts.count ( ) && b.call_counts [ static_cast < size_t > ( head ) ] > 0 && static_cast < int64_t > ( b.call_counts [ static_cast < size_t > ( head ) ] ) * step <= span )
+			span = static_cast < int64_t > ( b.call_counts [ static_cast < size_t > ( head ) ] ) * step;
 
 		array_of [ static_cast < size_t > ( head ) ] = head;
 		array_step [ static_cast < size_t > ( head ) ] = step;

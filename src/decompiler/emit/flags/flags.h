@@ -88,6 +88,8 @@ namespace decompiler {
 
 	extern bool void_params;
 
+	extern bool buffer_arrays;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;
