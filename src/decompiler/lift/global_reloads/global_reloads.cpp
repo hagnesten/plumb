@@ -33,6 +33,89 @@ bool decompiler::quiet_statement ( const builder& b, const statement& line ) {
 
 }
 
+void decompiler::builder::reuse_condition_loads ( ) {
+
+	for ( block_code& block : code ) {
+
+		if ( !block.reachable || block.end != term::BRANCH || block.condition < 0 )
+			continue;
+
+		const expr& test = exprs [ static_cast < size_t > ( block.condition ) ];
+
+		if ( test.kind < op::EQ || test.kind > op::GE || test.a < 0 || test.b < 0 || exprs [ static_cast < size_t > ( test.a ) ].kind != op::LOAD || exprs [ static_cast < size_t > ( test.b ) ].kind != op::LOAD )
+			continue;
+
+		for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ ) {
+
+			const statement& line = statements [ static_cast < size_t > ( s ) ];
+
+			if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || exprs [ static_cast < size_t > ( line.right ) ].kind != op::LOAD )
+				continue;
+
+			int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+			if ( v < 0 || v >= vars.count ( ) || vars [ static_cast < size_t > ( v ) ].kind != var_kind::REGISTER || vars [ static_cast < size_t > ( v ) ].flags || vars [ static_cast < size_t > ( v ) ].size != exprs [ static_cast < size_t > ( line.right ) ].size )
+				continue;
+
+			bool clean = true;
+
+			for ( int32_t t = s + 1; t < block.first + block.count && t < statements.count ( ) && clean; t++ ) {
+
+				const statement& later = statements [ static_cast < size_t > ( t ) ];
+
+				if ( later.kind == stmt::NOP )
+					continue;
+
+				bool defines = later.kind == stmt::ASSIGN && later.left >= 0 && exprs [ static_cast < size_t > ( later.left ) ].kind == op::VAR;
+
+				if ( !defines || has_call ( *this, later.right, 0 ) || exprs [ static_cast < size_t > ( later.left ) ].value == v || mentions ( *this, line.right, exprs [ static_cast < size_t > ( later.left ) ].value, 0 ) )
+					clean = false;
+
+			}
+
+			if ( !clean )
+				continue;
+
+			int32_t loaded = line.right;
+			int32_t replacement = make ( op::VAR, exprs [ static_cast < size_t > ( line.left ) ].size, -1, -1, v );
+
+			auto swap = [ & ] ( auto& self, int32_t e, int32_t depth ) -> int32_t {
+
+				if ( e < 0 || depth > 32 )
+					return e;
+
+				if ( e == loaded || same ( e, loaded ) )
+					return replacement;
+
+				expr copy = exprs [ static_cast < size_t > ( e ) ];
+
+				if ( copy.kind == op::CALL )
+					return e;
+
+				int32_t na = self ( self, copy.a, depth + 1 );
+				int32_t nb = self ( self, copy.b, depth + 1 );
+				int32_t nc = self ( self, copy.c, depth + 1 );
+
+				if ( na == copy.a && nb == copy.b && nc == copy.c )
+					return e;
+
+				copy.a = na;
+				copy.b = nb;
+				copy.c = nc;
+				exprs.push ( copy );
+
+				return exprs.count ( ) - 1;
+
+			};
+
+			block.condition = swap ( swap, block.condition, 0 );
+
+		}
+
+	}
+
+}
+
 void decompiler::builder::global_reloads ( ) {
 
 	int32_t total = code.count ( );

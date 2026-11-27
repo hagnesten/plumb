@@ -320,6 +320,8 @@ namespace decompiler {
 
 		void global_reloads ( );
 
+		void reuse_condition_loads ( );
+
 		void scale_counters ( );
 
 		base::list < int32_t > counter_bases;

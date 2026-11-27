@@ -66,6 +66,8 @@ namespace decompiler {
 
 	extern bool wide_zero_args;
 
+	extern bool condition_loads;
+
 	extern bool scaled_counters;
 
 	extern bool import_callees;
