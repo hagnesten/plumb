@@ -46,6 +46,8 @@ namespace decompiler {
 
 	extern bool call_pointers;
 
+	extern bool case_styles;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

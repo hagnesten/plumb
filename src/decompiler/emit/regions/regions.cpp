@@ -409,6 +409,27 @@ int32_t decompiler::emitter::choice ( int32_t block, int32_t stop, const frame& 
 
 	inner.exit = follow;
 
+	bool selector_unsigned = false;
+	bool selector_char = false;
+
+	if ( case_styles && item.selector >= 0 ) {
+
+		const expr& picked = b.exprs [ static_cast < size_t > ( item.selector ) ];
+
+		if ( picked.kind == op::VAR && picked.value >= 0 && picked.value < b.vars.count ( ) ) {
+
+			const variable& held = b.vars [ static_cast < size_t > ( picked.value ) ];
+
+			selector_unsigned = ( held.bits & UNSIGNED ) != 0;
+			selector_char = !selector_unsigned && picked.size == 1;
+
+		} else if ( picked.kind == op::LOAD && !( picked.bits & ( FLOATING | SIGNED ) ) )
+			selector_unsigned = true;
+		else if ( picked.kind == op::CAST && ( picked.bits & UNSIGNED ) )
+			selector_unsigned = true;
+
+	}
+
 	int32_t default_to = -1;
 
 	for ( int32_t e = 0; e < node.out_count; e++ ) {
@@ -460,7 +481,25 @@ int32_t decompiler::emitter::choice ( int32_t block, int32_t stop, const frame& 
 
 					out.put ( L"case", syntax::CONTROL );
 					out.put ( L" " );
-					number ( link.value, 4, false, false );
+
+					if ( selector_char && link.value >= 0x20 && link.value < 0x7F ) {
+
+						wchar_t quoted [ 5 ] = { L'\'', static_cast < wchar_t > ( link.value ), L'\'', 0, 0 };
+
+						if ( link.value == L'\'' || link.value == L'\\' ) {
+
+							quoted [ 1 ] = L'\\';
+							quoted [ 2 ] = static_cast < wchar_t > ( link.value );
+							quoted [ 3 ] = L'\'';
+
+						}
+
+						out.put ( quoted, syntax::NUMBER );
+
+					} else if ( selector_unsigned )
+						number ( link.value, 4, link.value >= 10, true );
+					else
+						number ( link.value, 4, false, false );
 
 				}
 
