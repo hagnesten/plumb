@@ -30,6 +30,8 @@ namespace decompiler {
 
 	extern bool zero_paths;
 
+	extern bool slot_escapes;
+
 	extern bool sse_extras;
 
 	extern bool find_variadic;

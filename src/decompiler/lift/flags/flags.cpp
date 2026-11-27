@@ -25,6 +25,7 @@ bool decompiler::outgoing_args = true;
 bool decompiler::float_calls = true;
 
 bool decompiler::zero_paths = true;
+bool decompiler::slot_escapes = true;
 
 bool decompiler::sse_extras = true;
 

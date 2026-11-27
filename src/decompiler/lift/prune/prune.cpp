@@ -192,17 +192,38 @@ void decompiler::builder::prune ( ) {
 
 	}
 
-	bool escaped = false;
+	base::list < int64_t > addressed;
 
 	for ( const expr& node : exprs ) {
 
+		int64_t taken = -1;
+
 		if ( node.kind == op::ADDRESS && node.a < 0 && node.value >= 0 && node.value < vars.count ( ) && vars [ static_cast < size_t > ( node.value ) ].kind == var_kind::STACK )
-			escaped = true;
+			taken = node.value;
 
 		if ( node.kind == op::ADDRESS && node.a >= 0 && node.a < exprs.count ( ) && exprs [ static_cast < size_t > ( node.a ) ].kind == op::VAR && exprs [ static_cast < size_t > ( node.a ) ].value >= 0 && exprs [ static_cast < size_t > ( node.a ) ].value < vars.count ( ) && vars [ static_cast < size_t > ( exprs [ static_cast < size_t > ( node.a ) ].value ) ].kind == var_kind::STACK )
-			escaped = true;
+			taken = exprs [ static_cast < size_t > ( node.a ) ].value;
+
+		if ( taken >= 0 )
+			addressed.push ( vars [ static_cast < size_t > ( taken ) ].offset );
 
 	}
+
+	auto reachable_slot = [ & ] ( const variable& slot ) {
+
+		for ( int64_t from : addressed ) {
+
+			if ( !slot_escapes && !addressed.empty ( ) )
+				return true;
+
+			if ( from <= slot.offset + slot.size - 1 && ( from >= 0 || slot.offset < 0 ) )
+				return true;
+
+		}
+
+		return false;
+
+	};
 
 	for ( int32_t round = 0; round < 8; round++ ) {
 
@@ -253,7 +274,7 @@ void decompiler::builder::prune ( ) {
 
 			if ( item.kind == var_kind::STACK ) {
 
-				if ( escaped )
+				if ( reachable_slot ( item ) )
 					continue;
 
 				bool overlapped = false;
