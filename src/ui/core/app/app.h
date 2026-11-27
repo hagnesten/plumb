@@ -344,6 +344,8 @@ namespace ui {
 		log_kind kind = log_kind::INFO;
 		base::text text;
 		double time = 0.0;
+		int32_t rows = 1;
+		int32_t columns = 0;
 
 	};
 
@@ -1365,6 +1367,7 @@ namespace ui {
 		void draw_inspector ( math::rect area, float inner );
 
 		void draw_output ( );
+		void draw_log_line ( const log_line& line, math::rect list, int32_t row, int32_t columns );
 
 		void draw_welcome ( math::rect area );
 
