@@ -35,6 +35,7 @@ bool decompiler::bare_callees = true;
 bool decompiler::part_macros = true;
 bool decompiler::simd_converts = true;
 bool decompiler::ending_fall_first = true;
+bool decompiler::call_pointers = true;
 
 bool decompiler::unnamed_results = true;
 

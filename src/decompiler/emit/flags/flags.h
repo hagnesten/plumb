@@ -44,6 +44,8 @@ namespace decompiler {
 
 	extern bool ending_fall_first;
 
+	extern bool call_pointers;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

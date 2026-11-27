@@ -954,9 +954,50 @@ void decompiler::typed_pointers ( builder& b, base::list < uint8_t >& element ) 
 
 	}
 
+	base::list < uint8_t > call_only;
+
+	call_only.fill ( static_cast < size_t > ( total ), 0 );
+
+	if ( call_pointers ) {
+
+		for ( const block_code& block : b.code ) {
+
+			if ( !block.reachable )
+				continue;
+
+			for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+				const statement& item = b.statements [ static_cast < size_t > ( s ) ];
+				int32_t v = item.kind == stmt::ASSIGN ? var_of ( item.left ) : -1;
+
+				if ( v < 0 || v >= total )
+					continue;
+
+				int32_t source = item.right;
+
+				while ( source >= 0 && b.exprs [ static_cast < size_t > ( source ) ].kind == op::CAST )
+					source = b.exprs [ static_cast < size_t > ( source ) ].a;
+
+				bool call = source >= 0 && b.exprs [ static_cast < size_t > ( source ) ].kind == op::CALL;
+				uint8_t& slot = call_only [ static_cast < size_t > ( v ) ];
+
+				slot = call && slot != 2 ? 1 : 2;
+
+			}
+
+		}
+
+	}
+
+	auto call_typed = [ & ] ( int32_t v ) {
+
+		return call_only [ static_cast < size_t > ( v ) ] == 1 && b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER && ( element [ static_cast < size_t > ( v ) ] & 0x9F ) == 8;
+
+	};
+
 	for ( int32_t v = 0; v < total; v++ ) {
 
-		if ( bad [ static_cast < size_t > ( v ) ] || !direct [ static_cast < size_t > ( v ) ] )
+		if ( bad [ static_cast < size_t > ( v ) ] || ( !direct [ static_cast < size_t > ( v ) ] && !call_typed ( v ) ) )
 			element [ static_cast < size_t > ( v ) ] = 0;
 
 	}
@@ -993,7 +1034,7 @@ void decompiler::typed_pointers ( builder& b, base::list < uint8_t >& element ) 
 
 		for ( int32_t v = 0; v < total; v++ ) {
 
-			if ( b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER || !element [ static_cast < size_t > ( v ) ] )
+			if ( b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER || !element [ static_cast < size_t > ( v ) ] || call_typed ( v ) )
 				continue;
 
 			uint8_t from = copied [ static_cast < size_t > ( v ) ];
