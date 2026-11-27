@@ -1599,7 +1599,7 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 			}
 			bool cast_lhs = unsigned_compare && !lhs_unsigned && !no_casts && right.kind == op::CONST && lhs.size <= 8;
 
-		if ( unsigned_sum_compares && unsigned_compare && !lhs_unsigned && !no_casts && !cast_lhs && lhs.size == 8 && !( lhs.bits & FLOATING ) && ( lhs.kind == op::ADD || lhs.kind == op::SUB ) && ( right.kind == op::LOAD || ( right.kind == op::VAR && right.value >= 0 && right.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( right.value ) ].bits & UNSIGNED ) ) ) )
+		if ( unsigned_sum_compares && unsigned_compare && !lhs_unsigned && !no_casts && !cast_lhs && lhs.size == 8 && !( lhs.bits & FLOATING ) && ( lhs.kind == op::ADD || lhs.kind == op::SUB ) && right.kind == op::LOAD )
 			cast_lhs = true;
 
 		if ( unsigned_sum_compares && unsigned_compare && offset_unsigned && !no_casts && lhs.size == 8 && right.kind == op::CONST && b.exprs [ static_cast < size_t > ( lhs.a ) ].value < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( lhs.a ) ].value ) ].empty ( ) ) {
