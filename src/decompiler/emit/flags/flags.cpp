@@ -74,6 +74,7 @@ bool decompiler::cut_stops = true;
 bool decompiler::plain_register_params = true;
 bool decompiler::latch_conditions = true;
 bool decompiler::pointer_arg_casts = true;
+bool decompiler::unsigned_sum_compares = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;

@@ -122,6 +122,8 @@ namespace decompiler {
 
 	extern bool pointer_arg_casts;
 
+	extern bool unsigned_sum_compares;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;
