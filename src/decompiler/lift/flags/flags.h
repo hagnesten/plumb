@@ -58,6 +58,8 @@ namespace decompiler {
 
 	extern bool scaled_counters;
 
+	extern bool import_callees;
+
 	extern bool carry_ops;
 
 	extern bool shared_vectors;

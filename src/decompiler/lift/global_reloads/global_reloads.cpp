@@ -209,4 +209,105 @@ void decompiler::builder::global_reloads ( ) {
 
 	}
 
+	if ( !import_callees || !file )
+		return;
+
+	base::list < int32_t > callee_reads;
+
+	callee_reads.fill ( vars.size ( ), 0 );
+
+	auto count_callees = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+		if ( e < 0 || depth > 64 )
+			return;
+
+		const expr& node = exprs [ static_cast < size_t > ( e ) ];
+
+		if ( node.kind == op::CALL && node.value == 0 && node.a >= 0 && exprs [ static_cast < size_t > ( node.a ) ].kind == op::VAR ) {
+
+			int64_t v = exprs [ static_cast < size_t > ( node.a ) ].value;
+
+			if ( v >= 0 && v < callee_reads.count ( ) )
+				callee_reads [ static_cast < size_t > ( v ) ]++;
+
+		}
+
+		self ( self, node.a, depth + 1 );
+		self ( self, node.b, depth + 1 );
+		self ( self, node.c, depth + 1 );
+
+		for ( int32_t i = 0; i < node.arg_count; i++ )
+			self ( self, args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+	};
+
+	for ( const statement& line : statements ) {
+
+		if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+			continue;
+
+		count_callees ( count_callees, line.left, 0 );
+		count_callees ( count_callees, line.right, 0 );
+
+	}
+
+	for ( const block_code& item : code ) {
+
+		count_callees ( count_callees, item.condition, 0 );
+		count_callees ( count_callees, item.returned, 0 );
+
+	}
+
+	for ( int32_t s = 0; s < statements.count ( ); s++ ) {
+
+		statement& line = statements [ static_cast < size_t > ( s ) ];
+
+		if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+			continue;
+
+		int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+		const expr& source = exprs [ static_cast < size_t > ( line.right ) ];
+
+		if ( v < 0 || v >= vars.count ( ) || defs [ static_cast < size_t > ( v ) ] != 1 || !reads [ static_cast < size_t > ( v ) ] || reads [ static_cast < size_t > ( v ) ] != callee_reads [ static_cast < size_t > ( v ) ] || vars [ static_cast < size_t > ( v ) ].kind != var_kind::REGISTER )
+			continue;
+
+		if ( !global_slot_load ( *this, line.right ) )
+			continue;
+
+		uint64_t slot = static_cast < uint64_t > ( source.kind == op::GLOBAL ? source.value : exprs [ static_cast < size_t > ( source.a ) ].value );
+		bool imported = false;
+
+		for ( const loader::import& entry : file->imports )
+			imported = imported || entry.slot == slot;
+
+		if ( !imported )
+			continue;
+
+		int32_t loaded = line.right;
+
+		line.kind = stmt::NOP;
+
+		for ( statement& other : statements ) {
+
+			if ( other.kind == stmt::NOP || other.kind == stmt::ASM )
+				continue;
+
+			bool defines = other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR;
+
+			if ( !defines )
+				other.left = substitute ( *this, other.left, v, loaded, 0 );
+
+			other.right = substitute ( *this, other.right, v, loaded, 0 );
+
+		}
+
+		for ( block_code& item : code ) {
+
+			item.condition = substitute ( *this, item.condition, v, loaded, 0 );
+			item.returned = substitute ( *this, item.returned, v, loaded, 0 );
+
+		}
+
+	}
+
 }

@@ -50,6 +50,8 @@ bool decompiler::masked_signs = true;
 
 bool decompiler::scaled_counters = true;
 
+bool decompiler::import_callees = true;
+
 bool decompiler::carry_ops = true;
 
 bool decompiler::shared_vectors = true;
