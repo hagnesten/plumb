@@ -72,6 +72,7 @@ bool decompiler::callee_param_types = true;
 bool decompiler::cut_returns = true;
 bool decompiler::cut_stops = true;
 bool decompiler::plain_register_params = true;
+bool decompiler::latch_conditions = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;

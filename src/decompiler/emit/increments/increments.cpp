@@ -402,7 +402,7 @@ void decompiler::emitter::plan_increments ( ) {
 
 			}
 
-			if ( last_line && !latch && block.end == term::BRANCH && block.condition >= 0 && count_var ( block.condition, x, 0 ) == 1 ) {
+			if ( last_line && ( !latch || latch_conditions ) && block.end == term::BRANCH && block.condition >= 0 && count_var ( block.condition, x, 0 ) == 1 ) {
 
 				fold_cond.push ( block.condition );
 				fold_cond_var.push ( static_cast < int32_t > ( x ) );

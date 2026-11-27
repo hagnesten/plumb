@@ -118,6 +118,8 @@ namespace decompiler {
 
 	extern bool plain_register_params;
 
+	extern bool latch_conditions;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;
