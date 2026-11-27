@@ -844,7 +844,7 @@ const wchar_t* const decompiler::api_table [ ] = {
 	L"int __cdecl vsprintf_s(char *Buffer, size_t BufferCount, const char *Format, va_list ArgList)",
 	L"int __cdecl vswprintf_s(wchar_t *Buffer, size_t BufferCount, const wchar_t *Format, va_list ArgList)",
 	L"int __cdecl _vsnprintf(char *Buffer, size_t BufferCount, const char *Format, va_list ArgList)",
-	L"int __cdecl _vsnwprintf(wchar_t *Buffer, size_t BufferCount, const wchar_t *Format, va_list ArgList)",
+	L"int __cdecl _vsnwprintf(wchar_t *, size_t, const wchar_t *, va_list Args)",
 	L"int __cdecl sscanf(const char *Buffer, const char *Format, ...)",
 	L"int __cdecl swscanf(const wchar_t *Buffer, const wchar_t *Format, ...)",
 	L"int __cdecl sscanf_s(const char *Buffer, const char *Format, ...)",

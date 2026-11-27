@@ -82,7 +82,7 @@ bool decompiler::emit ( builder& b ) {
 
 	name_from_calls ( b, body_emitter.result_var );
 
-	if ( b.va_var >= 0 && b.va_var < b.call_names.count ( ) )
+	if ( b.va_var >= 0 && b.va_var < b.call_names.count ( ) && !( args_names && !b.call_names [ static_cast < size_t > ( b.va_var ) ].empty ( ) && base::same_text ( b.call_names [ static_cast < size_t > ( b.va_var ) ].get ( ), L"Args" ) ) )
 		b.call_names [ static_cast < size_t > ( b.va_var ) ].set ( L"va" );
 	typed_pointers ( b, body_emitter.element );
 	boolean_vars ( b, body_emitter.boolean );

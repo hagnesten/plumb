@@ -51,6 +51,7 @@ bool decompiler::unequal_falls = true;
 bool decompiler::equal_falls = true;
 bool decompiler::ordered_scales = true;
 bool decompiler::tail_returns = true;
+bool decompiler::args_names = true;
 
 bool decompiler::unnamed_results = true;
 

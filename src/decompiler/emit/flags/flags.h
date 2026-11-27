@@ -76,6 +76,8 @@ namespace decompiler {
 
 	extern bool tail_returns;
 
+	extern bool args_names;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;
