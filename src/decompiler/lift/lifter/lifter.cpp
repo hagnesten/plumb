@@ -1190,6 +1190,9 @@ bool decompiler::builder::lift ( ) {
 	if ( zero_paths )
 		zero_edges ( );
 
+	if ( global_calls )
+		global_reloads ( );
+
 	inline_temps ( );
 	prune ( );
 

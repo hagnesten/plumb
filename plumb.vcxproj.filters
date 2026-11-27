@@ -313,6 +313,9 @@
     <Filter Include="src\decompiler\lift\yields">
       <UniqueIdentifier>{D94B3A60-1742-D725-703C-47CB72F57612}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\decompiler\lift\global_reloads">
+      <UniqueIdentifier>{4C2B9E71-0D3A-4F68-8B15-6E7A2D9C3F05}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\decompiler\lift\zero_edges">
       <UniqueIdentifier>{761E1610-2066-6B45-6AA8-22906666CB44}</UniqueIdentifier>
     </Filter>
@@ -918,6 +921,9 @@
     <ClCompile Include="src\decompiler\lift\yields\yields.cpp">
       <Filter>src\decompiler\lift\yields</Filter>
     </ClCompile>
+    <ClCompile Include="src\decompiler\lift\global_reloads\global_reloads.cpp">
+      <Filter>src\decompiler\lift\global_reloads</Filter>
+    </ClCompile>
     <ClCompile Include="src\decompiler\lift\zero_edges\zero_edges.cpp">
       <Filter>src\decompiler\lift\zero_edges</Filter>
     </ClCompile>
@@ -1435,6 +1441,9 @@
     </ClInclude>
     <ClInclude Include="src\decompiler\lift\yields\yields.h">
       <Filter>src\decompiler\lift\yields</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\global_reloads\global_reloads.h">
+      <Filter>src\decompiler\lift\global_reloads</Filter>
     </ClInclude>
     <ClInclude Include="src\decompiler\lift\zero_edges\zero_edges.h">
       <Filter>src\decompiler\lift\zero_edges</Filter>

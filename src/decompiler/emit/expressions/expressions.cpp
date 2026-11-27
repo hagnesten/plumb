@@ -560,7 +560,7 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 				const expr& callee_node = b.exprs [ static_cast < size_t > ( item.a ) ];
 				bool global_slot = callee_node.kind == op::LOAD && callee_node.size == 8 && callee_node.a >= 0 && b.exprs [ static_cast < size_t > ( callee_node.a ) ].kind == op::CONST && ( b.exprs [ static_cast < size_t > ( callee_node.a ) ].bits & POINTER );
 
-				if ( bare_callees && ( callee_node.kind == op::VAR || global_slot ) ) {
+				if ( bare_callees && ( callee_node.kind == op::VAR || callee_node.kind == op::GLOBAL || global_slot ) ) {
 
 					value ( item.a, 15 );
 

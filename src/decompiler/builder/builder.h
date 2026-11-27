@@ -313,6 +313,8 @@ namespace decompiler {
 		void fold_constants ( );
 
 		void zero_edges ( );
+
+		void global_reloads ( );
 		void propagate_register_constants ( );
 
 		void inline_temps ( );
