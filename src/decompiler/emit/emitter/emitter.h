@@ -277,6 +277,10 @@ namespace decompiler {
 
 		void go_to ( int32_t block, uint64_t address );
 
+		int32_t label_number ( int32_t block );
+
+		base::list < int32_t > label_extra;
+
 		bool inline_return ( int32_t block, uint64_t address );
 
 		void body ( int32_t block );

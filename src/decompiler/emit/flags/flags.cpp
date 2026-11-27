@@ -86,6 +86,7 @@ bool decompiler::narrow_cast_suffix = true;
 bool decompiler::pointer_tables = true;
 bool decompiler::plain_pre_loads = true;
 bool decompiler::bitwise_parens = true;
+bool decompiler::ida_labels = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;

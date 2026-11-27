@@ -780,10 +780,68 @@ void decompiler::emitter::label ( int32_t block ) {
 
 	out.indent = 0;
 	out.begin ( b.graph.blocks [ static_cast < size_t > ( block ) ].start );
-	out.put ( base::writer ( ).add ( L"LABEL_" ).number ( block + 1 ).text ( ), syntax::LABEL );
+	out.put ( base::writer ( ).add ( L"LABEL_" ).number ( label_number ( block ) ).text ( ), syntax::LABEL );
 	out.put ( L":" );
 	out.finish ( );
 	out.indent = saved;
+
+}
+int32_t decompiler::emitter::label_number ( int32_t block ) {
+
+	if ( !ida_labels || !b.db )
+		return block + 1;
+
+	if ( label_extra.count ( ) != count ) {
+
+		label_extra.clear ( );
+		label_extra.fill ( static_cast < size_t > ( count ), 0 );
+
+		base::list < int32_t > splits;
+
+		splits.fill ( static_cast < size_t > ( count ), 0 );
+
+		for ( int32_t k = 0; k < count && k < b.graph.blocks.count ( ); k++ ) {
+
+			const analysis::block& item = b.graph.blocks [ static_cast < size_t > ( k ) ];
+			uint64_t at = item.start;
+
+			while ( at < item.end ) {
+
+				x86::instruction ins;
+
+				if ( !b.db->decode ( at, ins ) )
+					break;
+
+				at = ins.next ( );
+
+				int32_t value = static_cast < int32_t > ( ins.name );
+
+				if ( value >= static_cast < int32_t > ( x86::mnemonic::cmovo ) && value <= static_cast < int32_t > ( x86::mnemonic::cmovg ) )
+					splits [ static_cast < size_t > ( k ) ] += 2;
+
+			}
+
+
+		}
+
+		for ( int32_t k = 0; k < count && k < b.graph.blocks.count ( ); k++ ) {
+
+			int32_t extra = 0;
+
+			for ( int32_t j = 0; j < count && j < b.graph.blocks.count ( ); j++ ) {
+
+				if ( b.graph.blocks [ static_cast < size_t > ( j ) ].start < b.graph.blocks [ static_cast < size_t > ( k ) ].start )
+					extra += splits [ static_cast < size_t > ( j ) ];
+
+			}
+
+			label_extra [ static_cast < size_t > ( k ) ] = extra;
+
+		}
+
+	}
+
+	return block + 1 + label_extra [ static_cast < size_t > ( block ) ];
 
 }
 void decompiler::emitter::go_to ( int32_t block, uint64_t address ) {
@@ -801,7 +859,7 @@ void decompiler::emitter::go_to ( int32_t block, uint64_t address ) {
 	out.begin ( address );
 	out.put ( L"goto", syntax::CONTROL );
 	out.put ( L" " );
-	out.put ( base::writer ( ).add ( L"LABEL_" ).number ( block + 1 ).text ( ), syntax::LABEL );
+	out.put ( base::writer ( ).add ( L"LABEL_" ).number ( label_number ( block ) ).text ( ), syntax::LABEL );
 	out.put ( L";" );
 	out.finish ( );
 	out.terminal = out.indent;
