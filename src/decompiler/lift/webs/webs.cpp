@@ -1336,7 +1336,7 @@ void decompiler::builder::narrow_webs ( ) {
 
 		const expr inner = exprs [ static_cast < size_t > ( node.a ) ];
 
-		if ( inner.kind != op::VAR || inner.value < 0 || inner.value >= total || !chosen [ static_cast < size_t > ( inner.value ) ] || inner.size != node.size )
+		if ( inner.kind != op::VAR || inner.value < 0 || inner.value >= total || !chosen [ static_cast < size_t > ( inner.value ) ] || inner.size != node.size || ( node.bits & ( FLOATING | POINTER ) ) )
 			continue;
 
 		uint8_t bits = node.bits;
