@@ -319,6 +319,9 @@
     <Filter Include="src\decompiler\lift\global_reloads">
       <UniqueIdentifier>{4C2B9E71-0D3A-4F68-8B15-6E7A2D9C3F05}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\decompiler\lift\counters">
+      <UniqueIdentifier>{9A1D3F62-5B7E-4C08-A2E9-3D6F8B1C4E27}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\decompiler\lift\zero_edges">
       <UniqueIdentifier>{761E1610-2066-6B45-6AA8-22906666CB44}</UniqueIdentifier>
     </Filter>
@@ -930,6 +933,9 @@
     <ClCompile Include="src\decompiler\lift\global_reloads\global_reloads.cpp">
       <Filter>src\decompiler\lift\global_reloads</Filter>
     </ClCompile>
+    <ClCompile Include="src\decompiler\lift\counters\counters.cpp">
+      <Filter>src\decompiler\lift\counters</Filter>
+    </ClCompile>
     <ClCompile Include="src\decompiler\lift\zero_edges\zero_edges.cpp">
       <Filter>src\decompiler\lift\zero_edges</Filter>
     </ClCompile>
@@ -1453,6 +1459,9 @@
     </ClInclude>
     <ClInclude Include="src\decompiler\lift\global_reloads\global_reloads.h">
       <Filter>src\decompiler\lift\global_reloads</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\counters\counters.h">
+      <Filter>src\decompiler\lift\counters</Filter>
     </ClInclude>
     <ClInclude Include="src\decompiler\lift\zero_edges\zero_edges.h">
       <Filter>src\decompiler\lift\zero_edges</Filter>

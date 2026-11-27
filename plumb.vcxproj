@@ -119,6 +119,7 @@
     <ClCompile Include="src\decompiler\lift\switches\switches.cpp" />
     <ClCompile Include="src\decompiler\lift\zero_edges\zero_edges.cpp" />
     <ClCompile Include="src\decompiler\lift\global_reloads\global_reloads.cpp" />
+    <ClCompile Include="src\decompiler\lift\counters\counters.cpp" />
     <ClCompile Include="src\decompiler\lift\effects\effects.cpp" />
     <ClCompile Include="src\decompiler\lift\facts\facts.cpp" />
     <ClCompile Include="src\decompiler\lift\flags\flags.cpp" />
@@ -348,6 +349,7 @@
     <ClInclude Include="src\decompiler\lift\switches\switches.h" />
     <ClInclude Include="src\decompiler\lift\zero_edges\zero_edges.h" />
     <ClInclude Include="src\decompiler\lift\global_reloads\global_reloads.h" />
+    <ClInclude Include="src\decompiler\lift\counters\counters.h" />
     <ClInclude Include="src\decompiler\lift\effects\effects.h" />
     <ClInclude Include="src\decompiler\lift\facts\facts.h" />
     <ClInclude Include="src\decompiler\lift\flags\flags.h" />

@@ -13,6 +13,8 @@
 
 namespace decompiler {
 
+	struct counter_scan;
+
 	enum class op : uint8_t {
 
 		CONST,
@@ -317,6 +319,16 @@ namespace decompiler {
 		void zero_edges ( );
 
 		void global_reloads ( );
+
+		void scale_counters ( );
+
+		base::list < int32_t > counter_bases;
+
+		bool counter_load ( int32_t e, int64_t v, int32_t& global, int32_t& offset ) const;
+
+		void counter_walk ( int32_t e, counter_scan& scan, int32_t depth ) const;
+
+		int32_t counter_rewrite ( int32_t e, int64_t v, int32_t element, int32_t depth );
 		void propagate_register_constants ( );
 
 		void inline_temps ( );

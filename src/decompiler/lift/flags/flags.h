@@ -56,6 +56,8 @@ namespace decompiler {
 
 	extern bool masked_signs;
 
+	extern bool scaled_counters;
+
 	extern bool carry_ops;
 
 	extern bool shared_vectors;

@@ -1200,6 +1200,7 @@ bool decompiler::builder::lift ( ) {
 		narrow_webs ( );
 	merge_conditions ( );
 	fold_switches ( );
+	scale_counters ( );
 	fold_divisions ( );
 	infer_signs ( );
 	guard_expressions ( );
