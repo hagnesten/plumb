@@ -685,17 +685,76 @@ void ui::app::end_input ( ) {
 
 void ui::app::log ( log_kind kind, const wchar_t* text ) {
 
-	log_line& line = output.emplace ( );
+	if ( !text )
+		return;
 
-	line.kind = kind;
-	line.text.set ( text );
-	line.time = base::seconds ( );
+	const wchar_t* start = text;
 
-	if ( output.count ( ) > 2000 )
-		output.remove_at ( 0 );
+	for ( const wchar_t* at = text; ; at++ ) {
+
+		if ( *at == L'\n' || !*at ) {
+
+			int32_t length = static_cast < int32_t > ( at - start );
+
+			if ( length && start [ length - 1 ] == L'\r' )
+				length--;
+
+			if ( *at || length || at == text )
+				add_log_line ( kind, start, length );
+
+			if ( !*at )
+				break;
+
+			start = at + 1;
+
+		}
+
+	}
 
 	output_scroll.target = 1e9f;
 	pending = base::max ( pending, 2 );
+
+}
+
+void ui::app::add_log_line ( log_kind kind, const wchar_t* text, int32_t length ) {
+
+	base::list < wchar_t > clean;
+
+	for ( int32_t i = 0; i < length; i++ ) {
+
+		if ( text [ i ] == L'\t' ) {
+
+			do
+				clean.push ( L' ' );
+			while ( clean.count ( ) % 4 );
+
+		} else
+			clean.push ( text [ i ] < 32 ? L' ' : text [ i ] );
+
+	}
+
+	clean.push ( 0 );
+
+	log_line& line = output.emplace ( );
+
+	line.kind = kind;
+	line.text.set ( clean.data ( ) );
+	line.time = base::seconds ( );
+
+	if ( output.count ( ) > 50000 ) {
+
+		output.remove_at ( 0 );
+		output_anchor_line--;
+		output_caret_line--;
+
+		if ( output_anchor_line < 0 || output_caret_line < 0 ) {
+
+			output_anchor_line = -1;
+			output_caret_line = -1;
+
+		}
+
+	}
 
 }
 

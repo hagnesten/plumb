@@ -474,7 +474,26 @@ void ui::app::handle_keys ( ) {
 					break;
 
 				case 'C':
-					run ( command::COPY );
+
+					if ( output_focused && output_has_selection ( ) )
+						copy_output ( false );
+					else
+						run ( command::COPY );
+
+					break;
+
+				case 'A':
+
+					if ( output_focused && !output.empty ( ) ) {
+
+						output_anchor_line = 0;
+						output_anchor_char = 0;
+						output_caret_line = output.count ( ) - 1;
+						output_caret_char = output.back ( ).text.size ( );
+						pending = base::max ( pending, 2 );
+
+					}
+
 					break;
 
 				case 'E':

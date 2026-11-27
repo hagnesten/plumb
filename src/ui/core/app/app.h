@@ -1204,6 +1204,12 @@ namespace ui {
 		scroller output_scroll;
 
 		base::list < log_line > output;
+		bool output_focused = false;
+		bool output_selecting = false;
+		int32_t output_anchor_line = -1;
+		int32_t output_anchor_char = 0;
+		int32_t output_caret_line = -1;
+		int32_t output_caret_char = 0;
 		field command_field;
 		base::list < base::text > recent;
 		base::text load_problem;
@@ -1385,7 +1391,15 @@ namespace ui {
 		void draw_inspector ( math::rect area, float inner );
 
 		void draw_output ( );
-		void draw_log_line ( const log_line& line, math::rect list, int32_t row, int32_t columns );
+		void draw_log_line ( const log_line& line, int32_t index, math::rect list, int32_t row, int32_t columns, float advance );
+
+		bool output_spot ( math::rect list, int32_t columns, float advance, int32_t& line, int32_t& offset ) const;
+
+		bool output_has_selection ( ) const;
+
+		void copy_output ( bool everything );
+
+		void add_log_line ( log_kind kind, const wchar_t* text, int32_t length );
 
 		void draw_welcome ( math::rect area );
 
