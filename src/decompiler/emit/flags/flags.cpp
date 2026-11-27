@@ -81,6 +81,7 @@ int32_t decompiler::guard_return_blocks = 40;
 bool decompiler::narrow_store_untruncate = true;
 bool decompiler::single_wide_strings = true;
 bool decompiler::short_fall_returns = true;
+bool decompiler::forwarded_params = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;

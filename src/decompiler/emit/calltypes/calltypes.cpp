@@ -293,6 +293,120 @@ void decompiler::infer_call_types ( builder& b, base::list < base::text >& out )
 
 	}
 
+	if ( forwarded_params )
+		forward_param_types ( b, out );
+
+}
+
+void decompiler::forward_param_types ( builder& b, base::list < base::text >& out ) {
+
+	if ( !b.names )
+		return;
+
+	int32_t total = b.vars.count ( );
+	base::list < int32_t > uses;
+	base::list < int32_t > passed;
+	base::list < base::text > wanted;
+	base::list < uint8_t > clash;
+
+	uses.fill ( static_cast < size_t > ( total ), 0 );
+	passed.fill ( static_cast < size_t > ( total ), 0 );
+	wanted.resize ( static_cast < size_t > ( total ) );
+	clash.fill ( static_cast < size_t > ( total ), 0 );
+
+	c_prototype shape;
+
+	auto visit = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+		if ( e < 0 || depth > 64 )
+			return;
+
+		const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+		if ( node.kind == op::VAR && node.value >= 0 && node.value < total )
+			uses [ static_cast < size_t > ( node.value ) ]++;
+
+		if ( node.kind == op::CALL && node.value && !b.names->prototype ( static_cast < uint64_t > ( node.value ) ) ) {
+
+			const wchar_t* text = b.names->derived ( static_cast < uint64_t > ( node.value ) );
+			base::writer problem;
+
+			if ( text && parse_prototype ( text, b.long_mode, shape, problem ) ) {
+
+				for ( int32_t i = 0; i < node.arg_count && i < shape.count; i++ ) {
+
+					const expr& arg = b.exprs [ static_cast < size_t > ( b.args [ static_cast < size_t > ( node.first_arg + i ) ] ) ];
+
+					if ( arg.kind != op::VAR || arg.value < 0 || arg.value >= total || !shape.types [ i ] [ 0 ] )
+						continue;
+
+					size_t v = static_cast < size_t > ( arg.value );
+
+					passed [ v ]++;
+
+					if ( wanted [ v ].empty ( ) )
+						wanted [ v ].set ( shape.types [ i ] );
+					else if ( !base::same_text ( wanted [ v ].get ( ), shape.types [ i ] ) )
+						clash [ v ] = 1;
+
+				}
+
+			}
+
+		}
+
+		self ( self, node.a, depth + 1 );
+		self ( self, node.b, depth + 1 );
+		self ( self, node.c, depth + 1 );
+
+		for ( int32_t i = 0; i < node.arg_count; i++ )
+			self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+	};
+
+	for ( const statement& line : b.statements ) {
+
+		if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+			continue;
+
+		visit ( visit, line.left, 0 );
+		visit ( visit, line.right, 0 );
+
+	}
+
+	for ( const block_code& block : b.code ) {
+
+		if ( !block.reachable )
+			continue;
+
+		visit ( visit, block.condition, 0 );
+		visit ( visit, block.selector, 0 );
+		visit ( visit, block.returned, 0 );
+
+	}
+
+	for ( int32_t v = 0; v < total && v < out.count ( ); v++ ) {
+
+		const variable& item = b.vars [ static_cast < size_t > ( v ) ];
+
+		if ( item.kind != var_kind::PARAMETER || ( item.bits & FLOATING ) || !out [ static_cast < size_t > ( v ) ].empty ( ) || clash [ static_cast < size_t > ( v ) ] || !passed [ static_cast < size_t > ( v ) ] || passed [ static_cast < size_t > ( v ) ] != uses [ static_cast < size_t > ( v ) ] )
+			continue;
+
+		c_type parsed;
+		wchar_t clean [ 64 ];
+
+		const wchar_t* text = wanted [ static_cast < size_t > ( v ) ].get ( );
+
+		if ( text [ 0 ] == L'_' && ( text [ 1 ] == L'B' || text [ 1 ] == L'W' || text [ 1 ] == L'D' || text [ 1 ] == L'Q' ) )
+			continue;
+
+		if ( !parse_type ( text, b.long_mode, parsed, clean, 64 ) || parsed.empty || !parsed.size || parsed.size > item.size )
+			continue;
+
+		out [ static_cast < size_t > ( v ) ].set ( clean );
+
+	}
+
 }
 
 const wchar_t* decompiler::returned_pointer ( const builder& b ) {

@@ -136,6 +136,8 @@ namespace decompiler {
 
 	extern bool short_fall_returns;
 
+	extern bool forwarded_params;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;
