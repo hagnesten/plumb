@@ -45,8 +45,8 @@ int32_t script::engine::store ( const wchar_t* chars, int32_t length ) {
 
 	slot.resize ( static_cast < size_t > ( length + 1 ) );
 
-	for ( int32_t i = 0; i < length; i++ )
-		slot [ static_cast < size_t > ( i ) ] = chars [ i ];
+	if ( length )
+		__builtin_memcpy ( slot.data ( ), chars, static_cast < size_t > ( length ) * sizeof ( wchar_t ) );
 
 	slot [ static_cast < size_t > ( length ) ] = 0;
 	text_chars += length;

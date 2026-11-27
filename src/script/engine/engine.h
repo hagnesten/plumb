@@ -41,6 +41,12 @@ namespace script {
 
 		value text ( const wchar_t* chars, int32_t length = -1 );
 
+		value join_texts ( value a, value b );
+
+		void flatten ( int32_t ref ) const;
+
+		bool is_rope ( int32_t ref ) const;
+
 		value list ( );
 
 		void push ( value list_value, value item );
@@ -159,7 +165,8 @@ namespace script {
 
 		}
 
-		base::list < base::list < wchar_t > > texts;
+		mutable base::list < base::list < wchar_t > > texts;
+		mutable base::list < rope_node > ropes;
 		base::list < base::list < value > > lists;
 		base::list < int32_t > interned;
 		base::list < token > tokens;

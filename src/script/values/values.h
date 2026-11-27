@@ -21,4 +21,12 @@ namespace script {
 
 	};
 
+	struct rope_node {
+
+		int32_t left = -1;
+		int32_t right = -1;
+		int32_t length = 0;
+
+	};
+
 }

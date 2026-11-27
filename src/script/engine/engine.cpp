@@ -83,6 +83,125 @@ script::value script::engine::text ( const wchar_t* chars, int32_t length ) {
 
 }
 
+bool script::engine::is_rope ( int32_t ref ) const {
+
+	return ref >= 0 && ref < ropes.count ( ) && ropes [ static_cast < size_t > ( ref ) ].left >= 0;
+
+}
+
+void script::engine::flatten ( int32_t ref ) const {
+
+	if ( !is_rope ( ref ) )
+		return;
+
+	int32_t total = ropes [ static_cast < size_t > ( ref ) ].length;
+	base::list < wchar_t > buffer;
+	base::list < int32_t > pending;
+	int32_t at = 0;
+
+	buffer.resize ( static_cast < size_t > ( total + 1 ) );
+	pending.push ( ref );
+
+	while ( !pending.empty ( ) ) {
+
+		int32_t part = pending.back ( );
+
+		pending.pop ( );
+
+		if ( is_rope ( part ) ) {
+
+			pending.push ( ropes [ static_cast < size_t > ( part ) ].right );
+			pending.push ( ropes [ static_cast < size_t > ( part ) ].left );
+
+			continue;
+
+		}
+
+		const base::list < wchar_t >& leaf = texts [ static_cast < size_t > ( part ) ];
+		int32_t length = leaf.count ( ) - 1;
+
+		if ( length > 0 && at + length <= total ) {
+
+			__builtin_memcpy ( buffer.data ( ) + at, leaf.data ( ), static_cast < size_t > ( length ) * sizeof ( wchar_t ) );
+			at += length;
+
+		}
+
+	}
+
+	buffer [ static_cast < size_t > ( at ) ] = 0;
+	texts [ static_cast < size_t > ( ref ) ] = base::move ( buffer );
+	ropes [ static_cast < size_t > ( ref ) ].left = -1;
+
+}
+
+script::value script::engine::join_texts ( value a, value b ) {
+
+	value made;
+	int32_t left = text_length ( a );
+	int32_t right = text_length ( b );
+
+	if ( static_cast < int64_t > ( left ) + right > 0x40000000ll ) {
+
+		fail ( L"A text can't be longer than a billion characters." );
+
+		return made;
+
+	}
+
+	if ( left + right >= 256 ) {
+
+		texts.emplace ( );
+
+		int32_t index = texts.count ( ) - 1;
+
+		if ( ropes.count ( ) < texts.count ( ) )
+			ropes.resize ( base::max ( texts.size ( ), ropes.size ( ) * 2 + 64 ) );
+
+		rope_node& node = ropes [ static_cast < size_t > ( index ) ];
+
+		node.left = a.ref;
+		node.right = b.ref;
+		node.length = left + right;
+		made.type = kind::TEXT;
+		made.ref = index;
+		made.number = index;
+
+		return made;
+
+	}
+
+	flatten ( a.ref );
+	flatten ( b.ref );
+
+	if ( text_chars + left + right > 64ll * 1024 * 1024 ) {
+
+		fail ( L"The script used more than 64 million characters of text." );
+
+		return made;
+
+	}
+
+	base::list < wchar_t >& slot = texts.emplace ( );
+
+	slot.resize ( static_cast < size_t > ( left + right + 1 ) );
+
+	if ( left )
+		__builtin_memcpy ( slot.data ( ), texts [ static_cast < size_t > ( a.ref ) ].data ( ), static_cast < size_t > ( left ) * sizeof ( wchar_t ) );
+
+	if ( right )
+		__builtin_memcpy ( slot.data ( ) + left, texts [ static_cast < size_t > ( b.ref ) ].data ( ), static_cast < size_t > ( right ) * sizeof ( wchar_t ) );
+
+	slot [ static_cast < size_t > ( left + right ) ] = 0;
+	text_chars += left + right;
+	made.type = kind::TEXT;
+	made.ref = texts.count ( ) - 1;
+	made.number = made.ref;
+
+	return made;
+
+}
+
 script::value script::engine::list ( ) {
 
 	value made;
@@ -105,13 +224,24 @@ void script::engine::push ( value list_value, value item ) {
 
 const wchar_t* script::engine::text_of ( value item ) const {
 
-	return item.type == kind::TEXT ? texts [ static_cast < size_t > ( item.ref ) ].data ( ) : L"";
+	if ( item.type != kind::TEXT )
+		return L"";
+
+	flatten ( item.ref );
+
+	return texts [ static_cast < size_t > ( item.ref ) ].data ( );
 
 }
 
 int32_t script::engine::text_length ( value item ) const {
 
-	return item.type == kind::TEXT ? texts [ static_cast < size_t > ( item.ref ) ].count ( ) - 1 : 0;
+	if ( item.type != kind::TEXT )
+		return 0;
+
+	if ( is_rope ( item.ref ) )
+		return ropes [ static_cast < size_t > ( item.ref ) ].length;
+
+	return texts [ static_cast < size_t > ( item.ref ) ].count ( ) - 1;
 
 }
 
@@ -244,6 +374,7 @@ void script::describe_into ( const engine& owner, value item, base::list < wchar
 bool script::engine::load ( const wchar_t* source, const wchar_t* path, host& with ) {
 
 	texts.clear ( );
+	ropes.clear ( );
 	lists.clear ( );
 	interned.clear ( );
 	tokens.clear ( );
@@ -436,6 +567,9 @@ script::value script::engine::binary_op ( const node& at, symbol mark, value a, 
 		return result;
 
 	}
+
+	if ( mark == symbol::PLUS && a.type == kind::TEXT && b.type == kind::TEXT )
+		return join_texts ( a, b );
 
 	if ( mark == symbol::PLUS && ( a.type == kind::TEXT || b.type == kind::TEXT ) ) {
 
