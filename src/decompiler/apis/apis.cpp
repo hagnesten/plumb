@@ -1060,38 +1060,56 @@ const wchar_t* decompiler::api_prototype ( const wchar_t* name ) {
 
 }
 
-const wchar_t* decompiler::known_parameter ( const wchar_t* function, int32_t position ) {
+const decompiler::known_entry* decompiler::known_function ( const wchar_t* function ) {
 
-	if ( !function || position < 0 || position > 3 )
+	if ( !function )
 		return nullptr;
 
 	static const known_entry table [ ] = {
 
-		{ L"StartAddress", { L"lpThreadParameter", nullptr, nullptr, nullptr } },
-		{ L"ThreadProc", { L"lpParameter", nullptr, nullptr, nullptr } },
-		{ L"WndProc", { L"hWnd", L"Msg", L"wParam", L"lParam" } },
-		{ L"TopLevelExceptionFilter", { L"ExceptionInfo", nullptr, nullptr, nullptr } },
-		{ L"HandlerRoutine", { L"CtrlType", nullptr, nullptr, nullptr } },
-		{ L"DllEntryPoint", { L"hinstDLL", L"fdwReason", L"lpReserved", nullptr } },
-		{ L"DllMain", { L"hinstDLL", L"fdwReason", L"lpReserved", nullptr } },
-		{ L"WinMain", { L"hInstance", L"hPrevInstance", L"lpCmdLine", L"nShowCmd" } },
-		{ L"wWinMain", { L"hInstance", L"hPrevInstance", L"lpCmdLine", L"nShowCmd" } },
-		{ L"main", { L"argc", L"argv", L"envp", nullptr } },
-		{ L"wmain", { L"argc", L"argv", L"envp", nullptr } },
-		{ L"TlsCallback_0", { L"DllHandle", L"Reason", L"Reserved", nullptr } },
-		{ L"TlsCallback_1", { L"DllHandle", L"Reason", L"Reserved", nullptr } },
-		{ L"TlsCallback_2", { L"DllHandle", L"Reason", L"Reserved", nullptr } }
+		{ L"StartAddress", { L"lpThreadParameter", nullptr, nullptr, nullptr }, { nullptr, nullptr, nullptr, nullptr } },
+		{ L"ThreadProc", { L"lpParameter", nullptr, nullptr, nullptr }, { L"LPVOID", nullptr, nullptr, nullptr } },
+		{ L"WndProc", { L"hWnd", L"Msg", L"wParam", L"lParam" }, { L"HWND", L"UINT", L"WPARAM", L"LPARAM" } },
+		{ L"DialogFunc", { L"hWnd", L"Msg", L"wParam", L"lParam" }, { L"HWND", L"UINT", L"WPARAM", L"LPARAM" } },
+		{ L"TopLevelExceptionFilter", { L"ExceptionInfo", nullptr, nullptr, nullptr }, { L"struct _EXCEPTION_POINTERS *", nullptr, nullptr, nullptr } },
+		{ L"Handler", { L"ExceptionInfo", nullptr, nullptr, nullptr }, { L"struct _EXCEPTION_POINTERS *", nullptr, nullptr, nullptr } },
+		{ L"HandlerRoutine", { L"CtrlType", nullptr, nullptr, nullptr }, { L"DWORD", nullptr, nullptr, nullptr } },
+		{ L"DllEntryPoint", { L"hinstDLL", L"fdwReason", L"lpReserved", nullptr }, { L"HINSTANCE", L"DWORD", L"LPVOID", nullptr } },
+		{ L"DllMain", { L"hinstDLL", L"fdwReason", L"lpReserved", nullptr }, { L"HINSTANCE", L"DWORD", L"LPVOID", nullptr } },
+		{ L"WinMain", { L"hInstance", L"hPrevInstance", L"lpCmdLine", L"nShowCmd" }, { L"HINSTANCE", L"HINSTANCE", L"LPSTR", L"int" } },
+		{ L"wWinMain", { L"hInstance", L"hPrevInstance", L"lpCmdLine", L"nShowCmd" }, { L"HINSTANCE", L"HINSTANCE", L"LPWSTR", L"int" } },
+		{ L"main", { L"argc", L"argv", L"envp", nullptr }, { L"int", L"const char **", L"const char **", nullptr } },
+		{ L"wmain", { L"argc", L"argv", L"envp", nullptr }, { L"int", L"const wchar_t **", L"const wchar_t **", nullptr } },
+		{ L"TlsCallback_0", { L"DllHandle", L"Reason", L"Reserved", nullptr }, { L"PVOID", L"DWORD", L"PVOID", nullptr } },
+		{ L"TlsCallback_1", { L"DllHandle", L"Reason", L"Reserved", nullptr }, { L"PVOID", L"DWORD", L"PVOID", nullptr } },
+		{ L"TlsCallback_2", { L"DllHandle", L"Reason", L"Reserved", nullptr }, { L"PVOID", L"DWORD", L"PVOID", nullptr } }
 
 	};
 
 	for ( const known_entry& item : table ) {
 
 		if ( base::same_text ( item.name, function ) )
-			return item.params [ position ];
+			return &item;
 
 	}
 
 	return nullptr;
+
+}
+
+const wchar_t* decompiler::known_parameter ( const wchar_t* function, int32_t position ) {
+
+	const known_entry* item = known_function ( function );
+
+	return item && position >= 0 && position < 4 ? item->params [ position ] : nullptr;
+
+}
+
+const wchar_t* decompiler::known_parameter_type ( const wchar_t* function, int32_t position ) {
+
+	const known_entry* item = known_function ( function );
+
+	return item && position >= 0 && position < 4 ? item->types [ position ] : nullptr;
 
 }
 

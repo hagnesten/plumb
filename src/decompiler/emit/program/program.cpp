@@ -12,6 +12,7 @@
 #include "decompiler/emit/sink/sink.h"
 #include "decompiler/literals/literals.h"
 #include "decompiler/apis/apis.h"
+#include "decompiler/winstructs/winstructs.h"
 #include "decompiler/lift/yields/yields.h"
 #include "base/strings/strings.h"
 #include "base/sort/sort.h"
@@ -141,6 +142,11 @@ bool decompiler::emit ( builder& b ) {
 		if ( !declared && item.kind == var_kind::PARAMETER && b.has_prototype && item.position >= 0 && item.position < b.prototype.count )
 			declared = b.prototype.types [ item.position ];
 
+		wchar_t own [ 200 ];
+
+		if ( !declared && known_names && item.kind == var_kind::PARAMETER && !b.has_prototype && b.names && b.names->name ( b.function, true, own, 200 ) )
+			declared = known_parameter_type ( own, item.position );
+
 		if ( !declared && !( item.kind == var_kind::PARAMETER && b.has_prototype ) && v < inferred.count ( ) && !inferred [ static_cast < size_t > ( v ) ].empty ( ) ) {
 
 			declared = inferred [ static_cast < size_t > ( v ) ].get ( );
@@ -174,6 +180,57 @@ bool decompiler::emit ( builder& b ) {
 			b.var_structs [ static_cast < size_t > ( v ) ].set ( shape.pointee );
 
 		typed = true;
+
+	}
+
+	for ( int32_t round = 0; round < 3 && win_structs; round++ ) {
+
+		for ( const statement& line : b.statements ) {
+
+			if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+				continue;
+
+			int32_t v = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( line.left ) ].value );
+			const expr& load = b.exprs [ static_cast < size_t > ( line.right ) ];
+
+			if ( v < 0 || v >= b.vars.count ( ) || b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::REGISTER || !b.var_types [ static_cast < size_t > ( v ) ].empty ( ) || load.kind != op::LOAD || load.size != 8 || load.a < 0 )
+				continue;
+
+			const expr& where = b.exprs [ static_cast < size_t > ( load.a ) ];
+			int32_t base_var = -1;
+			int64_t offset = 0;
+
+			if ( where.kind == op::VAR )
+				base_var = static_cast < int32_t > ( where.value );
+			else if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST ) {
+
+				base_var = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( where.a ) ].value );
+				offset = b.exprs [ static_cast < size_t > ( where.b ) ].value;
+
+			}
+
+			if ( base_var < 0 || base_var >= b.var_structs.count ( ) || b.var_structs [ static_cast < size_t > ( base_var ) ].empty ( ) )
+				continue;
+
+			int32_t slot = 0;
+			const builtin_field* known = builtin_field_at ( b.var_structs [ static_cast < size_t > ( base_var ) ].get ( ), offset, slot );
+
+			if ( !known || !known->pointee || known->count != 1 )
+				continue;
+
+			b.var_types [ static_cast < size_t > ( v ) ].set ( known->type );
+			b.var_structs [ static_cast < size_t > ( v ) ].set ( known->pointee );
+			b.vars [ static_cast < size_t > ( v ) ].bits = static_cast < uint8_t > ( b.vars [ static_cast < size_t > ( v ) ].bits | POINTER );
+
+			if ( v < body_emitter.element.count ( ) )
+				body_emitter.element [ static_cast < size_t > ( v ) ] = 0;
+
+			if ( v < b.call_names.count ( ) && b.call_names [ static_cast < size_t > ( v ) ].empty ( ) && v != body_emitter.result_var )
+				b.call_names [ static_cast < size_t > ( v ) ].set ( known->name );
+
+			typed = true;
+
+		}
 
 	}
 

@@ -148,6 +148,9 @@
     <Filter Include="src\decompiler\apis">
       <UniqueIdentifier>{4BFEBF91-6C3B-E434-AD2D-AFB58544DC3C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\decompiler\winstructs">
+      <UniqueIdentifier>{7E3A9C51-2B84-4F1D-9A6E-5C0B8D2F4E17}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\decompiler\builder">
       <UniqueIdentifier>{6E83766A-58A0-2837-A3D2-E2EA9839DAC0}</UniqueIdentifier>
     </Filter>
@@ -762,6 +765,9 @@
     <ClCompile Include="src\decompiler\apis\apis.cpp">
       <Filter>src\decompiler\apis</Filter>
     </ClCompile>
+    <ClCompile Include="src\decompiler\winstructs\winstructs.cpp">
+      <Filter>src\decompiler\winstructs</Filter>
+    </ClCompile>
     <ClCompile Include="src\decompiler\builder\builder.cpp">
       <Filter>src\decompiler\builder</Filter>
     </ClCompile>
@@ -1282,6 +1288,9 @@
     </ClInclude>
     <ClInclude Include="src\decompiler\apis\apis.h">
       <Filter>src\decompiler\apis</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\winstructs\winstructs.h">
+      <Filter>src\decompiler\winstructs</Filter>
     </ClInclude>
     <ClInclude Include="src\decompiler\builder\builder.h">
       <Filter>src\decompiler\builder</Filter>

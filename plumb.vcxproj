@@ -76,6 +76,7 @@
     <ClCompile Include="src\debugger\traps\coverage\coverage.cpp" />
     <ClCompile Include="src\debugger\traps\hardware\hardware.cpp" />
     <ClCompile Include="src\decompiler\apis\apis.cpp" />
+    <ClCompile Include="src\decompiler\winstructs\winstructs.cpp" />
     <ClCompile Include="src\decompiler\builder\builder.cpp" />
     <ClCompile Include="src\decompiler\cache\cache.cpp" />
     <ClCompile Include="src\decompiler\decompile\decompile.cpp" />
@@ -304,6 +305,7 @@
     <ClInclude Include="src\debugger\traps\coverage\coverage.h" />
     <ClInclude Include="src\debugger\traps\hardware\hardware.h" />
     <ClInclude Include="src\decompiler\apis\apis.h" />
+    <ClInclude Include="src\decompiler\winstructs\winstructs.h" />
     <ClInclude Include="src\decompiler\builder\builder.h" />
     <ClInclude Include="src\decompiler\cache\cache.h" />
     <ClInclude Include="src\decompiler\decompile\decompile.h" />

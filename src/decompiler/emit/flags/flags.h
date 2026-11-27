@@ -82,6 +82,8 @@ namespace decompiler {
 
 	extern bool known_names;
 
+	extern bool win_structs;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

@@ -1,6 +1,7 @@
 #include "decompiler/emit/access/access.h"
 #include "decompiler/emit/vectors/vectors.h"
 #include "decompiler/emit/flags/flags.h"
+#include "decompiler/winstructs/winstructs.h"
 #include "decompiler/lift/intrinsics/intrinsics.h"
 #include "decompiler/emit/sink/sink.h"
 #include "decompiler/literals/literals.h"
@@ -763,6 +764,38 @@ void decompiler::emitter::lvalue_or_load ( const expr& item, int32_t parent ) {
 			out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
 			out.put ( L"->", syntax::OPERATOR );
 			out.put ( field, syntax::GLOBAL, tag );
+
+			return;
+
+		}
+
+		int32_t slot = 0;
+		const builtin_field* known = win_structs ? builtin_field_at ( b.var_structs [ static_cast < size_t > ( var ) ].get ( ), offset, slot ) : nullptr;
+
+		if ( known ) {
+
+			bool exact = known->size == item.size;
+
+			if ( !exact ) {
+
+				out.put ( L"*(" );
+				type_name ( item.size, item.bits, false, true );
+				out.put ( L" *)&" );
+
+			}
+
+			var_name ( var, name );
+			out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
+			out.put ( L"->", syntax::OPERATOR );
+			out.put ( known->name, syntax::GLOBAL );
+
+			if ( known->count > 1 ) {
+
+				out.put ( L"[" );
+				index_number ( slot );
+				out.put ( L"]" );
+
+			}
 
 			return;
 

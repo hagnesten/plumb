@@ -54,6 +54,7 @@ bool decompiler::tail_returns = true;
 bool decompiler::args_names = true;
 bool decompiler::plain_sources = true;
 bool decompiler::known_names = true;
+bool decompiler::win_structs = true;
 
 bool decompiler::unnamed_results = true;
 
