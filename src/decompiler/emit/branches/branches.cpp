@@ -800,6 +800,12 @@ int32_t decompiler::emitter::branch ( int32_t block, int32_t stop, const frame& 
 		else_part = taken;
 		negated = true;
 
+	} else if ( short_fall_returns && follow < 0 && !chained && other >= 0 && taken >= 0 && other != taken && item.condition >= 0 && b.code [ static_cast < size_t > ( other ) ].end == term::RETURN && empty_block ( other ) && pred [ static_cast < size_t > ( other ) ].count ( ) == 1 && !empty_block ( taken ) && ( b.code [ static_cast < size_t > ( taken ) ].end == term::RETURN || b.code [ static_cast < size_t > ( taken ) ].end == term::TAIL ) && !emitted [ static_cast < size_t > ( other ) ] && !emitted [ static_cast < size_t > ( taken ) ] ) {
+
+		then_part = other;
+		else_part = taken;
+		negated = true;
+
 	} else if ( ending_fall_first && follow < 0 && !chained && other >= 0 && taken >= 0 && other != taken && item.condition >= 0 && negative_test ( item.condition ) && !emitted [ static_cast < size_t > ( other ) ] && !emitted [ static_cast < size_t > ( taken ) ] && !exit_block ( taken ) && b.code [ static_cast < size_t > ( taken ) ].end != term::RETURN ) {
 
 		then_part = other;
