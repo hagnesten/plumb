@@ -187,6 +187,9 @@ void decompiler::emitter::statement_line ( const statement& item ) {
 	if ( !inline_mode && index >= 0 && index < hidden.count ( ) && hidden [ static_cast < size_t > ( index ) ] )
 		return;
 
+	if ( !inline_mode )
+		printing_line = index;
+
 	if ( dry )
 		return;
 

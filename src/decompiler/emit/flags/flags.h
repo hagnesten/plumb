@@ -72,6 +72,8 @@ namespace decompiler {
 
 	extern bool equal_falls;
 
+	extern bool ordered_scales;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

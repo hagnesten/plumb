@@ -203,6 +203,7 @@ namespace decompiler {
 
 		base::list < global_access > anchors;
 		base::list < int32_t > scale_defs;
+		int32_t printing_line = -1;
 		bool anchors_ready = false;
 
 		bool split_global ( int32_t address, global_access& out_access ) const;

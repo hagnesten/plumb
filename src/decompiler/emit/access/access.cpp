@@ -236,10 +236,13 @@ bool decompiler::emitter::split_global ( int32_t address, global_access& out_acc
 
 			int32_t plain = bare_index ( scaled.a );
 
-			for ( int32_t k = 0; plain >= 0 && k + 2 < scale_defs.count ( ); k += 3 ) {
+			for ( int32_t k = 0; plain >= 0 && k + 3 < scale_defs.count ( ); k += 4 ) {
 
 				int32_t from = scale_defs [ static_cast < size_t > ( k + 1 ) ];
 				int64_t factor = scale_defs [ static_cast < size_t > ( k + 2 ) ];
+
+				if ( ordered_scales && printing_line >= 0 && scale_defs [ static_cast < size_t > ( k + 3 ) ] >= printing_line )
+					continue;
 
 				if ( factor > 1 && out_access.scale % factor == 0 && b.same ( from, plain ) ) {
 
@@ -293,6 +296,7 @@ void decompiler::emitter::collect_anchors ( ) {
 	anchors_ready = true;
 	anchors.clear ( );
 	scale_defs.clear ( );
+	printing_line = -1;
 
 	{
 
@@ -307,7 +311,9 @@ void decompiler::emitter::collect_anchors ( ) {
 
 		}
 
-		for ( const statement& line : b.statements ) {
+		for ( int32_t s = 0; s < b.statements.count ( ); s++ ) {
+
+			const statement& line = b.statements [ static_cast < size_t > ( s ) ];
 
 			if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 )
 				continue;
@@ -324,6 +330,7 @@ void decompiler::emitter::collect_anchors ( ) {
 			scale_defs.push ( line.left );
 			scale_defs.push ( bare_index ( source.a ) );
 			scale_defs.push ( static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( source.b ) ].value ) );
+			scale_defs.push ( s );
 
 		}
 
