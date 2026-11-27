@@ -108,6 +108,8 @@ namespace decompiler {
 
 	extern bool pre_index_folds;
 
+	extern bool big_fall_then;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

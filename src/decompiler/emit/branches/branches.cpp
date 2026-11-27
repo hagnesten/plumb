@@ -732,6 +732,12 @@ int32_t decompiler::emitter::branch ( int32_t block, int32_t stop, const frame& 
 		else_part = taken;
 		negated = true;
 
+	} else if ( big_fall_then && follow >= 0 && else_part != follow && other >= 0 && taken >= 0 && other != follow && item.condition >= 0 && negative_test ( item.condition ) && b.code [ static_cast < size_t > ( taken ) ].end == term::FALL && b.code [ static_cast < size_t > ( taken ) ].taken == follow && small_block ( taken ) && pred [ static_cast < size_t > ( taken ) ].count ( ) == 1 && pred [ static_cast < size_t > ( other ) ].count ( ) == 1 && b.code [ static_cast < size_t > ( other ) ].end == term::BRANCH ) {
+
+		then_part = other;
+		else_part = taken;
+		negated = true;
+
 	} else if ( fall_returns_first && follow < 0 && other >= 0 && taken >= 0 && item.condition >= 0 && b.exprs [ static_cast < size_t > ( item.condition ) ].kind == op::LOR && else_returns && !chained && empty_block ( taken ) && empty_block ( other ) && !branch_fed ( block ) && b.code [ static_cast < size_t > ( other ) ].end == term::RETURN && b.code [ static_cast < size_t > ( taken ) ].end == term::RETURN && pred [ static_cast < size_t > ( other ) ].count ( ) == 1 && pred [ static_cast < size_t > ( taken ) ].count ( ) == 1 ) {
 
 		then_part = other;
