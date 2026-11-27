@@ -48,6 +48,7 @@ bool decompiler::round_trips = true;
 bool decompiler::exact_reals = true;
 bool decompiler::int_sources = true;
 bool decompiler::unequal_falls = true;
+bool decompiler::equal_falls = true;
 
 bool decompiler::unnamed_results = true;
 

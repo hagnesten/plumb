@@ -492,6 +492,9 @@ bool decompiler::emitter::negative_test ( int32_t condition ) const {
 	if ( unequal_falls && test.kind == op::NE && right.kind != op::CONST )
 		return true;
 
+	if ( equal_falls && test.kind == op::EQ && right.kind != op::CONST )
+		return true;
+
 	return test.kind == op::EQ ? zero : ( right.kind == op::CONST && !zero );
 
 }
