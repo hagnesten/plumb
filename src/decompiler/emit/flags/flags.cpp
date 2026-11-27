@@ -58,6 +58,7 @@ bool decompiler::win_structs = true;
 bool decompiler::byte_indexes = true;
 bool decompiler::void_params = true;
 bool decompiler::buffer_arrays = true;
+bool decompiler::ida_typedefs = true;
 
 bool decompiler::unnamed_results = true;
 

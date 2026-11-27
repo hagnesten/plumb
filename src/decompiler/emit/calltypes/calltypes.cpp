@@ -114,7 +114,7 @@ void decompiler::infer_call_types ( builder& b, base::list < base::text >& out )
 
 	};
 
-	auto offer = [ & ] ( int32_t v, const wchar_t* type ) {
+	auto offer = [ & ] ( int32_t v, const wchar_t* type, bool slot = false ) {
 
 		if ( v < 0 || v >= b.vars.count ( ) || !type || !type [ 0 ] || !out [ static_cast < size_t > ( v ) ].empty ( ) )
 			return;
@@ -125,7 +125,9 @@ void decompiler::infer_call_types ( builder& b, base::list < base::text >& out )
 		if ( !parse_type ( type, b.long_mode, parsed, clean, 64 ) || parsed.empty || !parsed.size )
 			return;
 
-		if ( parsed.size != b.vars [ static_cast < size_t > ( v ) ].size )
+		bool smaller_slot = slot && ida_typedefs && b.vars [ static_cast < size_t > ( v ) ].kind == var_kind::STACK && parsed.size < b.vars [ static_cast < size_t > ( v ) ].size && parsed.size >= 4;
+
+		if ( parsed.size != b.vars [ static_cast < size_t > ( v ) ].size && !smaller_slot )
 			return;
 
 		out [ static_cast < size_t > ( v ) ].set ( clean );
@@ -195,7 +197,7 @@ void decompiler::infer_call_types ( builder& b, base::list < base::text >& out )
 				int64_t target_var = passed.a < 0 ? passed.value : b.exprs [ static_cast < size_t > ( passed.a ) ].value;
 
 				if ( pointee_of ( shape->types [ i ], inner, 64 ) )
-					offer ( static_cast < int32_t > ( target_var ), inner );
+					offer ( static_cast < int32_t > ( target_var ), inner, true );
 
 			}
 

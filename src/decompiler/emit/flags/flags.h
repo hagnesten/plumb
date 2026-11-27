@@ -90,6 +90,8 @@ namespace decompiler {
 
 	extern bool buffer_arrays;
 
+	extern bool ida_typedefs;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

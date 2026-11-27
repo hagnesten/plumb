@@ -389,7 +389,22 @@ void decompiler::emitter::var_type ( int32_t index ) {
 
 	if ( index < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( index ) ].empty ( ) ) {
 
-		out.put ( b.var_types [ static_cast < size_t > ( index ) ].get ( ), syntax::TYPE );
+		const wchar_t* shown = b.var_types [ static_cast < size_t > ( index ) ].get ( );
+
+		if ( ida_typedefs ) {
+
+			static const wchar_t* const renamed [ ] [ 2 ] = { { L"FILETIME", L"struct _FILETIME" }, { L"SYSTEMTIME", L"struct _SYSTEMTIME" }, { L"DWORD64", L"unsigned __int64" } };
+
+			for ( const auto& pair : renamed ) {
+
+				if ( base::same_text ( shown, pair [ 0 ] ) )
+					shown = pair [ 1 ];
+
+			}
+
+		}
+
+		out.put ( shown, syntax::TYPE );
 
 		return;
 
