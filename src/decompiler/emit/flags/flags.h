@@ -60,6 +60,8 @@ namespace decompiler {
 
 	extern bool thread_names;
 
+	extern bool offset_folds;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

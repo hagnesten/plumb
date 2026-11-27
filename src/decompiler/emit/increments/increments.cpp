@@ -214,6 +214,29 @@ void decompiler::emitter::plan_increments ( ) {
 				bool memory = !defines || ( loaded >= 0 && b.exprs [ static_cast < size_t > ( loaded ) ].kind == op::LOAD );
 				bool calls = prior.right < 0 || count_call ( prior.right, 0 ) || ( !defines && count_call ( prior.left, 0 ) );
 
+				auto offset_use = [ & ] ( auto& self, int32_t e, int32_t depth ) -> bool {
+
+					if ( e < 0 || depth > 64 )
+						return false;
+
+					const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+					if ( node.kind == op::LOAD && node.a >= 0 ) {
+
+						const expr& where = b.exprs [ static_cast < size_t > ( node.a ) ];
+
+						if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( where.a ) ].value == x && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( where.b ) ].value )
+							return true;
+
+					}
+
+					return self ( self, node.a, depth + 1 ) || self ( self, node.b, depth + 1 ) || self ( self, node.c, depth + 1 );
+
+				};
+
+				if ( offset_folds && ( offset_use ( offset_use, prior.right, 0 ) || ( !defines && offset_use ( offset_use, prior.left, 0 ) ) ) )
+					calls = true;
+
 				if ( ( !( last_line && latch ) || ( memory && latch_folds ) ) && !calls && ( prior.kind == stmt::ASSIGN || prior.kind == stmt::STORE ) && uses == 1 && fold_at [ static_cast < size_t > ( before ) ] < 0 && !hidden [ static_cast < size_t > ( before ) ] && !( defines && b.exprs [ static_cast < size_t > ( prior.left ) ].value == x ) ) {
 
 					fold_at [ static_cast < size_t > ( before ) ] = static_cast < int32_t > ( x );

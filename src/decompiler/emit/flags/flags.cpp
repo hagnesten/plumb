@@ -43,6 +43,7 @@ bool decompiler::skip_increments = true;
 bool decompiler::cast_bounds = true;
 bool decompiler::plain_stores = true;
 bool decompiler::thread_names = true;
+bool decompiler::offset_folds = true;
 
 bool decompiler::unnamed_results = true;
 
