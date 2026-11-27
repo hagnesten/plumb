@@ -143,6 +143,8 @@
     <ClCompile Include="src\loader\binary\binary.cpp" />
     <ClCompile Include="src\loader\symbols\symbols.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\precompiled\interface\interface.cpp" />
+    <ClCompile Include="src\precompiled\system\system.cpp" />
     <ClCompile Include="src\render\canvas\canvas.cpp" />
     <ClCompile Include="src\render\gpu\gpu.cpp" />
     <ClCompile Include="src\runtime\memory\memory.cpp">
@@ -364,6 +366,8 @@
     <ClInclude Include="src\host\window\window.h" />
     <ClInclude Include="src\loader\binary\binary.h" />
     <ClInclude Include="src\loader\symbols\symbols.h" />
+    <ClInclude Include="src\precompiled\interface\interface.h" />
+    <ClInclude Include="src\precompiled\system\system.h" />
     <ClInclude Include="src\render\canvas\canvas.h" />
     <ClInclude Include="src\render\colors\colors.h" />
     <ClInclude Include="src\render\commands\commands.h" />
@@ -445,5 +449,6 @@
   <ItemGroup>
     <ResourceCompile Include="assets\plumb.rc" />
   </ItemGroup>
+  <Import Project="props\plumb.targets" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

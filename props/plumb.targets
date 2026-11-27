@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <plumb_system_pch>$(IntDir)system.pch</plumb_system_pch>
+    <plumb_interface_pch>$(IntDir)interface.pch</plumb_interface_pch>
+    <plumb_system_use>/Yu"precompiled/system/system.h" /Fp"$(plumb_system_pch)" /FIprecompiled/system/system.h</plumb_system_use>
+    <plumb_interface_use>/Yu"precompiled/interface/interface.h" /Fp"$(plumb_interface_pch)" /FIprecompiled/interface/interface.h</plumb_interface_use>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ClCompile Update="src\precompiled\system\system.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompiled/system/system.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(plumb_system_pch)</PrecompiledHeaderOutputFile>
+      <plumb_precompile>true</plumb_precompile>
+    </ClCompile>
+    <ClCompile Update="src\precompiled\interface\interface.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompiled/interface/interface.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(plumb_interface_pch)</PrecompiledHeaderOutputFile>
+      <plumb_precompile>true</plumb_precompile>
+    </ClCompile>
+    <ClCompile Update="src\debugger\**\*.cpp;src\analysis\discovery\discovery.cpp;src\analysis\signatures\signatures.cpp;src\base\clock\clock.cpp;src\base\files\files.cpp;src\loader\binary\binary.cpp;src\loader\symbols\symbols.cpp;src\render\gpu\gpu.cpp;src\script\jit\jit.cpp;src\host\dpi\dpi.cpp">
+      <AdditionalOptions>$(plumb_system_use) %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Update="src\ui\**\*.cpp;src\host\headless\capture.cpp;src\host\launch\launch.cpp;src\host\loop\loop.cpp;src\host\pacing\pacing.cpp;src\host\painting\painting.cpp;src\host\state\state.cpp;src\host\window\window.cpp">
+      <AdditionalOptions>$(plumb_interface_use) %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Update="src\x86\opcodes\opcodes.cpp">
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <ClCompile Update="src\host\headless\capture.cpp;src\analysis\discovery\discovery.cpp;src\decompiler\lift\lifter\lifter.cpp;src\ui\listing\listing\listing.cpp;src\decompiler\lift\machine\machine.cpp;src\render\gpu\gpu.cpp;src\decompiler\lift\webs\webs.cpp;src\ui\core\settings\settings.cpp;src\ui\views\graph\graph.cpp;src\script\jit\jit.cpp;src\decompiler\lift\yields\yields.cpp;src\ui\core\session\session.cpp;src\ui\listing\rows\rows.cpp;src\decompiler\emit\program\program.cpp;src\decompiler\emit\pointers\pointers.cpp">
+      <plumb_early>true</plumb_early>
+    </ClCompile>
+  </ItemGroup>
+
+  <Target Name="plumb_precompile" BeforeTargets="ClCompile" Condition="'@(ClCompile)' != ''">
+
+    <ItemGroup>
+      <plumb_pch_source Include="@(ClCompile)" Condition="'%(ClCompile.plumb_precompile)' == 'true' and '%(ClCompile.ExcludedFromBuild)' != 'true'" />
+      <ClCompile Remove="@(plumb_pch_source)" />
+      <plumb_pch_source>
+        <MultiToolTaskDependency />
+        <TrackerLogDirectory>$(TLogLocation)precompiled\</TrackerLogDirectory>
+      </plumb_pch_source>
+      <plumb_early_source Include="@(ClCompile)" Condition="'%(ClCompile.plumb_early)' == 'true'" />
+      <plumb_late_source Include="@(ClCompile)" Condition="'%(ClCompile.plumb_early)' != 'true'" />
+      <ClCompile Remove="@(ClCompile)" />
+      <ClCompile Include="@(plumb_early_source);@(plumb_late_source)" />
+    </ItemGroup>
+
+    <MakeDir Directories="$(TLogLocation)precompiled" />
+
+    <MultiToolTask
+      TaskName="Microsoft.Build.CPPTasks.CL"
+      Sources="@(plumb_pch_source)"
+      TrackerLogDirectory="$(TLogLocation)precompiled\"
+      ToolArchitecture="$(CLToolArchitecture)"
+      TrackerFrameworkPath="$(CLTrackerFrameworkPath)"
+      TrackerSdkPath="$(CLTrackerSdkPath)"
+      ToolExe="$(CLToolExe)"
+      ToolPath="$(CLToolPath)"
+      TrackFileAccess="$(TrackFileAccess)"
+      UseStructuredOutput="$(UseClStructuredOutput)"
+      MaxProcessCount="$(MultiProcMaxCount)"
+      EnforceProcessCountAcrossBuilds="$(EnforceProcessCountAcrossBuilds)"
+      SchedulerName="$(MultiProcSchedulerName)" />
+
+  </Target>
+
+</Project>
