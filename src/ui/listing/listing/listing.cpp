@@ -1944,7 +1944,60 @@ const wchar_t* ui::app::data_prefix ( uint64_t address ) const {
 
 			x86::instruction next;
 
-			if ( !db->decode ( at, next ) || next.control != x86::flow::NONE )
+			if ( !db->decode ( at, next ) )
+				break;
+
+			if ( next.control == x86::flow::CALL ) {
+
+				static const int32_t passed [ 4 ] = { 1, 2, 8, 9 };
+				int32_t slot_index = -1;
+
+				for ( int32_t k = 0; k < 4; k++ ) {
+
+					if ( passed [ k ] == family )
+						slot_index = k;
+
+				}
+
+				uint64_t target = decompiler::call_target ( next );
+				const wchar_t* api = nullptr;
+
+				for ( const loader::import& item : file.imports ) {
+
+					if ( item.slot == target && !item.name.empty ( ) )
+						api = item.name.get ( );
+
+				}
+
+				const wchar_t* text = api && slot_index >= 0 ? decompiler::api_prototype ( api ) : nullptr;
+				decompiler::c_prototype shape;
+				base::writer problem;
+
+				if ( text && decompiler::parse_prototype ( text, true, shape, problem ) && slot_index < shape.count ) {
+
+					const wchar_t* type = shape.types [ slot_index ];
+					bool starred = false;
+
+					for ( const wchar_t* c = type; *c; c++ )
+						starred = starred || *c == L'*';
+
+					bool pointer_name = !starred && ( type [ 0 ] == L'P' || ( type [ 0 ] == L'L' && type [ 1 ] == L'P' ) || ( type [ 0 ] == L'R' && type [ 1 ] == L'E' && type [ 2 ] == L'F' ) ) && !decompiler::void_pointer_text ( type );
+					static const wchar_t* const not_structs [ ] = { L"LPSTR", L"LPCSTR", L"LPWSTR", L"LPCWSTR", L"PSTR", L"PCSTR", L"PWSTR", L"PCWSTR", L"LPCVOID", L"LPBYTE", L"PBYTE", L"LPCH", L"LPWCH", L"LPCCH", L"LPCWCH", L"PCNZWCH", L"LPHANDLE", L"PHANDLE",
+						L"LPDWORD", L"PDWORD", L"LPWORD", L"PWORD", L"LPLONG", L"PLONG", L"PULONG", L"PUINT", L"LPBOOL", L"PBOOL", L"PSIZE_T", L"PULONG_PTR", L"PDWORD_PTR", L"PDWORD64", L"PHKEY", L"PLARGE_INTEGER", L"PULARGE_INTEGER", L"LPINT", L"PINT", L"PUCHAR", L"PULONG64", L"PLONG64", L"PSID", L"PACL", L"PSECURITY_DESCRIPTOR", L"LPUNKNOWN", L"PTP_WORK", L"PSLIST_ENTRY" };
+
+					for ( const wchar_t* name : not_structs )
+						pointer_name = pointer_name && !base::same_text ( type, name );
+
+					if ( pointer_name )
+						return L"stru_";
+
+				}
+
+				break;
+
+			}
+
+			if ( next.control != x86::flow::NONE )
 				break;
 
 			uint8_t size = 0;
