@@ -23,4 +23,6 @@ namespace decompiler {
 
 	void void_compare_params ( builder& b, base::list < uint8_t >& element );
 
+	void callee_typed_params ( builder& b, base::list < uint8_t >& element );
+
 }

@@ -68,6 +68,7 @@ bool decompiler::arithmetic_elements = false;
 bool decompiler::void_compares = true;
 bool decompiler::pre_index_folds = true;
 bool decompiler::big_fall_then = true;
+bool decompiler::callee_param_types = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;

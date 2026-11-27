@@ -110,6 +110,8 @@ namespace decompiler {
 
 	extern bool big_fall_then;
 
+	extern bool callee_param_types;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

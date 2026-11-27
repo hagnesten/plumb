@@ -1111,6 +1111,99 @@ void decompiler::typed_pointers ( builder& b, base::list < uint8_t >& element ) 
 	if ( void_compares )
 		void_compare_params ( b, element );
 
+	if ( callee_param_types )
+		callee_typed_params ( b, element );
+
+}
+
+void decompiler::callee_typed_params ( builder& b, base::list < uint8_t >& element ) {
+
+	if ( !b.names )
+		return;
+
+	int32_t total = b.vars.count ( );
+	c_prototype shape;
+
+	auto visit = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+		if ( e < 0 || depth > 64 )
+			return;
+
+		const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+		if ( node.kind == op::CALL && node.value ) {
+
+			const wchar_t* text = b.names->derived ( static_cast < uint64_t > ( node.value ) );
+			base::writer problem;
+
+			if ( text && parse_prototype ( text, b.long_mode, shape, problem ) ) {
+
+				for ( int32_t i = 0; i < node.arg_count && i < shape.count && i < 4; i++ ) {
+
+					int32_t passed = b.args [ static_cast < size_t > ( node.first_arg + i ) ];
+
+					if ( passed < 0 || b.exprs [ static_cast < size_t > ( passed ) ].kind != op::VAR )
+						continue;
+
+					int64_t p = b.exprs [ static_cast < size_t > ( passed ) ].value;
+
+					if ( p < 0 || p >= total || b.vars [ static_cast < size_t > ( p ) ].kind != var_kind::PARAMETER || b.vars [ static_cast < size_t > ( p ) ].size != 8 || ( b.vars [ static_cast < size_t > ( p ) ].bits & FLOATING ) || ( p < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( p ) ].empty ( ) ) )
+						continue;
+
+					uint8_t& slot = element [ static_cast < size_t > ( p ) ];
+					const wchar_t* type = shape.types [ i ];
+					uint8_t wanted = 0;
+
+					if ( base::same_text ( type, L"__int16 *" ) )
+						wanted = 0x22;
+					else if ( base::same_text ( type, L"unsigned __int16 *" ) )
+						wanted = 0x42;
+					else if ( base::same_text ( type, L"float *" ) )
+						wanted = 0x84;
+
+					if ( !wanted )
+						continue;
+
+					if ( !slot || ( ( slot & 0x9F ) == ( wanted & 0x9F ) && !( slot & 0x60 ) ) )
+						slot = wanted;
+
+				}
+
+			}
+
+		}
+
+		self ( self, node.a, depth + 1 );
+		self ( self, node.b, depth + 1 );
+		self ( self, node.c, depth + 1 );
+
+		for ( int32_t i = 0; i < node.arg_count; i++ )
+			self ( self, b.args [ static_cast < size_t > ( node.first_arg + i ) ], depth + 1 );
+
+	};
+
+	for ( const block_code& block : b.code ) {
+
+		if ( !block.reachable )
+			continue;
+
+		for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
+
+			const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+			if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+				continue;
+
+			visit ( visit, line.left, 0 );
+			visit ( visit, line.right, 0 );
+
+		}
+
+		visit ( visit, block.condition, 0 );
+		visit ( visit, block.returned, 0 );
+
+	}
+
 }
 
 void decompiler::void_compare_params ( builder& b, base::list < uint8_t >& element ) {
