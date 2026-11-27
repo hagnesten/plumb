@@ -16,6 +16,23 @@ namespace ui {
 
 	extern const mcp_tool mcp_tools [ ];
 
+	struct mcp_bridge {
+
+		const char* name;
+		const char* description;
+		const char* params;
+		const wchar_t* script;
+
+	};
+
+	extern const mcp_bridge mcp_bridges [ ];
+
+	extern const int32_t mcp_bridge_count;
+
+	void write_schema ( const char* params, json::writer& out );
+
+	void bridge_source ( const wchar_t* script, const json::value* args, base::list < wchar_t >& out );
+
 	struct mcp_text {
 
 		base::list < wchar_t > out;

@@ -30,6 +30,277 @@ const ui::mcp_tool ui::mcp_tools [ ] = {
 	{ "run_script", "Run Plumb Script (.psc), a C-like scripting language with Plumb's API: functions(), name(a), set_name(a, n), refs_to(a), instruction(a), decompile(f), bytes(a, n), find_bytes(p) and more. Returns everything the script prints, or the error with its line.", "{\"type\":\"object\",\"properties\":{\"source\":{\"type\":\"string\",\"description\":\"Script text\"},\"path\":{\"type\":\"string\",\"description\":\"Or the full path of a .psc file\"}}}" }
 };
 
+const ui::mcp_bridge ui::mcp_bridges [ ] = {
+	{ "function_info", "Everything about one function: bounds, size, instruction and block counts, callers, how it was found, its prototype and note.", "function!:Address or name", L"var i = function_info($function); print(\"name \" + function_name($function)); print(\"start \" + hex(i[0]) + \"  end \" + hex(i[1]) + \"  size \" + hex(i[2])); print(\"instructions \" + i[3] + \"  blocks \" + i[4] + \"  callers \" + i[5]); print(\"flags \" + join(function_flags($function), \" \")); var p = prototype($function); if (p != none && p != \"\") print(\"prototype \" + p); var n = note($function); if (n != none && n != \"\") print(\"note \" + n);" },
+	{ "function_summary", "A compact digest of a function for reading at a glance: name, size, callers, every function and import it calls, and every string it uses.", "function!:Address or name", L"var i = function_info($function); print(function_name($function) + \"  \" + hex(i[0]) + \"  size \" + hex(i[2]) + \"  callers \" + i[5]); print(\"calls:\"); named(callees($function)); print(\"strings:\"); texts($function);" },
+	{ "function_strings", "Every string a function references, with the instruction that uses it.", "function!:Address or name", L"texts($function);" },
+	{ "function_cfg", "The function's control flow graph: basic blocks as [start, end, instructions, successors, returns] and edges as [from, to, kind] with kinds fall, taken, not_taken, jump and case.", "function!:Address or name", L"print(\"blocks:\"); rows(blocks($function)); print(\"edges:\"); rows(edges($function));" },
+	{ "callers", "Functions that call a function, with their names.", "function!:Address or name", L"named(callers($function));" },
+	{ "call_graph", "A call tree around a function, a few levels deep. Direction is callees (default) or callers.", "function!:Address or name|depth#:Levels, default 2, at most 6|direction:callees or callers", L"var d = $depth == none ? 2 : min($depth, 6); var f = function_at($function); tree(f, 0, d, \"\", [f], $direction == \"callers\");" },
+	{ "decompile_many", "Decompile several functions in one call. Give addresses or names separated by commas or new lines.", "functions!:Addresses or names", L"var list = split(replace($functions, \"\\n\", \",\"), \",\"); for (var i = 0; i < len(list); i++) { var f = trim(list[i]); if (f == \"\") continue; print(\"// \" + f); print(decompile(f)); }" },
+	{ "list_locals", "Every variable in a function's C as [key, name, type, local or parameter]. The key (v3, a1) never changes.", "function!:Address or name", L"rows(locals($function));" },
+	{ "rename_local", "Rename a variable in a function's C. variable is its key (v3, a1) or current name. An empty name resets it.", "function!:Address or name|variable!:Key or current name|name!:New name", L"set_local_name($function, $variable, $name); rows(locals($function));" },
+	{ "set_local_type", "Set a variable's type in a function's C, like uint8_t* or player_t*. An empty type goes back to the inferred one.", "function!:Address or name|variable!:Key or current name|type!:C type", L"set_local_type($function, $variable, $type); rows(locals($function));" },
+	{ "list_structs", "Every user-defined struct.", "", L"rows(structs());" },
+	{ "get_struct", "A struct as a C declaration with offsets.", "struct!:Struct name", L"print(struct_text($struct));" },
+	{ "declare_struct", "Create a struct, or add fields to an existing one. Give one field per line as offset name type, like 0x8 health int32_t. Offset -1 appends. A name like buf[32] makes an array.", "name!:Struct name|fields!:Field lines", L"if (!struct_exists($name)) struct_create($name); var lines = split($fields, \"\\n\"); for (var i = 0; i < len(lines); i++) { var w = words(lines[i]); if (len(w) == 0) continue; if (len(w) < 3) { print(\"skipped: \" + lines[i]); continue; } var t = w[2]; for (var k = 3; k < len(w); k++) t = t + \" \" + w[k]; struct_add_field($name, int(w[0]), w[1], t); } print(struct_text($name));" },
+	{ "edit_struct_field", "Rename or retype a struct field, given by offset or name.", "struct!:Struct name|field!:Offset or name|name:New name|type:New type", L"var f = $field; if (starts(f, \"0x\") || (f >= \"0\" && f <= \"9\")) f = int(f); if ($type != none && $type != \"\") struct_set_field_type($struct, f, $type); if ($name != none && $name != \"\") struct_rename_field($struct, f, $name); print(struct_text($struct));" },
+	{ "delete_struct", "Delete a struct.", "struct!:Struct name", L"print(struct_delete($struct) ? \"Deleted.\" : \"No such struct.\");" },
+	{ "list_classes", "Classes recovered from RTTI as [name, vtable, methods, locator, offset].", "", L"rows(classes());" },
+	{ "class_info", "A class's base classes and the function in every vtable slot.", "class!:Class name or index", L"print(\"bases: \" + join(class_bases($class), \", \")); var m = class_methods($class); for (var i = 0; i < len(m); i++) print(\"slot \" + i + \"  \" + hex(m[i]) + \"  \" + name(m[i]));" },
+	{ "list_globals", "Named addresses that are not functions: globals, labels and data named by hand or by scripts.", "", L"var n = names(); var shown = 0; for (var i = 0; i < len(n); i++) if (!is_function(n[i][0])) { print(hex(n[i][0]) + \"  \" + n[i][1]); shown++; } if (!shown) print(\"(none)\");" },
+	{ "entry_points", "The entry point, exports and TLS callbacks.", "", L"print(hex(entry()) + \"  \" + name(entry()) + \"  entry\"); var e = exports(); for (var i = 0; i < len(e); i++) print(cell(e[i][1]) + \"  \" + e[i][0] + \"  export\"); var f = functions(); for (var i = 0; i < len(f); i++) if (contains(function_flags(f[i]), \"tls\")) print(hex(f[i]) + \"  \" + name(f[i]) + \"  tls\");" },
+	{ "list_comments", "Every comment as [address, text].", "", L"rows(comments());" },
+	{ "list_notes", "Every function note as [function, text].", "", L"rows(notes());" },
+	{ "list_bookmarks", "Every bookmark as [address, label].", "", L"rows(bookmarks());" },
+	{ "set_bookmark", "Bookmark an address, optionally with a label. An empty label removes it.", "address!:Address or name|label:Label", L"if ($label == \"\") del_bookmark($address); else if ($label == none) set_bookmark($address); else set_bookmark($address, $label); rows(bookmarks());" },
+	{ "read_value", "Read a typed value: byte, word, dword, qword (default dword) or string.", "address!:Address or name|kind:byte, word, dword, qword or string", L"var k = $kind == none ? \"dword\" : $kind; if (k == \"byte\") print(hex(byte($address))); else if (k == \"word\") print(hex(word($address))); else if (k == \"qword\") print(hex(qword($address))); else if (k == \"string\") print(string($address)); else print(hex(dword($address)));" },
+	{ "convert_number", "Show a number as decimal, hex, binary and the characters its bytes spell.", "value!:Number like 0x41424344 or 1094861636", L"var v = int($value); print(\"decimal  \" + format(\"%d\", v)); print(\"hex      \" + hex(v)); var b = \"\"; var x = v; if (x == 0) b = \"0\"; while (x != 0 && len(b) < 64) { b = ((x & 1) ? \"1\" : \"0\") + b; x = (x >> 1) & 0x7FFFFFFFFFFFFFFF; } print(\"binary   \" + b); var s = \"\"; var y = v; for (var i = 0; i < 8 && y != 0; i++) { var c = y & 0xFF; s = s + ((c >= 32 && c < 127) ? format(\"%c\", c) : \".\"); y = (y >> 8) & 0x00FFFFFFFFFFFFFF; } print(\"chars    \" + s);" },
+	{ "patch_assemble", "Assemble an instruction over the code at an address, padding with nop, then show the result. Saved with the project; the file itself is never changed.", "address!:Address or name|instruction!:Like xor eax, eax", L"assemble($address, $instruction); wait(); print(disassemble($address, 4));" },
+	{ "patch_bytes", "Write bytes at an address, as hex text like 90 90 or a list of numbers.", "address!:Address or name|bytes!:Hex bytes", L"patch_bytes($address, $bytes); wait(); print(disassemble($address, 4));" },
+	{ "revert_patch", "Undo the patch run touching an address.", "address!:Address or name", L"revert($address); wait(); print(disassemble($address, 4));" },
+	{ "list_patches", "Every patched byte as [address, original, value].", "", L"rows(patches());" },
+	{ "write_patched", "Write the patched file next to the original as name.patched.exe.", "", L"print(write_patched());" },
+	{ "find_bytes", "Find every match of a byte pattern like 48 8B ?? 05, where ?? matches anything.", "pattern!:Byte pattern|limit#:Most matches, default 200", L"var r = find_all_bytes($pattern, image_base(), $limit == none ? 200 : $limit); for (var i = 0; i < len(r); i++) { var f = function_at(r[i]); print(hex(r[i]) + (f == none ? \"\" : \"  \" + name(f))); } if (len(r) == 0) print(\"(none)\");" },
+	{ "find_signature", "Find matches of an IDA-style signature like 48 8B 05 ? ? ? ?.", "pattern!:Signature|limit#:Most matches, default 200", L"rows(find_signature($pattern, $limit == none ? 200 : $limit));" },
+	{ "make_signature", "Make the shortest unique signature for an address, in ida, x64dbg, code or array style.", "address!:Address or name|style:ida, x64dbg, code or array", L"var s = signature_info($address, $style == none ? \"ida\" : $style); print(s[0]); print(\"unique \" + s[1] + \"  matches \" + s[2] + \"  start \" + hex(s[3]) + (s[4] ? \"  through a reference\" : \"\"));" },
+	{ "xor_decode", "Decode XOR-encoded bytes at an address. Key is hex like 5A or 12 34, optionally followed by a length, or auto to guess.", "address!:Address or name|key:Hex key or auto", L"print(xor_decode($address, $key == none ? \"auto\" : $key));" },
+	{ "stack_string", "A string built on the stack by the instructions at an address, if Plumb recognized one.", "address!:Address or name", L"print(stack_string($address));" },
+	{ "jump_table", "A switch jump or its table as [jump, table, count, [targets]].", "address!:Address or name", L"rows(jump_table($address));" },
+	{ "set_number_form", "Show the immediate at an address as hex, dec, char, bin or float in the listing.", "address!:Address or name|form!:hex, dec, char, bin or float", L"set_number_form($address, $form); print(disassemble($address, 1));" },
+	{ "learn_names", "Teach the name library this file's function names, so they are applied to related binaries.", "", L"print(learn_names());" },
+	{ "apply_names", "Name functions from the name library.", "", L"print(apply_names());" },
+	{ "undo", "Undo the last change to names, comments, types or patches.", "", L"print(undo());" },
+	{ "redo", "Redo the last undone change.", "", L"print(redo());" },
+	{ "reanalyze", "Run the whole analysis again and wait for it.", "", L"reanalyze(); wait(); print(len(functions()) + \" functions.\");" },
+	{ "export_report", "Write name.report.md next to the file: functions, notes, names, strings and imports.", "", L"print(export_report());" },
+	{ "export_classes", "Write name.classes.h next to the file with every recovered class.", "", L"print(export_classes());" },
+	{ "debug_start", "Start the open file under Plumb's debugger and stop at its entry point. A DLL runs in its host.", "", L"debug_start(); report(debug_wait(10000));" },
+	{ "debug_attach", "Attach the debugger to a running process by ID or name, or to the one running the open file.", "process:Process ID or name", L"if ($process == none) debug_attach(); else debug_attach($process); report(debug_wait(5000));" },
+	{ "debug_detach", "Detach and let the process keep running.", "", L"debug_detach(); print(debug_state());" },
+	{ "debug_state", "The debugger state, why it last stopped and the instruction pointer.", "", L"report(debug_state());" },
+	{ "debug_continue", "Resume the paused process and wait until it pauses or ends.", "wait_ms#:How long to wait, default 10000", L"debug_continue(); report(debug_wait($wait_ms == none ? 10000 : $wait_ms));" },
+	{ "debug_step_into", "Step one instruction, into calls.", "", L"debug_step_into(); report(debug_state());" },
+	{ "debug_step_over", "Step one instruction, over calls.", "", L"debug_step_over(); report(debug_state());" },
+	{ "debug_step_out", "Run until the current function returns.", "", L"debug_step_out(); report(debug_state());" },
+	{ "debug_run_to", "Run until an address is reached.", "address!:Address or name", L"debug_run_to($address); report(debug_wait(10000));" },
+	{ "debug_pause", "Break into the running process.", "", L"debug_pause(); report(debug_wait(5000));" },
+	{ "debug_stop", "End the debugged process.", "", L"debug_stop(); print(debug_state());" },
+	{ "debug_registers", "Every register while paused.", "", L"rows(registers());" },
+	{ "debug_read", "Read live memory while paused, as a hex dump. Image addresses follow the image to where it loaded.", "address!:Address or name|count#:Bytes, default 64", L"dump($address, debug_read($address, $count == none ? 64 : $count));" },
+	{ "debug_write", "Write live memory while paused. Bytes are hex text like 90 90.", "address!:Address or name|bytes!:Hex bytes", L"debug_write($address, $bytes); dump($address, debug_read($address, 16));" },
+	{ "debug_evaluate", "Evaluate a watch expression like [rsp+8] or rcx+0x10 while paused.", "expression!:Expression", L"print(cell(debug_evaluate($expression)));" },
+	{ "debug_modules", "Every module loaded in the debugged process as [path, base, size].", "", L"rows(debug_modules());" },
+	{ "list_processes", "Running processes as [id, name].", "", L"rows(processes());" },
+	{ "list_breakpoints", "Software and hardware breakpoints with their conditions.", "", L"var b = breakpoints(); for (var i = 0; i < len(b); i++) { var c = condition(b[i]); print(hex(b[i]) + \"  \" + name(b[i]) + (c != none && c != \"\" ? \"  if \" + c : \"\")); } print(\"hardware:\"); rows(hardware_breakpoints());" },
+	{ "set_breakpoint", "Set a breakpoint, optionally with a condition like rax == 0.", "address!:Address or name|condition:Condition", L"if ($condition == none || $condition == \"\") add_breakpoint($address); else add_breakpoint($address, $condition); rows(breakpoints());" },
+	{ "delete_breakpoint", "Remove a breakpoint.", "address!:Address or name", L"del_breakpoint($address); print(\"Removed.\");" },
+	{ "set_hardware_breakpoint", "Set one of four hardware breakpoints: x on execution, w 4 on 4-byte writes, rw 8 on any 8-byte access.", "address!:Address or name|kind:x, w 1/2/4/8 or rw 1/2/4/8", L"if ($kind == none) set_hardware_breakpoint($address); else set_hardware_breakpoint($address, $kind); rows(hardware_breakpoints());" },
+	{ "delete_hardware_breakpoint", "Remove a hardware breakpoint.", "address!:Address or name", L"del_hardware_breakpoint($address); rows(hardware_breakpoints());" },
+	{ "set_debug_command", "Arguments for the debugged executable, or host.exe arguments for a DLL.", "command!:Command line", L"set_debug_command($command); print(debug_command());" }
+};
+
+const int32_t ui::mcp_bridge_count = static_cast < int32_t > ( sizeof ( mcp_bridges ) / sizeof ( mcp_bridges [ 0 ] ) );
+
+void ui::write_schema ( const char* params, json::writer& out ) {
+
+	out.open_object ( ).key ( "type" ).string ( "object" ).key ( "properties" ).open_object ( );
+
+	base::list < base::list < char > > required;
+	const char* at = params;
+
+	while ( *at ) {
+
+		char name [ 64 ] = { };
+		char description [ 256 ] = { };
+		int32_t n = 0;
+		bool needed = false;
+		bool integer = false;
+
+		while ( *at && *at != '!' && *at != '#' && *at != ':' && *at != '|' && n < 63 )
+			name [ n++ ] = *at++;
+
+		while ( *at == '!' || *at == '#' ) {
+
+			needed = needed || *at == '!';
+			integer = integer || *at == '#';
+			at++;
+
+		}
+
+		n = 0;
+
+		if ( *at == ':' ) {
+
+			at++;
+
+			while ( *at && *at != '|' && n < 255 )
+				description [ n++ ] = *at++;
+
+		}
+
+		if ( *at == '|' )
+			at++;
+
+		if ( !name [ 0 ] )
+			continue;
+
+		out.key ( name ).open_object ( ).key ( "type" ).string ( integer ? "integer" : "string" );
+
+		if ( description [ 0 ] )
+			out.key ( "description" ).string ( description );
+
+		out.close_object ( );
+
+		if ( needed ) {
+
+			base::list < char >& kept = required.emplace ( );
+
+			for ( const char* c = name; *c; c++ )
+				kept.push ( *c );
+
+			kept.push ( 0 );
+
+		}
+
+	}
+
+	out.close_object ( );
+
+	if ( !required.empty ( ) ) {
+
+		out.key ( "required" ).open_array ( );
+
+		for ( const base::list < char >& item : required )
+			out.string ( item.data ( ) );
+
+		out.close_array ( );
+
+	}
+
+	out.close_object ( );
+
+}
+
+void ui::bridge_source ( const wchar_t* script, const json::value* args, base::list < wchar_t >& out ) {
+
+	auto put = [ & ] ( const wchar_t* text ) {
+
+		for ( ; *text; text++ )
+			out.push ( *text );
+
+	};
+
+	auto literal = [ & ] ( auto& self, const json::value* item ) -> void {
+
+		if ( !item || item->kind == json::type::NONE ) {
+
+			put ( L"none" );
+
+			return;
+
+		}
+
+		if ( item->kind == json::type::BOOLEAN ) {
+
+			put ( item->flag ? L"1" : L"0" );
+
+			return;
+
+		}
+
+		if ( item->kind == json::type::NUMBER ) {
+
+			put ( base::writer ( ).number ( static_cast < int64_t > ( item->number ) ).text ( ) );
+
+			return;
+
+		}
+
+		if ( item->kind == json::type::ARRAY ) {
+
+			out.push ( L'[' );
+
+			for ( int32_t i = 0; i < item->items.count ( ); i++ ) {
+
+				if ( i )
+					put ( L", " );
+
+				self ( self, &item->items [ static_cast < size_t > ( i ) ] );
+
+			}
+
+			out.push ( L']' );
+
+			return;
+
+		}
+
+		wchar_t wide [ 8192 ];
+
+		json::to_wide ( item->string ( ), wide, 8192 );
+		out.push ( L'"' );
+
+		for ( const wchar_t* c = wide; *c; c++ ) {
+
+			if ( *c == L'"' || *c == L'\\' ) {
+
+				out.push ( L'\\' );
+				out.push ( *c );
+
+			} else if ( *c == L'\n' )
+				put ( L"\\n" );
+			else if ( *c == L'\r' )
+				put ( L"\\r" );
+			else if ( *c == L'\t' )
+				put ( L"\\t" );
+			else
+				out.push ( *c );
+
+		}
+
+		out.push ( L'"' );
+
+	};
+
+	put ( L"func cell(x) { if (typeof(x) == \"number\") return (x >= 0x10000 || x <= -0x10000) ? hex(x) : \"\" + x; if (typeof(x) == \"list\") { var p = []; for (var i = 0; i < len(x); i++) append(p, cell(x[i])); return \"[\" + join(p, \", \") + \"]\"; } if (typeof(x) == \"none\") return \"none\"; return x; }\n" );
+	put ( L"func row(x) { if (typeof(x) != \"list\") return cell(x); var p = []; for (var i = 0; i < len(x); i++) append(p, cell(x[i])); return join(p, \"  \"); }\n" );
+	put ( L"func rows(v) { if (typeof(v) != \"list\") { print(cell(v)); return; } if (len(v) == 0) print(\"(none)\"); for (var i = 0; i < len(v); i++) print(row(v[i])); }\n" );
+	put ( L"func named(v) { if (len(v) == 0) print(\"(none)\"); for (var i = 0; i < len(v); i++) print(hex(v[i]) + \"  \" + name(v[i])); }\n" );
+	put ( L"func words(t) { var p = split(trim(t), \" \"); var w = []; for (var i = 0; i < len(p); i++) if (p[i] != \"\") append(w, p[i]); return w; }\n" );
+	put ( L"func texts(f) { var ins = instructions(f); var shown = 0; for (var i = 0; i < len(ins); i++) { var r = refs_from(ins[i]); for (var k = 0; k < len(r); k++) { if (is_code(r[k])) continue; var s = string(r[k]); if (s != none && len(s) >= 4) { print(hex(ins[i]) + \"  \" + s); shown++; } } } if (!shown) print(\"(none)\"); }\n" );
+	put ( L"func tree(f, depth, max, pad, seen, up) { print(pad + hex(f) + \"  \" + name(f)); if (depth >= max || !is_function(f)) return; var c = up ? callers(f) : callees(f); for (var i = 0; i < len(c); i++) { if (contains(seen, c[i])) { print(pad + \"  \" + hex(c[i]) + \"  \" + name(c[i]) + \"  (above)\"); continue; } append(seen, c[i]); tree(c[i], depth + 1, max, pad + \"  \", seen, up); } }\n" );
+	put ( L"func report(state) { print(state); var n = debug_note(); if (n != none && n != \"\") print(n); if (state == \"paused\") print(\"rip \" + hex(pc())); }\n" );
+	put ( L"func dump(a, b) { for (var i = 0; i < len(b); i += 16) { var line = format(\"+%04X \", i); for (var k = i; k < i + 16 && k < len(b); k++) line = line + \" \" + format(\"%02X\", b[k]); print(line); } }\n" );
+	put ( L"func main() {\n" );
+
+	for ( const wchar_t* at = script; *at; ) {
+
+		if ( *at != L'$' ) {
+
+			out.push ( *at++ );
+
+			continue;
+
+		}
+
+		at++;
+
+		char key [ 64 ] = { };
+		int32_t n = 0;
+
+		while ( ( ( *at >= L'a' && *at <= L'z' ) || *at == L'_' ) && n < 63 )
+			key [ n++ ] = static_cast < char > ( *at++ );
+
+		literal ( literal, args ? args->get ( key ) : nullptr );
+
+	}
+
+	put ( L"\n}\n" );
+	out.push ( 0 );
+
+}
+
 int64_t ui::integer_arg ( const json::value* args, const char* key, int64_t fallback ) {
 
 	const json::value* item = args ? args->get ( key ) : nullptr;
@@ -918,6 +1189,29 @@ bool ui::app::mcp_call ( const char* name, const json::value* args, base::list <
 
 	}
 
+	for ( int32_t i = 0; i < mcp_bridge_count; i++ ) {
+
+		if ( !base::same_text ( name, mcp_bridges [ i ].name ) )
+			continue;
+
+		base::list < wchar_t > source;
+		base::list < wchar_t > captured;
+
+		bridge_source ( mcp_bridges [ i ].script, args, source );
+
+		bool ok = run_script_text ( source.data ( ), L"mcp", &captured );
+
+		text.out = base::move ( captured );
+
+		if ( text.out.empty ( ) )
+			text.line ( ok ? L"Done." : L"The call failed." );
+
+		out = base::move ( text.out );
+
+		return ok;
+
+	}
+
 	problem.add ( L"Unknown tool." );
 
 	return finish ( false );
@@ -961,6 +1255,14 @@ void ui::app::mcp_message ( const json::value& message, json::writer& reply ) {
 
 			json::parse ( tool.schema, static_cast < size_t > ( base::text_length ( tool.schema ) ), schema );
 			reply.open_object ( ).key ( "name" ).string ( tool.name ).key ( "description" ).string ( tool.description ).key ( "inputSchema" ).copy ( schema ).close_object ( );
+
+		}
+
+		for ( int32_t i = 0; i < mcp_bridge_count; i++ ) {
+
+			reply.open_object ( ).key ( "name" ).string ( mcp_bridges [ i ].name ).key ( "description" ).string ( mcp_bridges [ i ].description ).key ( "inputSchema" );
+			write_schema ( mcp_bridges [ i ].params, reply );
+			reply.close_object ( );
 
 		}
 
