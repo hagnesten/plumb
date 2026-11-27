@@ -31,6 +31,7 @@ bool decompiler::void_needs_char_params = false;
 bool decompiler::return_exits = true;
 
 bool decompiler::trim_crt = true;
+bool decompiler::bare_callees = true;
 
 bool decompiler::unnamed_results = true;
 

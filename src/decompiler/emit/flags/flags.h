@@ -36,6 +36,8 @@ namespace decompiler {
 
 	extern bool trim_crt;
 
+	extern bool bare_callees;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;
