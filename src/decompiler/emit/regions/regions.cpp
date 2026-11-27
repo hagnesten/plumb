@@ -305,6 +305,21 @@ int32_t decompiler::emitter::follow_of ( int32_t block, int32_t stop, const fram
 	if ( follow == count )
 		follow = -1;
 
+	if ( follow >= 0 && follow < cut.count ( ) && cut [ static_cast < size_t > ( follow ) ] && block < ipdom_cut.count ( ) ) {
+
+		int32_t alt = ipdom_cut [ static_cast < size_t > ( block ) ];
+		bool direct = false;
+
+		for ( int32_t s : succ [ static_cast < size_t > ( block ) ] )
+			direct = direct || cut [ static_cast < size_t > ( s ) ] || s == alt;
+
+		if ( !direct && alt >= 0 && alt < count && alt != block && !emitted [ static_cast < size_t > ( alt ) ] )
+			follow = alt;
+		else if ( direct && stop >= 0 && stop < count && stop != block && !emitted [ static_cast < size_t > ( stop ) ] && cut_stops )
+			follow = stop;
+
+	}
+
 	if ( context.loop >= 0 && follow >= 0 && !in_loop ( context.loop, follow ) )
 		follow = exits_inline && stop == context.loop ? context.loop : context.exit;
 

@@ -106,6 +106,49 @@ void decompiler::emitter::analyze ( ) {
 
 	dominate ( reverse_rpo, true, ipdom );
 
+	cut.clear ( );
+	cut.fill ( static_cast < size_t > ( count ), 0 );
+	ipdom_cut.clear ( );
+
+	bool any_cut = false;
+
+	for ( int32_t v = 0; v < count && cut_returns; v++ ) {
+
+		const block_code& item = b.code [ static_cast < size_t > ( v ) ];
+
+		if ( v != 0 && item.end == term::RETURN && pred [ static_cast < size_t > ( v ) ].count ( ) >= 2 && small_block ( v ) ) {
+
+			cut [ static_cast < size_t > ( v ) ] = 1;
+			any_cut = true;
+
+		}
+
+	}
+
+	if ( any_cut ) {
+
+		base::list < int32_t > saved = rpo_index;
+		base::list < int32_t > cut_order;
+
+		cutting = true;
+		postorder ( count + 1, count, true, cut_order );
+
+		base::list < int32_t > cut_rpo;
+
+		for ( int32_t i = cut_order.count ( ) - 1; i >= 0; i-- )
+			cut_rpo.push ( cut_order [ static_cast < size_t > ( i ) ] );
+
+		rpo_index.fill ( static_cast < size_t > ( count + 1 ), -1 );
+
+		for ( int32_t i = 0; i < cut_rpo.count ( ); i++ )
+			rpo_index [ static_cast < size_t > ( cut_rpo [ static_cast < size_t > ( i ) ] ) ] = i;
+
+		dominate ( cut_rpo, true, ipdom_cut );
+		cutting = false;
+		rpo_index = saved;
+
+	}
+
 	header.fill ( static_cast < size_t > ( count ), 0 );
 	loop_body.resize ( static_cast < size_t > ( count ) );
 
@@ -265,7 +308,15 @@ void decompiler::emitter::neighbors ( int32_t v, bool reverse, base::list < int3
 
 		for ( int32_t i = 0; i < count; i++ ) {
 
-			if ( exit_block ( i ) )
+			if ( cutting && cut [ static_cast < size_t > ( i ) ] )
+				continue;
+
+			bool only_cut = cutting && !succ [ static_cast < size_t > ( i ) ].empty ( );
+
+			for ( int32_t s : succ [ static_cast < size_t > ( i ) ] )
+				only_cut = only_cut && cut [ static_cast < size_t > ( s ) ];
+
+			if ( exit_block ( i ) || only_cut )
 				out_list.push ( i );
 
 		}
@@ -292,9 +343,25 @@ void decompiler::emitter::incoming ( int32_t v, bool reverse, base::list < int32
 	if ( v == count )
 		return;
 
-	out_list = succ [ static_cast < size_t > ( v ) ];
+	if ( !cutting ) {
 
-	if ( exit_block ( v ) )
+		out_list = succ [ static_cast < size_t > ( v ) ];
+
+		if ( exit_block ( v ) )
+			out_list.push ( count );
+
+		return;
+
+	}
+
+	for ( int32_t s : succ [ static_cast < size_t > ( v ) ] ) {
+
+		if ( !cut [ static_cast < size_t > ( s ) ] )
+			out_list.push ( s );
+
+	}
+
+	if ( exit_block ( v ) || ( out_list.empty ( ) && !succ [ static_cast < size_t > ( v ) ].empty ( ) ) )
 		out_list.push ( count );
 
 }

@@ -17,6 +17,9 @@ namespace decompiler {
 		base::list < base::list < int32_t > > pred;
 		base::list < int32_t > idom;
 		base::list < int32_t > ipdom;
+		base::list < int32_t > ipdom_cut;
+		base::list < uint8_t > cut;
+		bool cutting = false;
 		base::list < int32_t > rpo_index;
 		base::list < uint8_t > header;
 		base::list < base::list < uint8_t > > loop_body;
