@@ -66,6 +66,8 @@ namespace decompiler {
 
 	extern bool exact_reals;
 
+	extern bool int_sources;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

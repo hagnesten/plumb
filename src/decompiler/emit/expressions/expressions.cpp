@@ -1158,6 +1158,26 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 
 			}
 
+			bool odd_source = inner.kind == op::SHR || inner.kind == op::OR || inner.kind == op::AND || ( inner.kind == op::VAR && inner.value >= 0 && inner.value < b.vars.count ( ) && ( ( b.vars [ static_cast < size_t > ( inner.value ) ].bits & UNSIGNED ) || inner.size == 8 ) && ( inner.value >= b.var_types.count ( ) || b.var_types [ static_cast < size_t > ( inner.value ) ].empty ( ) ) );
+
+			if ( shown && int_sources && ( item.bits & FLOATING ) && ( item.size == 4 || item.size == 8 ) && !( inner.bits & FLOATING ) && odd_source && !( inner.kind == op::VAR && inner.value >= 0 && inner.value < element.count ( ) && element [ static_cast < size_t > ( inner.value ) ] ) ) {
+
+				if ( parent > 14 )
+					out.put ( L"(" );
+
+				out.put ( L"(" );
+				type_name ( item.size, item.bits, false );
+				out.put ( L")" );
+				out.put ( L"(int)", syntax::TYPE );
+				value ( item.a, 14 );
+
+				if ( parent > 14 )
+					out.put ( L")" );
+
+				break;
+
+			}
+
 			if ( shown ) {
 
 				bool narrow = !float_change && item.size < inner.size && !( item.bits & ( SIGNED | UNSIGNED ) );

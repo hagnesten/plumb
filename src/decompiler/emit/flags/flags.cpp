@@ -46,6 +46,7 @@ bool decompiler::thread_names = true;
 bool decompiler::offset_folds = true;
 bool decompiler::round_trips = true;
 bool decompiler::exact_reals = true;
+bool decompiler::int_sources = true;
 
 bool decompiler::unnamed_results = true;
 
