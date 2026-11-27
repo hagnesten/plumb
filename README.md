@@ -180,20 +180,6 @@ msbuild plumb.sln -p:Configuration=Release -p:Platform=x64
 
 The executable lands in `build\release\Plumb.exe`. Pass a file path to open it on startup, or drop a file on the window. `--software` renders on the CPU when the graphics driver misbehaves.
 
-## Source
-
-- `src/runtime` Entry point, allocator and compiler support routines that replace the C runtime
-- `src/base` Containers, text formatting, math and file I/O
-- `src/loader` PE parsing, imports and exports, string scanning and address translation
-- `src/x86` Decoder, Intel-syntax formatter and assembler
-- `src/analysis` Function discovery, cross-references, switch tables, RTTI, graphs and signatures
-- `src/decompiler` Lifting, data flow cleanup, control flow structuring, C output and type parsing
-- `src/script` The Plumb Script lexer, parser, resolver, interpreter, x86-64 JIT and core library
-- `src/debugger` The Win32 debug loop
-- `src/render` Direct3D 11 renderer, DirectWrite text and shaders
-- `src/ui` Views, panels, docking, menus and commands
-- `src/host` The window, input and frame pacing
-
 ## Support
 
 Support open source reverse engineering: `bc1q8fdk4vnea7syk4chnjqayfdgphads2pv8kc3zz`
