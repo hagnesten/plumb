@@ -2,6 +2,10 @@
 
 bool decompiler::late_divisions = true;
 
+bool decompiler::shared_cmov_constants = true;
+
+bool decompiler::ordered_cmov_loads = true;
+
 bool decompiler::quiet_nops = true;
 
 bool decompiler::held_sums = true;

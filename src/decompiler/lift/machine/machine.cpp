@@ -2803,6 +2803,36 @@ void decompiler::machine::step ( const x86::instruction& ins, uint32_t live_afte
 	if ( value >= static_cast < int32_t > ( mnemonic::cmovo ) && value <= static_cast < int32_t > ( mnemonic::cmovg ) ) {
 
 		int32_t slot = ins.operands [ 0 ].type == x86::kind::REG ? slot_of ( ins.operands [ 0 ].reg ) : -1;
+		int32_t kept_source = -1;
+
+		if ( shared_cmov_constants && ins.operands [ 1 ].type == x86::kind::REG ) {
+
+			int32_t source = slot_of ( ins.operands [ 1 ].reg );
+
+			if ( source >= 0 && source < 16 && source != slot && regs [ source ] >= 0 && ( live & ( 1u << source ) ) && k.exprs [ static_cast < size_t > ( regs [ source ] ) ].kind == op::CONST ) {
+
+				kept_source = k.constant ( k.exprs [ static_cast < size_t > ( regs [ source ] ) ].value, size );
+				materialize ( source, ins.address );
+
+			}
+
+		}
+
+		if ( ordered_cmov_loads && slot >= 0 && slot < 16 && regs [ slot ] >= 0 && k.exprs [ static_cast < size_t > ( regs [ slot ] ) ].kind == op::CONST ) {
+
+			for ( int32_t held = 0; held < 16; held++ ) {
+
+				int32_t value = regs [ held ];
+
+				if ( held == slot || value < 0 || !( live & ( 1u << held ) ) || !( 0xF0E8u & ( 1u << held ) ) || reg_at [ held ] >= reg_at [ slot ] )
+					continue;
+
+				if ( k.exprs [ static_cast < size_t > ( value ) ].kind == op::LOAD )
+					materialize ( held, ins.address );
+
+			}
+
+		}
 
 		for ( int32_t held = 0; held < 16; held++ ) {
 
@@ -2827,7 +2857,7 @@ void decompiler::machine::step ( const x86::instruction& ins, uint32_t live_afte
 
 		}
 
-		int32_t chosen = k.make ( op::TERNARY, size, condition ( ins.condition ), read ( ins, 1 ) );
+		int32_t chosen = k.make ( op::TERNARY, size, condition ( ins.condition ), kept_source >= 0 ? kept_source : read ( ins, 1 ) );
 
 		k.exprs [ static_cast < size_t > ( chosen ) ].c = read ( ins, 0 );
 		k.deepen ( chosen );

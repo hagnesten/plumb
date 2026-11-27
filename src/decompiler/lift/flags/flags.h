@@ -6,6 +6,10 @@ namespace decompiler {
 
 	extern bool late_divisions;
 
+	extern bool shared_cmov_constants;
+
+	extern bool ordered_cmov_loads;
+
 	extern bool quiet_nops;
 
 	extern bool held_sums;
