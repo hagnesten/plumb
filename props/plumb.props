@@ -82,6 +82,9 @@
     <ClCompile>
       <AdditionalOptions>-flto=thin %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
+    <Link>
+      <AdditionalOptions>/lldltocache:"$(IntDir)lto" /opt:lldltojobs=all %(AdditionalOptions)</AdditionalOptions>
+    </Link>
   </ItemDefinitionGroup>
 
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
