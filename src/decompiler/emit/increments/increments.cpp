@@ -184,9 +184,25 @@ void decompiler::emitter::plan_increments ( ) {
 			bool up = amount.value > 0;
 			bool last_line = t == lines.count ( ) - 1;
 
+			int32_t back = t - 1;
+
+			while ( skip_increments && back > 0 && back >= t - 2 ) {
+
+				const statement& gap = b.statements [ static_cast < size_t > ( lines [ static_cast < size_t > ( back ) ] ) ];
+
+				if ( gap.kind != stmt::ASSIGN || gap.left < 0 || gap.right < 0 || b.exprs [ static_cast < size_t > ( gap.left ) ].kind != op::VAR || b.exprs [ static_cast < size_t > ( gap.left ) ].value == x || count_var ( gap.right, x, 0 ) || count_call ( gap.right, 0 ) || fold_at [ static_cast < size_t > ( lines [ static_cast < size_t > ( back ) ] ) ] >= 0 )
+					break;
+
+				back--;
+
+			}
+
+			if ( back != t - 1 && b.statements [ static_cast < size_t > ( lines [ static_cast < size_t > ( back ) ] ) ].kind != stmt::STORE )
+				back = t - 1;
+
 			if ( t > 0 ) {
 
-				int32_t before = lines [ static_cast < size_t > ( t - 1 ) ];
+				int32_t before = lines [ static_cast < size_t > ( back ) ];
 				const statement& prior = b.statements [ static_cast < size_t > ( before ) ];
 				bool defines = prior.kind == stmt::ASSIGN && prior.left >= 0 && b.exprs [ static_cast < size_t > ( prior.left ) ].kind == op::VAR;
 				int32_t uses = count_var ( prior.right, x, 0 ) + ( defines ? 0 : count_var ( prior.left, x, 0 ) );
