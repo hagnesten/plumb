@@ -726,6 +726,12 @@ namespace ui {
 
 		const wchar_t* data_prefix ( uint64_t address ) const;
 
+		bool api_data_name ( uint64_t address, wchar_t* out, int32_t room ) const;
+
+		uint64_t traced_address ( uint64_t call, int32_t family ) const;
+
+		void build_api_names ( );
+
 		bool number_text ( uint64_t at, uint64_t raw, uint8_t size, wchar_t* out, int32_t room ) const;
 
 		const local_entry* local_for ( uint64_t function, const wchar_t* key ) const;
@@ -1166,6 +1172,7 @@ namespace ui {
 		base::list < uint64_t > string_addresses;
 		base::list < int32_t > string_order;
 		base::list < user_name > renamed;
+		base::list < user_name > api_names;
 		base::list < user_name > comments;
 		base::list < user_name > bookmarks;
 		base::list < user_name > notes;

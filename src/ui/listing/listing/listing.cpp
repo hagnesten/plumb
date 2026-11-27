@@ -1839,12 +1839,208 @@ bool ui::app::symbol_name ( uint64_t address, bool code, wchar_t* out, int32_t r
 
 	if ( section > 0 && file.sections [ static_cast < size_t > ( section ) ].type != loader::kind::CODE && !code ) {
 
+		if ( api_data_name ( address, out, room ) )
+			return true;
+
 		base::writer text;
 
 		text.add ( data_prefix ( address ) ).hex ( address );
 		base::copy_text ( text.text ( ), out, room );
 
 		return true;
+
+	}
+
+	return false;
+
+}
+
+uint64_t ui::app::traced_address ( uint64_t call, int32_t family ) const {
+
+	int32_t function = db->function_at ( call );
+	uint64_t floor = function >= 0 ? db->functions [ static_cast < size_t > ( function ) ].start : call;
+	uint64_t at = call;
+
+	for ( int32_t step = 0; step < 300 && at > floor; step++ ) {
+
+		uint64_t before = db->instruction_at ( at - 1 );
+
+		if ( before >= at )
+			return 0;
+
+		at = before;
+
+		x86::instruction ins;
+
+		if ( !db->decode ( at, ins ) )
+			return 0;
+
+		bool volatile_family = family <= 2 || ( family >= 8 && family <= 11 );
+
+		if ( ins.control == x86::flow::CALL && volatile_family )
+			return 0;
+
+		if ( ins.control == x86::flow::RETURN )
+			return 0;
+
+		if ( !ins.count || ins.operands [ 0 ].type != x86::kind::REG || x86::register_family ( ins.operands [ 0 ].reg ) != family )
+			continue;
+
+		x86::mnemonic name = ins.name;
+
+		if ( name == x86::mnemonic::cmp || name == x86::mnemonic::test || name == x86::mnemonic::push || name == x86::mnemonic::bt )
+			continue;
+
+		if ( name == x86::mnemonic::lea && ins.count >= 2 && ins.operands [ 1 ].type == x86::kind::MEM && ins.operands [ 1 ].rip_relative ( ) && x86::register_size ( ins.operands [ 0 ].reg ) == 8 )
+			return ins.next ( ) + static_cast < uint64_t > ( ins.operands [ 1 ].value );
+
+		if ( name == x86::mnemonic::mov && ins.count >= 2 && ins.operands [ 1 ].type == x86::kind::REG && x86::register_size ( ins.operands [ 0 ].reg ) == 8 && x86::register_size ( ins.operands [ 1 ].reg ) == 8 ) {
+
+			family = x86::register_family ( ins.operands [ 1 ].reg );
+
+			continue;
+
+		}
+
+		return 0;
+
+	}
+
+	return 0;
+
+}
+
+void ui::app::build_api_names ( ) {
+
+	api_names.clear ( );
+
+	if ( !db || file.arch != loader::machine::X64 )
+		return;
+
+	static const int32_t passed [ 4 ] = { 1, 2, 8, 9 };
+	static const wchar_t* const named_types [ ] = { L"LPCWSTR", L"LPWSTR", L"LPCSTR", L"LPSTR", L"PCWSTR", L"PWSTR", L"PCSTR", L"PSTR", L"LPCWCH", L"LPWCH", L"LPCCH", L"LPCH", L"LPDWORD", L"PDWORD", L"PLARGE_INTEGER", L"LPCONTEXT", L"PCONTEXT", L"LPSTARTUPINFOW", L"LPSTARTUPINFOA", L"LPSYSTEM_INFO" };
+	base::list < user_name > sites;
+
+	for ( const loader::import& item : file.imports ) {
+
+		if ( item.name.empty ( ) )
+			continue;
+
+		const wchar_t* text = decompiler::api_prototype ( item.name.get ( ) );
+		decompiler::c_prototype shape;
+		base::writer problem;
+
+		if ( !text || !decompiler::parse_prototype ( text, true, shape, problem ) )
+			continue;
+
+		int32_t first = 0;
+		int32_t count = 0;
+
+		db->refs_to ( item.slot, first, count );
+
+		for ( int32_t i = 0; i < count; i++ ) {
+
+			uint64_t at = file.base + db->refs [ static_cast < size_t > ( first + i ) ].source;
+			x86::instruction ins;
+
+			if ( !db->decode ( at, ins ) || ins.control != x86::flow::CALL || decompiler::call_target ( ins ) != item.slot )
+				continue;
+
+			for ( int32_t k = 0; k < 4 && k < shape.count; k++ ) {
+
+				bool fits = false;
+
+				for ( const wchar_t* type : named_types )
+					fits = fits || base::same_text ( shape.types [ k ], type );
+
+				const wchar_t* name = shape.names [ k ];
+
+				if ( !fits || !name [ 0 ] )
+					continue;
+
+				uint64_t global = traced_address ( at, passed [ k ] );
+				int32_t section = global ? file.section_at ( global ) : -1;
+
+				if ( section <= 0 || file.sections [ static_cast < size_t > ( section ) ].type == loader::kind::CODE )
+					continue;
+
+				if ( name [ 0 ] == L'l' && name [ 1 ] == L'p' && name [ 2 ] >= L'A' && name [ 2 ] <= L'Z' )
+					name += 2;
+				else if ( name [ 0 ] == L'p' && name [ 1 ] >= L'A' && name [ 1 ] <= L'Z' )
+					name += 1;
+
+				user_name site;
+
+				site.address = at * 4 + static_cast < uint64_t > ( k );
+				sites.push ( static_cast < user_name&& > ( site ) );
+
+				user_name named;
+
+				named.address = global;
+				named.text.set ( name );
+				api_names.push ( static_cast < user_name&& > ( named ) );
+
+			}
+
+		}
+
+	}
+
+	base::list < int32_t > order;
+
+	for ( int32_t i = 0; i < sites.count ( ); i++ )
+		order.push ( i );
+
+	base::sort ( order.data ( ), order.count ( ), [ & ] ( int32_t a, int32_t b ) { return sites [ static_cast < size_t > ( a ) ].address < sites [ static_cast < size_t > ( b ) ].address; } );
+
+	base::list < user_name > kept;
+
+	for ( int32_t index : order ) {
+
+		const user_name& candidate = api_names [ static_cast < size_t > ( index ) ];
+		bool seen = false;
+
+		for ( const user_name& item : kept )
+			seen = seen || item.address == candidate.address;
+
+		if ( seen )
+			continue;
+
+		user_name named;
+
+		named.address = candidate.address;
+		named.text.set ( candidate.text.get ( ) );
+		kept.push ( static_cast < user_name&& > ( named ) );
+
+	}
+
+	base::sort ( kept.data ( ), kept.count ( ), [ ] ( const user_name& a, const user_name& b ) { return a.address < b.address; } );
+	api_names = static_cast < base::list < user_name >&& > ( kept );
+
+}
+
+bool ui::app::api_data_name ( uint64_t address, wchar_t* out, int32_t room ) const {
+
+	int32_t low = 0;
+	int32_t high = api_names.count ( ) - 1;
+
+	while ( low <= high ) {
+
+		int32_t middle = ( low + high ) / 2;
+		const user_name& item = api_names [ static_cast < size_t > ( middle ) ];
+
+		if ( item.address == address ) {
+
+			base::copy_text ( item.text.get ( ), out, room );
+
+			return true;
+
+		}
+
+		if ( item.address < address )
+			low = middle + 1;
+		else
+			high = middle - 1;
 
 	}
 

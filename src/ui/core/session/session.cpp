@@ -617,6 +617,7 @@ void ui::app::analysis_finished ( ) {
 
 	wait_analysis ( );
 	analysis_applied = true;
+	build_api_names ( );
 	apply_library ( );
 	build_listing ( );
 	refresh_filter ( panel::FUNCTIONS );
