@@ -1,6 +1,7 @@
 #include "decompiler/decompile/decompile.h"
 #include "decompiler/builder/builder.h"
 #include "decompiler/emit/program/program.h"
+#include "decompiler/emit/spacing/spacing.h"
 #include "base/clock/clock.h"
 
 bool decompiler::decompile ( const analysis::database& db, uint64_t function, namer& names, result& out ) {
@@ -61,6 +62,9 @@ bool decompiler::decompile ( const analysis::database& db, uint64_t function, na
 
 		out.blocks = b->graph.blocks.count ( );
 		ok = emit ( *b );
+
+		if ( ok )
+			space_lines ( out );
 
 	}
 

@@ -26,6 +26,21 @@ namespace base {
 
 	}
 
+	inline bool starts_with ( const wchar_t* text, int32_t length, const wchar_t* prefix ) {
+
+		int32_t i = 0;
+
+		for ( ; prefix [ i ]; i++ ) {
+
+			if ( i >= length || text [ i ] != prefix [ i ] )
+				return false;
+
+		}
+
+		return true;
+
+	}
+
 	inline void copy_text ( const wchar_t* source, wchar_t* out, int32_t room ) {
 
 		int32_t i = 0;

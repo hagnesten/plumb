@@ -220,6 +220,9 @@
     <Filter Include="src\decompiler\emit\sink">
       <UniqueIdentifier>{2224AC18-A1EB-C33D-3636-FA082364BF5D}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\decompiler\emit\spacing">
+      <UniqueIdentifier>{BCD89478-A64A-7280-9325-0D9F701BA348}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\decompiler\emit\statements">
       <UniqueIdentifier>{1D44FD9B-3167-E985-6A0E-6884FE514719}</UniqueIdentifier>
     </Filter>
@@ -822,6 +825,9 @@
     <ClCompile Include="src\decompiler\emit\sink\sink.cpp">
       <Filter>src\decompiler\emit\sink</Filter>
     </ClCompile>
+    <ClCompile Include="src\decompiler\emit\spacing\spacing.cpp">
+      <Filter>src\decompiler\emit\spacing</Filter>
+    </ClCompile>
     <ClCompile Include="src\decompiler\emit\statements\statements.cpp">
       <Filter>src\decompiler\emit\statements</Filter>
     </ClCompile>
@@ -1333,6 +1339,9 @@
     </ClInclude>
     <ClInclude Include="src\decompiler\emit\sink\sink.h">
       <Filter>src\decompiler\emit\sink</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\spacing\spacing.h">
+      <Filter>src\decompiler\emit\spacing</Filter>
     </ClInclude>
     <ClInclude Include="src\decompiler\emit\statements\statements.h">
       <Filter>src\decompiler\emit\statements</Filter>
