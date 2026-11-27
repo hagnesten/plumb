@@ -111,6 +111,8 @@ namespace decompiler {
 
 		int32_t lane_var ( int32_t e ) const;
 
+		bool part_macro ( int32_t e );
+
 		bool zero_widened ( int32_t e ) const;
 
 		int32_t wide_reads ( int32_t e, int64_t var, int32_t depth ) const;

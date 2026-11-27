@@ -10,6 +10,79 @@
 #include "base/sort/sort.h"
 #include "base/clock/clock.h"
 
+bool decompiler::emitter::part_macro ( int32_t e ) {
+
+	if ( e < 0 )
+		return false;
+
+	const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+	if ( node.bits & ( FLOATING | POINTER ) )
+		return false;
+
+	int32_t shifted = e;
+	uint8_t width = node.size;
+
+	if ( node.kind == op::CAST ) {
+
+		if ( node.a < 0 )
+			return false;
+
+		shifted = node.a;
+
+	}
+
+	const expr& shift = b.exprs [ static_cast < size_t > ( shifted ) ];
+
+	if ( shift.kind != op::SHR || ( shift.bits & ( SIGNED | FLOATING ) ) || shift.a < 0 || shift.b < 0 || b.exprs [ static_cast < size_t > ( shift.b ) ].kind != op::CONST )
+		return false;
+
+	const expr& source = b.exprs [ static_cast < size_t > ( shift.a ) ];
+
+	if ( source.kind != op::VAR || ( source.bits & FLOATING ) )
+		return false;
+
+	int64_t amount = b.exprs [ static_cast < size_t > ( shift.b ) ].value;
+	int32_t bits = source.size * 8;
+	const wchar_t* macro = nullptr;
+
+	if ( node.kind != op::CAST ) {
+
+		if ( source.size == 8 && amount == 32 )
+			macro = L"HIDWORD";
+
+	} else if ( width == 4 && source.size == 8 && amount == 32 )
+		macro = L"HIDWORD";
+	else if ( width == 2 && amount == bits - 16 && source.size >= 4 )
+		macro = L"HIWORD";
+	else if ( width == 1 && amount == bits - 8 && source.size >= 2 )
+		macro = L"HIBYTE";
+	else if ( width == 1 ) {
+
+		switch ( amount ) {
+
+			case 8: macro = L"BYTE1"; break;
+			case 16: macro = L"BYTE2"; break;
+			case 24: macro = L"BYTE3"; break;
+			case 32: macro = L"BYTE4"; break;
+			default: break;
+
+		}
+
+	}
+
+	if ( !macro )
+		return false;
+
+	out.put ( macro, syntax::FUNCTION );
+	out.put ( L"(" );
+	value ( shift.a, 0 );
+	out.put ( L")" );
+
+	return true;
+
+}
+
 int32_t decompiler::emitter::precedence ( op kind ) {
 
 	switch ( kind ) {
@@ -130,6 +203,14 @@ void decompiler::emitter::value ( int32_t index, int32_t parent, bool hex_hint )
 		truth = true;
 
 	const expr& node = b.exprs [ static_cast < size_t > ( index ) ];
+
+	if ( part_macros && part_macro ( index ) ) {
+
+		in_logic = saved;
+
+		return;
+
+	}
 
 	int32_t lane = lane_var ( index );
 

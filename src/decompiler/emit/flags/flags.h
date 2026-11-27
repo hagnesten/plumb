@@ -38,6 +38,8 @@ namespace decompiler {
 
 	extern bool bare_callees;
 
+	extern bool part_macros;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;
