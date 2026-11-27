@@ -56,6 +56,8 @@ namespace decompiler {
 
 	extern bool cast_bounds;
 
+	extern bool plain_stores;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

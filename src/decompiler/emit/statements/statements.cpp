@@ -579,7 +579,7 @@ void decompiler::emitter::statement_line ( const statement& item ) {
 
 			}
 
-			if ( left.kind == op::LOAD && ( left.bits & FLOATING ) && right.kind == op::CONST && left.size == 16 ) {
+			if ( left.kind == op::LOAD && ( left.bits & FLOATING ) && left.size == 16 && ( right.kind == op::CONST || ( plain_stores && plain_copies && right.kind == op::VAR && right.value >= 0 && right.value < vector.count ( ) && vector [ static_cast < size_t > ( right.value ) ] == 1 ) ) ) {
 
 				expr plain_left = left;
 

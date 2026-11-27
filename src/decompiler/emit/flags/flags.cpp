@@ -41,6 +41,7 @@ bool decompiler::void_skips = true;
 bool decompiler::signed_loads = true;
 bool decompiler::skip_increments = true;
 bool decompiler::cast_bounds = true;
+bool decompiler::plain_stores = true;
 
 bool decompiler::unnamed_results = true;
 
