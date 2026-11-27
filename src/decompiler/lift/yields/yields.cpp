@@ -1,5 +1,6 @@
 #include "decompiler/lift/yields/yields.h"
 #include "decompiler/lift/effects/effects.h"
+#include "decompiler/lift/flags/flags.h"
 #include "decompiler/apis/apis.h"
 #include "decompiler/prototypes/prototypes.h"
 #include "analysis/graph/graph.h"
@@ -1089,6 +1090,7 @@ int32_t decompiler::yields_value ( const analysis::database& db, const loader::b
 	base::list < uint8_t > seen;
 	base::list < int32_t > work;
 	bool found_plain = false;
+	bool plain_byte = false;
 	bool found_call = false;
 	bool found_void = false;
 	bool found_undefined = false;
@@ -1108,6 +1110,9 @@ int32_t decompiler::yields_value ( const analysis::database& db, const loader::b
 
 			found_plain = true;
 			kind -= 16;
+
+			if ( kind == 1 )
+				plain_byte = true;
 
 		} else
 			found_call = true;
@@ -1168,6 +1173,9 @@ int32_t decompiler::yields_value ( const analysis::database& db, const loader::b
 
 	if ( found_void || !( found_plain || ( found_call && !found_undefined ) ) )
 		return 0;
+
+	if ( byte_returns && plain_byte )
+		return 1;
 
 	if ( kinds & ( 1u << 8 ) )
 		return 8;
