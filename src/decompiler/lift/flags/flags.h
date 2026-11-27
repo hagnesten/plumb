@@ -54,6 +54,8 @@ namespace decompiler {
 
 	extern bool param_copies;
 
+	extern bool masked_signs;
+
 	extern bool carry_ops;
 
 	extern bool shared_vectors;

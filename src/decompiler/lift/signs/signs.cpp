@@ -109,12 +109,20 @@ void decompiler::builder::infer_signs ( ) {
 				continue;
 
 			const expr& left = exprs [ static_cast < size_t > ( line.left ) ];
-			const expr& right = exprs [ static_cast < size_t > ( line.right ) ];
+			const expr* right_node = &exprs [ static_cast < size_t > ( line.right ) ];
+
+			if ( masked_signs && ( right_node->kind == op::AND || ( right_node->kind == op::SHR && !( right_node->bits & SIGNED ) ) ) && right_node->a >= 0 && right_node->b >= 0 && exprs [ static_cast < size_t > ( right_node->b ) ].kind == op::CONST && exprs [ static_cast < size_t > ( right_node->a ) ].kind == op::VAR )
+				right_node = &exprs [ static_cast < size_t > ( right_node->a ) ];
+
+			const expr& right = *right_node;
 
 			if ( left.kind != op::VAR || right.kind != op::VAR || left.size != 8 || right.size != 8 || left.value < 0 || right.value < 0 || left.value >= marks.count ( ) || right.value >= marks.count ( ) )
 				continue;
 
 			uint8_t from = marks [ static_cast < size_t > ( right.value ) ];
+
+			if ( masked_signs && !from && ( vars [ static_cast < size_t > ( right.value ) ].bits & UNSIGNED ) && !( vars [ static_cast < size_t > ( right.value ) ].bits & FLOATING ) )
+				from = 1;
 			uint8_t& to = marks [ static_cast < size_t > ( left.value ) ];
 
 			if ( from == 1 && to == 0 ) {

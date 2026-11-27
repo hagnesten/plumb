@@ -46,6 +46,8 @@ bool decompiler::shared_products = true;
 
 bool decompiler::param_copies = true;
 
+bool decompiler::masked_signs = true;
+
 bool decompiler::carry_ops = true;
 
 bool decompiler::shared_vectors = true;
