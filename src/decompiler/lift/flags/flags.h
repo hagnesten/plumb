@@ -62,6 +62,8 @@ namespace decompiler {
 
 	extern bool next_reloads;
 
+	extern bool narrow_copy_groups;
+
 	extern bool scaled_counters;
 
 	extern bool import_callees;

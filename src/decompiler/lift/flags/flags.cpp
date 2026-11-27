@@ -50,6 +50,7 @@ bool decompiler::masked_signs = true;
 bool decompiler::masked_casts = true;
 bool decompiler::cookie_keeps_result = true;
 bool decompiler::next_reloads = true;
+bool decompiler::narrow_copy_groups = true;
 
 bool decompiler::scaled_counters = true;
 

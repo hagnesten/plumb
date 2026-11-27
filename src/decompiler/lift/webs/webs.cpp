@@ -636,14 +636,89 @@ void decompiler::builder::narrow_byte_params ( uint8_t width ) {
 
 	int32_t total = vars.count ( );
 	base::list < uint8_t > state;
+	base::list < int32_t > group;
+	base::list < uint8_t > copy_line;
 
 	state.fill ( static_cast < size_t > ( total ), 0 );
+	group.fill ( static_cast < size_t > ( total ), -1 );
+	copy_line.fill ( statements.size ( ), 0 );
+
+	for ( int32_t v = 0; v < total; v++ )
+		group [ static_cast < size_t > ( v ) ] = v;
+
+	auto root = [ & ] ( int32_t v ) {
+
+		while ( group [ static_cast < size_t > ( v ) ] != v )
+			v = group [ static_cast < size_t > ( v ) ];
+
+		return v;
+
+	};
+
+	auto plain_var = [ & ] ( int32_t e ) -> int32_t {
+
+		while ( e >= 0 && exprs [ static_cast < size_t > ( e ) ].kind == op::CAST && !( exprs [ static_cast < size_t > ( e ) ].bits & ( SIGNED | FLOATING ) ) && exprs [ static_cast < size_t > ( e ) ].size >= 4 )
+			e = exprs [ static_cast < size_t > ( e ) ].a;
+
+		if ( e < 0 || exprs [ static_cast < size_t > ( e ) ].kind != op::VAR )
+			return -1;
+
+		int64_t v = exprs [ static_cast < size_t > ( e ) ].value;
+
+		if ( v < 0 || v >= total )
+			return -1;
+
+		const variable& item = vars [ static_cast < size_t > ( v ) ];
+
+		if ( ( item.kind != var_kind::PARAMETER && item.kind != var_kind::REGISTER ) || ( item.bits & FLOATING ) || item.flags || item.cookie || item.saved || item.family < 0 || item.family >= 16 )
+			return -1;
+
+		return static_cast < int32_t > ( v );
+
+	};
+
+	if ( narrow_copy_groups ) {
+
+		for ( int32_t s = 0; s < statements.count ( ); s++ ) {
+
+			const statement& line = statements [ static_cast < size_t > ( s ) ];
+
+			if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 )
+				continue;
+
+			int32_t x = plain_var ( line.left );
+			int32_t y = plain_var ( line.right );
+
+			if ( x < 0 || y < 0 || x == y || ( vars [ static_cast < size_t > ( x ) ].kind != var_kind::PARAMETER && vars [ static_cast < size_t > ( y ) ].kind != var_kind::PARAMETER ) )
+				continue;
+
+			int32_t rx = root ( x );
+			int32_t ry = root ( y );
+
+			if ( rx != ry )
+				group [ static_cast < size_t > ( rx ) ] = ry;
+
+			copy_line [ static_cast < size_t > ( s ) ] = 1;
+
+		}
+
+	}
+
+	base::list < int32_t > members;
+
+	members.fill ( static_cast < size_t > ( total ), 0 );
+
+	for ( int32_t v = 0; v < total; v++ )
+		members [ static_cast < size_t > ( root ( v ) ) ]++;
 
 	for ( int32_t v = 0; v < total; v++ ) {
 
 		const variable& item = vars [ static_cast < size_t > ( v ) ];
+		bool grouped = narrow_copy_groups && members [ static_cast < size_t > ( root ( v ) ) ] > 1;
 
-		if ( item.kind == var_kind::PARAMETER && item.family >= 0 && item.family < 16 && !( item.bits & FLOATING ) && item.size > width && !item.assigned )
+		if ( item.kind == var_kind::PARAMETER && item.family >= 0 && item.family < 16 && !( item.bits & FLOATING ) && item.size > width && ( !item.assigned || grouped ) )
+			state [ static_cast < size_t > ( v ) ] = 1;
+		else if ( grouped && item.kind == var_kind::REGISTER && item.size > width )
 			state [ static_cast < size_t > ( v ) ] = 1;
 
 	}
@@ -724,6 +799,9 @@ void decompiler::builder::narrow_byte_params ( uint8_t width ) {
 
 			}
 
+			if ( copy_line [ static_cast < size_t > ( s ) ] )
+				continue;
+
 			bool direct = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
 
 			if ( direct ) {
@@ -745,6 +823,44 @@ void decompiler::builder::narrow_byte_params ( uint8_t width ) {
 
 		if ( returns_value || block.end == term::TAIL )
 			walk ( walk, block.returned, false, false, 0 );
+
+	}
+
+	if ( narrow_copy_groups ) {
+
+		base::list < uint8_t > verdict;
+		base::list < uint8_t > has_param;
+
+		verdict.fill ( static_cast < size_t > ( total ), 1 );
+		has_param.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			int32_t r = root ( v );
+
+			if ( members [ static_cast < size_t > ( r ) ] < 2 )
+				continue;
+
+			uint8_t slot = state [ static_cast < size_t > ( v ) ];
+
+			if ( !slot )
+				verdict [ static_cast < size_t > ( r ) ] = 0;
+			else if ( slot == 2 && verdict [ static_cast < size_t > ( r ) ] )
+				verdict [ static_cast < size_t > ( r ) ] = 2;
+
+			if ( vars [ static_cast < size_t > ( v ) ].kind == var_kind::PARAMETER )
+				has_param [ static_cast < size_t > ( r ) ] = 1;
+
+		}
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			int32_t r = root ( v );
+
+			if ( members [ static_cast < size_t > ( r ) ] > 1 )
+				state [ static_cast < size_t > ( v ) ] = has_param [ static_cast < size_t > ( r ) ] ? verdict [ static_cast < size_t > ( r ) ] : 0;
+
+		}
 
 	}
 
