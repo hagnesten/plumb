@@ -40,6 +40,8 @@ namespace decompiler {
 
 	extern bool part_macros;
 
+	extern bool simd_converts;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

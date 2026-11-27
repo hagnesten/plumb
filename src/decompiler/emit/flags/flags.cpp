@@ -33,6 +33,7 @@ bool decompiler::return_exits = true;
 bool decompiler::trim_crt = true;
 bool decompiler::bare_callees = true;
 bool decompiler::part_macros = true;
+bool decompiler::simd_converts = true;
 
 bool decompiler::unnamed_results = true;
 
