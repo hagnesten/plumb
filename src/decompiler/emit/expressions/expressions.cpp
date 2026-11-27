@@ -490,6 +490,9 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 
 	int32_t mine = precedence ( item.kind );
 	bool wrap = mine < parent;
+
+	if ( bitwise_parens && !wrap && parent > 2 && ( outer_kind == op::AND || outer_kind == op::OR || outer_kind == op::XOR ) && ( item.kind == op::ADD || item.kind == op::SUB || item.kind == op::SHL || item.kind == op::SHR ) && !( item.bits & FLOATING ) )
+		wrap = true;
 	bool outer = operand;
 	wchar_t name [ 300 ];
 

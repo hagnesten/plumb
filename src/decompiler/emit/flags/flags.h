@@ -144,6 +144,8 @@ namespace decompiler {
 
 	extern bool plain_pre_loads;
 
+	extern bool bitwise_parens;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;
