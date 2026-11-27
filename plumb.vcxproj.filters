@@ -1,0 +1,1740 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="assets">
+      <UniqueIdentifier>{5CA259E8-3F9F-0743-5133-35FD36C4E079}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{6306F014-35CC-BC22-16E7-BB5E5791B193}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\analysis">
+      <UniqueIdentifier>{5C36170B-059A-FCF0-CBBB-7311C4063CA4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\analysis\database">
+      <UniqueIdentifier>{CB2ABA44-B11B-8951-3998-1FDF4107B5C6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\analysis\discovery">
+      <UniqueIdentifier>{116233EF-1B9D-787A-00E1-A95F78D934F8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\analysis\emulation">
+      <UniqueIdentifier>{B4D0487D-11E5-9517-27DA-C75CEE704B05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\analysis\graph">
+      <UniqueIdentifier>{C0FA301C-F6D6-2976-F29D-7329F92021B7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\analysis\rtti">
+      <UniqueIdentifier>{2A016AFC-9CE9-66CC-CA7C-237CE004F5E5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\analysis\runtime_names">
+      <UniqueIdentifier>{593AB72F-8B2E-C182-6E72-2FE5E5F6AAED}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\analysis\signatures">
+      <UniqueIdentifier>{28D7002D-84A5-706E-6D92-38CB6917A9ED}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base">
+      <UniqueIdentifier>{42932660-224F-5C4F-D6BD-25B646EA2B32}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\clock">
+      <UniqueIdentifier>{1A95C124-7450-A729-CA4F-97B81450AB1B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\colors">
+      <UniqueIdentifier>{213CA6BF-FBE1-41C2-6BF5-EF3C59759C08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\files">
+      <UniqueIdentifier>{1B41A0F1-0C15-96F1-7F8F-E351F7203533}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\json">
+      <UniqueIdentifier>{C7FE16CF-7AC5-F670-01D7-F6C60D07CBB9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\list">
+      <UniqueIdentifier>{5A8A5AFF-CBBC-520F-C562-1F6766441FCF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\math">
+      <UniqueIdentifier>{40B91D2A-6B9E-935D-2868-99C6265D1911}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\random">
+      <UniqueIdentifier>{AC5DCE0C-9EBB-608A-4726-E9E326DA2405}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\sort">
+      <UniqueIdentifier>{CA9B431C-F480-FA6E-E064-9748C20737D1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\strings">
+      <UniqueIdentifier>{8684850A-38F9-4A24-8531-3AAC1061E395}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\text">
+      <UniqueIdentifier>{C0A48ED9-F91F-5E70-394F-C7025CE8E501}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\types">
+      <UniqueIdentifier>{2DAE1F57-3BBA-387C-ADBF-C390F6657BF0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\utility">
+      <UniqueIdentifier>{3F85CF2D-0F2C-F054-9DC1-03205DC92C3D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\base\writer">
+      <UniqueIdentifier>{C90F2561-915E-1D75-E680-CA8220976720}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger">
+      <UniqueIdentifier>{833A4F1C-A1FC-B98A-38CD-F037D736BDB6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\control">
+      <UniqueIdentifier>{3E746D44-EC4B-824D-D811-A9C41892CC24}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\control\processes">
+      <UniqueIdentifier>{B2A3C3AC-569E-9DCB-5483-C976A1E745DD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\control\session">
+      <UniqueIdentifier>{559562A9-04B6-2B27-C39E-79C2BD91206E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\core">
+      <UniqueIdentifier>{707C6346-B46A-903B-A607-9ABE0AE1A32A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\core\log">
+      <UniqueIdentifier>{FEE80184-0268-6026-A97F-8BF35BB9CB3A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\core\state">
+      <UniqueIdentifier>{1D32DDA2-5DDD-56A8-E535-CCA83405C2D6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\events">
+      <UniqueIdentifier>{C8A24E9B-80F2-9214-CA11-311AAEB962EF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\events\begin">
+      <UniqueIdentifier>{2C37373E-47FA-FE00-8D7C-F0E7393841E1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\events\exceptions">
+      <UniqueIdentifier>{1B31B925-E230-6787-D159-6B494B9CDE88}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\events\lifetime">
+      <UniqueIdentifier>{3202089A-B3E3-0313-2033-73C757BA6C01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\events\loop">
+      <UniqueIdentifier>{1F8A108E-8F5D-2A57-A902-EB76EA779B0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\events\publish">
+      <UniqueIdentifier>{6E7BEA7D-66A0-119A-8286-B006214815B7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\events\stepping">
+      <UniqueIdentifier>{B30F911B-BCE1-DCDD-D76F-9AE91F709EDB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\target">
+      <UniqueIdentifier>{1B70C135-139A-EED3-F909-BDDE8D13E593}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\target\memory">
+      <UniqueIdentifier>{9BFB1313-8D32-AD54-7F89-EFB913A1A4D3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\target\modules">
+      <UniqueIdentifier>{EEF3855F-04A8-E0F0-A0D8-3CC750F6A852}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\target\registers">
+      <UniqueIdentifier>{3BEEB181-BB63-07E5-CB0A-B4A2A823B226}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\traps">
+      <UniqueIdentifier>{3ED6F2AC-1F11-E3F5-20A4-7889C698ADD0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\traps\breakpoints">
+      <UniqueIdentifier>{3604EA05-1EFC-E3D5-CD1C-33DBCEC26B80}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\traps\conditions">
+      <UniqueIdentifier>{B19D1B14-943F-038B-AE0D-FB9BEA9647F0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\traps\coverage">
+      <UniqueIdentifier>{D111D789-A7F7-2FF4-5FDE-5CACD888DFAD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debugger\traps\hardware">
+      <UniqueIdentifier>{529ADDBE-1A19-C215-28B3-D85751A4C7B4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler">
+      <UniqueIdentifier>{EF8C6F0E-1C64-D179-FF2A-F98674406B58}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\apis">
+      <UniqueIdentifier>{4BFEBF91-6C3B-E434-AD2D-AFB58544DC3C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\builder">
+      <UniqueIdentifier>{6E83766A-58A0-2837-A3D2-E2EA9839DAC0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\cache">
+      <UniqueIdentifier>{C55A44F5-F3A6-D2B7-CBDC-9AB936C1844E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\decompile">
+      <UniqueIdentifier>{5558CFE9-A26D-59FD-E5ED-2FD911A6EA35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit">
+      <UniqueIdentifier>{FD1BA565-D757-2786-B20C-730258751F07}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\access">
+      <UniqueIdentifier>{760B1DE7-B577-2513-053A-83DC476DE79B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\arrays">
+      <UniqueIdentifier>{0E7C9A03-9B2B-C539-3046-08360C6DC35B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\booleans">
+      <UniqueIdentifier>{CA9F6B06-AD98-B527-E376-CCC7B6D74803}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\braces">
+      <UniqueIdentifier>{DFBDF7BE-4211-1A67-CA5A-8128F024E58F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\branches">
+      <UniqueIdentifier>{628137E8-DA78-C9B9-D93A-43E4ABD5405E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\callnames">
+      <UniqueIdentifier>{B930EF88-8954-4BC1-6CE9-2000903085C8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\calltypes">
+      <UniqueIdentifier>{9EC7404C-B5FF-DEA1-3C14-A21BBE388953}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\emitter">
+      <UniqueIdentifier>{77AF9BF7-140E-FD2A-EDE9-FCB8B10678A2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\expressions">
+      <UniqueIdentifier>{A4387671-180E-2F1A-81C9-3024F493B757}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\flags">
+      <UniqueIdentifier>{C56E3AC9-D247-AFAA-AEC4-67BE638511F9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\flow">
+      <UniqueIdentifier>{3ECA0B4E-7F4C-AD8B-278A-5C10BA3F92CC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\increments">
+      <UniqueIdentifier>{DDC88D3E-CEAD-2AA7-45D7-D741623EAD0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\loops">
+      <UniqueIdentifier>{7CDF4195-020D-E00D-EF8C-1CCD38949F68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\naming">
+      <UniqueIdentifier>{9FF1D064-CAF0-CC65-EEA0-01C2FF72415A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\narrowing">
+      <UniqueIdentifier>{5A0D1FC9-708C-B57E-01E7-EF2801DF89B5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\numbers">
+      <UniqueIdentifier>{DB277F74-DB63-708E-9549-B5ED630493E4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\pointers">
+      <UniqueIdentifier>{2B974298-67B7-ED04-9967-5F0034416306}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\program">
+      <UniqueIdentifier>{16D2D4FD-FB55-2BDE-9388-A822046AFC46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\regions">
+      <UniqueIdentifier>{9A741B36-527F-D77E-7F21-568764458F15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\sink">
+      <UniqueIdentifier>{2224AC18-A1EB-C33D-3636-FA082364BF5D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\statements">
+      <UniqueIdentifier>{1D44FD9B-3167-E985-6A0E-6884FE514719}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\vartypes">
+      <UniqueIdentifier>{5EC29382-7EF1-9BC0-1750-715487DAB65C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\emit\vectors">
+      <UniqueIdentifier>{6FEFF5AC-C604-1C5F-8EB6-DF81B819D714}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift">
+      <UniqueIdentifier>{BD41C603-81CE-2300-592F-02F93FF066E7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\api_types">
+      <UniqueIdentifier>{2099DD99-D3AA-05C5-F828-8CFEE81F6D23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\availability">
+      <UniqueIdentifier>{D1B1B249-79FC-A06A-8BEA-33FBCBEC753A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\divisions">
+      <UniqueIdentifier>{F44C8954-DA62-3A3B-020C-3164C551EE18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\effects">
+      <UniqueIdentifier>{6CB919AB-7828-518D-1858-46043B312CBA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\expressions">
+      <UniqueIdentifier>{558B9350-0D97-EA7A-CA28-D15264425A89}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\facts">
+      <UniqueIdentifier>{FF00239F-11A4-F143-1ACB-D115D4EE2E11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\flags">
+      <UniqueIdentifier>{90ACDCB5-389B-B01E-073D-69B259EA0D2B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\fold_constants">
+      <UniqueIdentifier>{2B5BA9C4-C97E-AF79-DA85-BFF508E273BD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\guards">
+      <UniqueIdentifier>{436AA82B-6454-B2DC-AC87-E5AAD3B9EE83}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\inline_temps">
+      <UniqueIdentifier>{34A7B18E-682D-7CC7-A7EE-F3CEF5CDAFE5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\intrinsics">
+      <UniqueIdentifier>{78A18E2C-F431-AD4F-47C5-5A468A9F48CD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\lifter">
+      <UniqueIdentifier>{98247F55-78E6-4CB6-7E1E-383EA20DED1E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\machine">
+      <UniqueIdentifier>{B4E2C1A9-5BB1-454F-77C5-A7249446C687}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\merge_conditions">
+      <UniqueIdentifier>{0665483A-CB60-6ECC-80E4-3E6527CA1002}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\propagate">
+      <UniqueIdentifier>{46E53624-451F-4B8D-16E3-7952BAFBD7EF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\prune">
+      <UniqueIdentifier>{95CAF3B5-7913-5FEB-3F60-6D0FBF7A1500}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\register_constants">
+      <UniqueIdentifier>{D50D7B9A-C5E9-29C2-11DE-205A00A182C0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\returns">
+      <UniqueIdentifier>{1F5C4503-332E-394C-2399-EBB914AA1E37}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\signs">
+      <UniqueIdentifier>{BC2026DC-884E-C9C9-F88B-4AB08C491840}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\sink_tests">
+      <UniqueIdentifier>{4815BB7D-9807-5E7A-CF2F-4CE74D41BF68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\stack">
+      <UniqueIdentifier>{726D31E0-A09D-76AF-E737-478ED0CBFFFC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\switches">
+      <UniqueIdentifier>{838913AA-8450-B71A-4731-8D7E0CF7F0F0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\variadic">
+      <UniqueIdentifier>{E457D03E-D170-BCF0-7A10-B043D6B3A9B9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\webs">
+      <UniqueIdentifier>{30D586A8-1CB6-4CBD-C13E-93AE4C30F0D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\yields">
+      <UniqueIdentifier>{D94B3A60-1742-D725-703C-47CB72F57612}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\lift\zero_edges">
+      <UniqueIdentifier>{761E1610-2066-6B45-6AA8-22906666CB44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\literals">
+      <UniqueIdentifier>{AB9ED40C-C4AC-73AA-37CF-30F46EB139E7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\namer">
+      <UniqueIdentifier>{A6BC53F3-FF87-39FB-3F15-092C1EDC3DB6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\output">
+      <UniqueIdentifier>{DEE36E73-69BF-823C-A7BD-A1C9051F97CA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\decompiler\prototypes">
+      <UniqueIdentifier>{4C77BE92-2AE7-FEF8-2C32-0BDF34EB0CBA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\host">
+      <UniqueIdentifier>{C531BAE7-4411-461B-1932-DD7F7C14A0EB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\host\dpi">
+      <UniqueIdentifier>{B8C5D2C8-92B1-638F-8223-FD1B3A9EECE2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\host\headless">
+      <UniqueIdentifier>{390BF664-2E50-B8B9-D1E1-1FF06EB313E5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\host\launch">
+      <UniqueIdentifier>{6032B422-6278-AACA-77F3-683A39C2953F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\host\loop">
+      <UniqueIdentifier>{416D436C-21CB-6317-5074-E614FF4AD06F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\host\pacing">
+      <UniqueIdentifier>{1388D61F-2C52-2284-FC73-158D607CDB0D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\host\painting">
+      <UniqueIdentifier>{7E069A6F-8FEA-FAFF-97F3-0F7B4C034B9C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\host\state">
+      <UniqueIdentifier>{595C65B3-7A03-566F-864F-CF5ECF1D5D3B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\host\window">
+      <UniqueIdentifier>{E878A4FC-EA38-3F97-3335-0C0CE9B200CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\loader">
+      <UniqueIdentifier>{E2463B03-7FA3-7BA0-2B50-692F5ED5ABE3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\loader\binary">
+      <UniqueIdentifier>{B3814BA6-0D5D-9DAF-AFC1-387785942FC3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\loader\symbols">
+      <UniqueIdentifier>{AC82358D-37C8-FD1B-6D7A-B70CD2833C2B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\precompiled">
+      <UniqueIdentifier>{58876196-032F-4DE6-A7EE-58EBC7455A85}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\precompiled\interface">
+      <UniqueIdentifier>{012C90BB-AD08-67C4-EB79-7F9BDF8971AB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\precompiled\system">
+      <UniqueIdentifier>{298FDDF8-AC91-CA8C-4A40-6112070660FA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\render">
+      <UniqueIdentifier>{6DE0F292-6FBC-2DEA-F7E1-18DF2703A5E6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\render\canvas">
+      <UniqueIdentifier>{A0708636-9DC4-AB2D-F103-D247A24D665A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\render\colors">
+      <UniqueIdentifier>{5104FF44-CAD1-D15F-2C37-306C0544DDC3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\render\commands">
+      <UniqueIdentifier>{F3139E49-F1A5-7A41-4F63-AE93DA04BF55}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\render\fonts">
+      <UniqueIdentifier>{534984FF-15E1-5FE7-C076-A51C5870E2FA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\render\gpu">
+      <UniqueIdentifier>{823C10F9-DAFD-2EED-9ACB-228F97C6533F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\render\shaders">
+      <UniqueIdentifier>{6492C31D-1EB3-C052-B534-5FEE9960FD13}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\runtime">
+      <UniqueIdentifier>{F6E74812-8793-A6A5-146F-BCE3F06D9B5F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\runtime\memory">
+      <UniqueIdentifier>{EAC463F2-F6BC-2463-EB5A-C7DBBDE41044}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\runtime\rounding">
+      <UniqueIdentifier>{E05AA236-05B5-A951-8D82-1952F8EFD5E3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\runtime\startup">
+      <UniqueIdentifier>{CBAAD7D2-73E9-A9FA-7836-2679950D920C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script">
+      <UniqueIdentifier>{C3A15B0B-3309-029B-8BC8-897183FC5036}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script\builtins">
+      <UniqueIdentifier>{1C5C0560-BD9E-E37A-A2EB-B4B59C604F13}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script\engine">
+      <UniqueIdentifier>{C509A4BE-8867-367E-24DF-7979D2EE340F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script\host">
+      <UniqueIdentifier>{C953FE74-D666-F37C-69B2-FB5EE1F9A236}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script\jit">
+      <UniqueIdentifier>{AEFCD51A-5212-56CB-4CDB-96EFBB5D684B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script\lexer">
+      <UniqueIdentifier>{E7E5E723-C5EF-5238-D1A9-16E27626BED9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script\parser">
+      <UniqueIdentifier>{9B6636EB-4349-7736-B04D-DA267B31925C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script\resolver">
+      <UniqueIdentifier>{3A1A034A-A820-72AC-0616-1F2ADB607645}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script\tokens">
+      <UniqueIdentifier>{1F11547D-52A7-EABC-BC81-E19A297F0F84}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script\tree">
+      <UniqueIdentifier>{59C76882-105E-65CB-5D50-869193D38511}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\script\values">
+      <UniqueIdentifier>{EF9D4081-5973-4DB9-4577-442D1A012C65}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui">
+      <UniqueIdentifier>{6D407B45-8199-B0BB-D3D6-4C6BAC04771E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\core">
+      <UniqueIdentifier>{903A7C40-FD26-161E-F167-D081F5A77FF7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\core\app">
+      <UniqueIdentifier>{C4837478-8C30-53B1-9ED4-DF16FA5AFCCB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\core\commands">
+      <UniqueIdentifier>{C17C567C-2307-BB84-2071-2856A8A2DD3D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\core\input">
+      <UniqueIdentifier>{6F2869D8-8584-46A9-77B5-E9C2AAAE49A0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\core\session">
+      <UniqueIdentifier>{62D01086-53CF-A226-70CB-22C4B53ACF83}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\core\settings">
+      <UniqueIdentifier>{51338CE8-A809-E651-7D6F-7D0B01B3BDBB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\listing">
+      <UniqueIdentifier>{6D0187E5-3C31-FB2D-027D-BDC031982338}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\listing\listing">
+      <UniqueIdentifier>{5BC7AAD3-419F-39F9-F25B-72EA1B3DC359}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\listing\rows">
+      <UniqueIdentifier>{A12E1ACA-D684-1911-5580-AA98F7BC440E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\listing\tokens">
+      <UniqueIdentifier>{AED2004A-1037-CD6D-5A97-D1AE0C675212}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\listing\widgets">
+      <UniqueIdentifier>{43DA0C7F-EB9C-5295-A48E-77C358AE7164}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\panels">
+      <UniqueIdentifier>{B8246A3B-32DE-E70F-3220-54E3CA66A2A8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\panels\browser">
+      <UniqueIdentifier>{1B7BA41A-572A-1C1E-9478-AB5FA9CFB258}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\panels\inspector">
+      <UniqueIdentifier>{7FC2A5E5-2979-2B6B-0384-504386F460FF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\panels\output">
+      <UniqueIdentifier>{4884DD98-C1FF-0C33-A5C0-356432CBA0D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\scripting">
+      <UniqueIdentifier>{BB77AC37-8490-1199-C6C6-821091E1449E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\scripting\bridge">
+      <UniqueIdentifier>{1351D164-B8DB-B4CF-9BDA-FA8953AA921D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\scripting\code">
+      <UniqueIdentifier>{346C0E37-AD99-DD6C-89D3-9ECCB2B16E7D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\scripting\control">
+      <UniqueIdentifier>{F14FEAEB-BBED-38CB-AFBC-29A19B3E7D7B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\scripting\core">
+      <UniqueIdentifier>{D3308454-8A45-377D-AFDE-EBC7B85D28EE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\scripting\data">
+      <UniqueIdentifier>{F38743BE-A8BA-8500-2623-33CBEC670648}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\scripting\run">
+      <UniqueIdentifier>{168553B7-5BF5-12C9-59A3-0CEF7EC437A7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\scripting\structs">
+      <UniqueIdentifier>{07192BF8-91A0-C3E6-6AAB-3AEF12C458AD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\scripting\tools">
+      <UniqueIdentifier>{A3A57B75-9732-4A99-27D6-E2F2811AFCA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell">
+      <UniqueIdentifier>{CA7D9053-A650-EE9C-6F1C-039034B852C7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\dialogs">
+      <UniqueIdentifier>{8AF1C86A-A3D1-02B1-1E50-ED4872EE97C0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\dialogs\colors">
+      <UniqueIdentifier>{06331453-74DC-2BDE-7219-FA1B030C8C9C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\dialogs\dialogs">
+      <UniqueIdentifier>{921EA181-6ACF-2F8A-5B87-95EF6CD5C708}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\dialogs\history">
+      <UniqueIdentifier>{2A5FA028-553A-EF91-53C9-954C39DC7A58}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\dialogs\palette">
+      <UniqueIdentifier>{73F03A9A-EF45-DA65-5964-4E0563472220}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\dialogs\preferences">
+      <UniqueIdentifier>{C21CC511-0910-5525-1284-B7F139F3068D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\frame">
+      <UniqueIdentifier>{24BAAE91-21EC-4F35-7709-54CC0468C913}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\frame\docking">
+      <UniqueIdentifier>{35C52888-1217-69C6-7889-ECBEF9965898}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\frame\start">
+      <UniqueIdentifier>{67E8328F-5DFD-FF28-B199-FBDFFBD5A5F6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\frame\status">
+      <UniqueIdentifier>{E7EC4DA7-C6C2-05D4-7E6E-D679649EB7D7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\frame\title">
+      <UniqueIdentifier>{47D86CE1-1BFD-B9BA-3C83-0BD5EC9D81D9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\overlays">
+      <UniqueIdentifier>{01BFC0ED-E17F-B682-7B4B-6A6E9EEEA66F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\shell\overlays\peek">
+      <UniqueIdentifier>{E26722D0-1957-B3A3-5AE1-29DB0B837FAF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\style">
+      <UniqueIdentifier>{138654DB-0C0E-6449-CC04-9F1352A53F7C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\style\format">
+      <UniqueIdentifier>{B372BFA5-8245-A3CA-80F4-E3877F2BBAAC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\style\icons">
+      <UniqueIdentifier>{1E2B39D1-2D3B-9FDF-C70A-F34107600CD8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\style\metrics">
+      <UniqueIdentifier>{2F5D5D22-91A9-FDF1-C15A-D2CE0143CDEB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools">
+      <UniqueIdentifier>{9265DFAD-E415-F173-4600-B517A0854FC9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\analysis">
+      <UniqueIdentifier>{750CBABE-1FD3-591A-0D9B-DDD429F868CB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\analysis\classes">
+      <UniqueIdentifier>{4918F2F9-C28B-53F2-A121-0E3C372E5545}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\analysis\coverage">
+      <UniqueIdentifier>{5D007518-FCD4-3A48-1F94-4F426158B25A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\analysis\report">
+      <UniqueIdentifier>{4505973E-C198-E3AD-51EA-2B36A22B05E4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\analysis\structs">
+      <UniqueIdentifier>{7B1B0869-E27E-48C9-80D8-A1690D7550CC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\editing">
+      <UniqueIdentifier>{2466E837-AEB7-3DBD-21A3-8E7180592442}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\editing\emulator">
+      <UniqueIdentifier>{3D89950F-57F5-513D-BBB5-6439AEED45B4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\editing\patching">
+      <UniqueIdentifier>{10665098-1647-AF22-CA41-618E01A0E378}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\mcp">
+      <UniqueIdentifier>{4ADFF03B-733E-1028-CB51-BFEA37417C75}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\prompts">
+      <UniqueIdentifier>{E204492D-2C13-3945-976C-C6472C20D56C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\search">
+      <UniqueIdentifier>{E350AA28-9980-E65C-22C9-C0467F7A6B9C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\search\compare">
+      <UniqueIdentifier>{109744D9-63DD-776A-45E0-19DF70E88D31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\search\library">
+      <UniqueIdentifier>{E100FD8E-AFCE-4988-4DED-0C38C98C457E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\tools\search\query">
+      <UniqueIdentifier>{E042622C-0CB5-B561-FAAB-28D411FA7E42}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\views">
+      <UniqueIdentifier>{67C271DA-6548-062E-E3DB-57682D0D2340}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\views\calls">
+      <UniqueIdentifier>{2703D10A-3753-D289-55BE-2CE3222E2629}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\views\disassembly">
+      <UniqueIdentifier>{D442A5DC-C09B-ECAD-9057-D3DC6931EA65}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\views\graph">
+      <UniqueIdentifier>{915B4404-683A-F05E-63DC-B369BAC1AF6D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\views\headers">
+      <UniqueIdentifier>{FC8C4507-226C-E16D-D89C-4B3BDF3C59FC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\views\hex">
+      <UniqueIdentifier>{EBA5A1FB-C332-383A-2F09-1E52EC7FFB5D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\views\pseudocode">
+      <UniqueIdentifier>{CA3790F7-CF84-72C8-847F-43DC9F1067A2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui\views\tabs">
+      <UniqueIdentifier>{4709BD90-2B33-9378-B4AE-1BEDEF639AED}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\x86">
+      <UniqueIdentifier>{A4A63A8D-D65A-5425-6077-2BE7ECC8DD02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\x86\assembler">
+      <UniqueIdentifier>{DD9648C7-A033-70FB-E9CD-D006CE617DC2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\x86\decoder">
+      <UniqueIdentifier>{66DF9CE3-E8DB-484F-B848-2BA0221A4C55}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\x86\forms">
+      <UniqueIdentifier>{E4B965F9-4E69-1BF9-D6FE-C1100EC67290}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\x86\instruction">
+      <UniqueIdentifier>{56DE34B1-32DD-5191-40CC-73A17CE133D5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\x86\mnemonics">
+      <UniqueIdentifier>{833BCC78-EE55-377A-B001-B528A5F115EA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\x86\opcodes">
+      <UniqueIdentifier>{8F0B3B6B-85BA-0A55-FD5D-C310DA8CD4B1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\x86\printer">
+      <UniqueIdentifier>{1A2C8CE6-EC8C-C889-3F1C-0958F1921181}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\x86\registers">
+      <UniqueIdentifier>{B44882B2-6F05-0078-A074-D90CECC7B159}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\analysis\database\database.cpp">
+      <Filter>src\analysis\database</Filter>
+    </ClCompile>
+    <ClCompile Include="src\analysis\discovery\discovery.cpp">
+      <Filter>src\analysis\discovery</Filter>
+    </ClCompile>
+    <ClCompile Include="src\analysis\emulation\emulation.cpp">
+      <Filter>src\analysis\emulation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\analysis\graph\graph.cpp">
+      <Filter>src\analysis\graph</Filter>
+    </ClCompile>
+    <ClCompile Include="src\analysis\rtti\rtti.cpp">
+      <Filter>src\analysis\rtti</Filter>
+    </ClCompile>
+    <ClCompile Include="src\analysis\runtime_names\runtime_names.cpp">
+      <Filter>src\analysis\runtime_names</Filter>
+    </ClCompile>
+    <ClCompile Include="src\analysis\signatures\signatures.cpp">
+      <Filter>src\analysis\signatures</Filter>
+    </ClCompile>
+    <ClCompile Include="src\base\clock\clock.cpp">
+      <Filter>src\base\clock</Filter>
+    </ClCompile>
+    <ClCompile Include="src\base\files\files.cpp">
+      <Filter>src\base\files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\base\json\json.cpp">
+      <Filter>src\base\json</Filter>
+    </ClCompile>
+    <ClCompile Include="src\base\math\math.cpp">
+      <Filter>src\base\math</Filter>
+    </ClCompile>
+    <ClCompile Include="src\base\random\random.cpp">
+      <Filter>src\base\random</Filter>
+    </ClCompile>
+    <ClCompile Include="src\base\writer\writer.cpp">
+      <Filter>src\base\writer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\control\processes\processes.cpp">
+      <Filter>src\debugger\control\processes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\control\session\session.cpp">
+      <Filter>src\debugger\control\session</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\core\log\log.cpp">
+      <Filter>src\debugger\core\log</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\core\state\state.cpp">
+      <Filter>src\debugger\core\state</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\events\begin\begin.cpp">
+      <Filter>src\debugger\events\begin</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\events\exceptions\exceptions.cpp">
+      <Filter>src\debugger\events\exceptions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\events\lifetime\lifetime.cpp">
+      <Filter>src\debugger\events\lifetime</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\events\loop\loop.cpp">
+      <Filter>src\debugger\events\loop</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\events\publish\publish.cpp">
+      <Filter>src\debugger\events\publish</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\events\stepping\stepping.cpp">
+      <Filter>src\debugger\events\stepping</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\target\memory\memory.cpp">
+      <Filter>src\debugger\target\memory</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\target\modules\modules.cpp">
+      <Filter>src\debugger\target\modules</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\target\registers\registers.cpp">
+      <Filter>src\debugger\target\registers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\traps\breakpoints\breakpoints.cpp">
+      <Filter>src\debugger\traps\breakpoints</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\traps\conditions\conditions.cpp">
+      <Filter>src\debugger\traps\conditions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\traps\coverage\coverage.cpp">
+      <Filter>src\debugger\traps\coverage</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugger\traps\hardware\hardware.cpp">
+      <Filter>src\debugger\traps\hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\apis\apis.cpp">
+      <Filter>src\decompiler\apis</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\builder\builder.cpp">
+      <Filter>src\decompiler\builder</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\cache\cache.cpp">
+      <Filter>src\decompiler\cache</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\decompile\decompile.cpp">
+      <Filter>src\decompiler\decompile</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\access\access.cpp">
+      <Filter>src\decompiler\emit\access</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\arrays\arrays.cpp">
+      <Filter>src\decompiler\emit\arrays</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\booleans\booleans.cpp">
+      <Filter>src\decompiler\emit\booleans</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\braces\braces.cpp">
+      <Filter>src\decompiler\emit\braces</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\branches\branches.cpp">
+      <Filter>src\decompiler\emit\branches</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\callnames\callnames.cpp">
+      <Filter>src\decompiler\emit\callnames</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\calltypes\calltypes.cpp">
+      <Filter>src\decompiler\emit\calltypes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\emitter\emitter.cpp">
+      <Filter>src\decompiler\emit\emitter</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\expressions\expressions.cpp">
+      <Filter>src\decompiler\emit\expressions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\flags\flags.cpp">
+      <Filter>src\decompiler\emit\flags</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\flow\flow.cpp">
+      <Filter>src\decompiler\emit\flow</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\increments\increments.cpp">
+      <Filter>src\decompiler\emit\increments</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\loops\loops.cpp">
+      <Filter>src\decompiler\emit\loops</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\naming\naming.cpp">
+      <Filter>src\decompiler\emit\naming</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\narrowing\narrowing.cpp">
+      <Filter>src\decompiler\emit\narrowing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\numbers\numbers.cpp">
+      <Filter>src\decompiler\emit\numbers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\pointers\pointers.cpp">
+      <Filter>src\decompiler\emit\pointers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\program\program.cpp">
+      <Filter>src\decompiler\emit\program</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\regions\regions.cpp">
+      <Filter>src\decompiler\emit\regions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\sink\sink.cpp">
+      <Filter>src\decompiler\emit\sink</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\statements\statements.cpp">
+      <Filter>src\decompiler\emit\statements</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\vartypes\vartypes.cpp">
+      <Filter>src\decompiler\emit\vartypes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\emit\vectors\vectors.cpp">
+      <Filter>src\decompiler\emit\vectors</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\api_types\api_types.cpp">
+      <Filter>src\decompiler\lift\api_types</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\availability\availability.cpp">
+      <Filter>src\decompiler\lift\availability</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\divisions\divisions.cpp">
+      <Filter>src\decompiler\lift\divisions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\effects\effects.cpp">
+      <Filter>src\decompiler\lift\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\expressions\expressions.cpp">
+      <Filter>src\decompiler\lift\expressions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\facts\facts.cpp">
+      <Filter>src\decompiler\lift\facts</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\flags\flags.cpp">
+      <Filter>src\decompiler\lift\flags</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\fold_constants\fold_constants.cpp">
+      <Filter>src\decompiler\lift\fold_constants</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\guards\guards.cpp">
+      <Filter>src\decompiler\lift\guards</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\inline_temps\inline_temps.cpp">
+      <Filter>src\decompiler\lift\inline_temps</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\intrinsics\intrinsics.cpp">
+      <Filter>src\decompiler\lift\intrinsics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\lifter\lifter.cpp">
+      <Filter>src\decompiler\lift\lifter</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\machine\machine.cpp">
+      <Filter>src\decompiler\lift\machine</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\merge_conditions\merge_conditions.cpp">
+      <Filter>src\decompiler\lift\merge_conditions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\propagate\propagate.cpp">
+      <Filter>src\decompiler\lift\propagate</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\prune\prune.cpp">
+      <Filter>src\decompiler\lift\prune</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\register_constants\register_constants.cpp">
+      <Filter>src\decompiler\lift\register_constants</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\returns\returns.cpp">
+      <Filter>src\decompiler\lift\returns</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\signs\signs.cpp">
+      <Filter>src\decompiler\lift\signs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\sink_tests\sink_tests.cpp">
+      <Filter>src\decompiler\lift\sink_tests</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\stack\stack.cpp">
+      <Filter>src\decompiler\lift\stack</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\switches\switches.cpp">
+      <Filter>src\decompiler\lift\switches</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\variadic\variadic.cpp">
+      <Filter>src\decompiler\lift\variadic</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\webs\webs.cpp">
+      <Filter>src\decompiler\lift\webs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\yields\yields.cpp">
+      <Filter>src\decompiler\lift\yields</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\lift\zero_edges\zero_edges.cpp">
+      <Filter>src\decompiler\lift\zero_edges</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\literals\literals.cpp">
+      <Filter>src\decompiler\literals</Filter>
+    </ClCompile>
+    <ClCompile Include="src\decompiler\prototypes\prototypes.cpp">
+      <Filter>src\decompiler\prototypes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\host\dpi\dpi.cpp">
+      <Filter>src\host\dpi</Filter>
+    </ClCompile>
+    <ClCompile Include="src\host\headless\capture.cpp">
+      <Filter>src\host\headless</Filter>
+    </ClCompile>
+    <ClCompile Include="src\host\launch\launch.cpp">
+      <Filter>src\host\launch</Filter>
+    </ClCompile>
+    <ClCompile Include="src\host\loop\loop.cpp">
+      <Filter>src\host\loop</Filter>
+    </ClCompile>
+    <ClCompile Include="src\host\pacing\pacing.cpp">
+      <Filter>src\host\pacing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\host\painting\painting.cpp">
+      <Filter>src\host\painting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\host\state\state.cpp">
+      <Filter>src\host\state</Filter>
+    </ClCompile>
+    <ClCompile Include="src\host\window\window.cpp">
+      <Filter>src\host\window</Filter>
+    </ClCompile>
+    <ClCompile Include="src\loader\binary\binary.cpp">
+      <Filter>src\loader\binary</Filter>
+    </ClCompile>
+    <ClCompile Include="src\loader\symbols\symbols.cpp">
+      <Filter>src\loader\symbols</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\precompiled\interface\interface.cpp">
+      <Filter>src\precompiled\interface</Filter>
+    </ClCompile>
+    <ClCompile Include="src\precompiled\system\system.cpp">
+      <Filter>src\precompiled\system</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\canvas\canvas.cpp">
+      <Filter>src\render\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\gpu\gpu.cpp">
+      <Filter>src\render\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\memory\memory.cpp">
+      <Filter>src\runtime\memory</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\rounding\rounding.cpp">
+      <Filter>src\runtime\rounding</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\startup\startup.cpp">
+      <Filter>src\runtime\startup</Filter>
+    </ClCompile>
+    <ClCompile Include="src\script\builtins\builtins.cpp">
+      <Filter>src\script\builtins</Filter>
+    </ClCompile>
+    <ClCompile Include="src\script\engine\engine.cpp">
+      <Filter>src\script\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="src\script\jit\jit.cpp">
+      <Filter>src\script\jit</Filter>
+    </ClCompile>
+    <ClCompile Include="src\script\lexer\lexer.cpp">
+      <Filter>src\script\lexer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\script\parser\parser.cpp">
+      <Filter>src\script\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="src\script\resolver\resolver.cpp">
+      <Filter>src\script\resolver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\core\app\app.cpp">
+      <Filter>src\ui\core\app</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\core\commands\commands.cpp">
+      <Filter>src\ui\core\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\core\input\input.cpp">
+      <Filter>src\ui\core\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\core\session\session.cpp">
+      <Filter>src\ui\core\session</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\core\settings\settings.cpp">
+      <Filter>src\ui\core\settings</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\listing\listing\listing.cpp">
+      <Filter>src\ui\listing\listing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\listing\rows\rows.cpp">
+      <Filter>src\ui\listing\rows</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\listing\widgets\widgets.cpp">
+      <Filter>src\ui\listing\widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\panels\browser\browser.cpp">
+      <Filter>src\ui\panels\browser</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\panels\inspector\inspector.cpp">
+      <Filter>src\ui\panels\inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\panels\output\output.cpp">
+      <Filter>src\ui\panels\output</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\scripting\code\code.cpp">
+      <Filter>src\ui\scripting\code</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\scripting\control\control.cpp">
+      <Filter>src\ui\scripting\control</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\scripting\core\core.cpp">
+      <Filter>src\ui\scripting\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\scripting\data\data.cpp">
+      <Filter>src\ui\scripting\data</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\scripting\run\run.cpp">
+      <Filter>src\ui\scripting\run</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\scripting\structs\structs.cpp">
+      <Filter>src\ui\scripting\structs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\scripting\tools\tools.cpp">
+      <Filter>src\ui\scripting\tools</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\shell\dialogs\colors\colors.cpp">
+      <Filter>src\ui\shell\dialogs\colors</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\shell\dialogs\dialogs\dialogs.cpp">
+      <Filter>src\ui\shell\dialogs\dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\shell\dialogs\history\history.cpp">
+      <Filter>src\ui\shell\dialogs\history</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\shell\dialogs\palette\palette.cpp">
+      <Filter>src\ui\shell\dialogs\palette</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\shell\dialogs\preferences\preferences.cpp">
+      <Filter>src\ui\shell\dialogs\preferences</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\shell\frame\docking\docking.cpp">
+      <Filter>src\ui\shell\frame\docking</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\shell\frame\start\start.cpp">
+      <Filter>src\ui\shell\frame\start</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\shell\frame\status\status.cpp">
+      <Filter>src\ui\shell\frame\status</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\shell\frame\title\title.cpp">
+      <Filter>src\ui\shell\frame\title</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\shell\overlays\peek\peek.cpp">
+      <Filter>src\ui\shell\overlays\peek</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\analysis\classes\classes.cpp">
+      <Filter>src\ui\tools\analysis\classes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\analysis\coverage\coverage.cpp">
+      <Filter>src\ui\tools\analysis\coverage</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\analysis\report\report.cpp">
+      <Filter>src\ui\tools\analysis\report</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\analysis\structs\structs.cpp">
+      <Filter>src\ui\tools\analysis\structs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\editing\emulator\emulator.cpp">
+      <Filter>src\ui\tools\editing\emulator</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\editing\patching\patching.cpp">
+      <Filter>src\ui\tools\editing\patching</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\mcp\mcp.cpp">
+      <Filter>src\ui\tools\mcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\prompts\prompts.cpp">
+      <Filter>src\ui\tools\prompts</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\search\compare\compare.cpp">
+      <Filter>src\ui\tools\search\compare</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\search\library\library.cpp">
+      <Filter>src\ui\tools\search\library</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\tools\search\query\query.cpp">
+      <Filter>src\ui\tools\search\query</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\views\calls\calls.cpp">
+      <Filter>src\ui\views\calls</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\views\disassembly\disassembly.cpp">
+      <Filter>src\ui\views\disassembly</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\views\graph\graph.cpp">
+      <Filter>src\ui\views\graph</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\views\headers\headers.cpp">
+      <Filter>src\ui\views\headers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\views\hex\hex.cpp">
+      <Filter>src\ui\views\hex</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\views\pseudocode\pseudocode.cpp">
+      <Filter>src\ui\views\pseudocode</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\views\tabs\tabs.cpp">
+      <Filter>src\ui\views\tabs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\x86\assembler\assembler.cpp">
+      <Filter>src\x86\assembler</Filter>
+    </ClCompile>
+    <ClCompile Include="src\x86\decoder\decoder.cpp">
+      <Filter>src\x86\decoder</Filter>
+    </ClCompile>
+    <ClCompile Include="src\x86\forms\forms.cpp">
+      <Filter>src\x86\forms</Filter>
+    </ClCompile>
+    <ClCompile Include="src\x86\instruction\instruction.cpp">
+      <Filter>src\x86\instruction</Filter>
+    </ClCompile>
+    <ClCompile Include="src\x86\mnemonics\mnemonics.cpp">
+      <Filter>src\x86\mnemonics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\x86\opcodes\opcodes.cpp">
+      <Filter>src\x86\opcodes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\x86\printer\printer.cpp">
+      <Filter>src\x86\printer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\x86\registers\registers.cpp">
+      <Filter>src\x86\registers</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\analysis\database\database.h">
+      <Filter>src\analysis\database</Filter>
+    </ClInclude>
+    <ClInclude Include="src\analysis\discovery\discovery.h">
+      <Filter>src\analysis\discovery</Filter>
+    </ClInclude>
+    <ClInclude Include="src\analysis\emulation\emulation.h">
+      <Filter>src\analysis\emulation</Filter>
+    </ClInclude>
+    <ClInclude Include="src\analysis\graph\graph.h">
+      <Filter>src\analysis\graph</Filter>
+    </ClInclude>
+    <ClInclude Include="src\analysis\rtti\rtti.h">
+      <Filter>src\analysis\rtti</Filter>
+    </ClInclude>
+    <ClInclude Include="src\analysis\runtime_names\runtime_names.h">
+      <Filter>src\analysis\runtime_names</Filter>
+    </ClInclude>
+    <ClInclude Include="src\analysis\signatures\signatures.h">
+      <Filter>src\analysis\signatures</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\clock\clock.h">
+      <Filter>src\base\clock</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\colors\colors.h">
+      <Filter>src\base\colors</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\files\files.h">
+      <Filter>src\base\files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\json\json.h">
+      <Filter>src\base\json</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\list\list.h">
+      <Filter>src\base\list</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\math\math.h">
+      <Filter>src\base\math</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\random\random.h">
+      <Filter>src\base\random</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\sort\sort.h">
+      <Filter>src\base\sort</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\strings\strings.h">
+      <Filter>src\base\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\text\text.h">
+      <Filter>src\base\text</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\types\types.h">
+      <Filter>src\base\types</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\utility\utility.h">
+      <Filter>src\base\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="src\base\writer\writer.h">
+      <Filter>src\base\writer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\control\processes\processes.h">
+      <Filter>src\debugger\control\processes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\control\session\session.h">
+      <Filter>src\debugger\control\session</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\core\log\log.h">
+      <Filter>src\debugger\core\log</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\core\state\state.h">
+      <Filter>src\debugger\core\state</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\events\begin\begin.h">
+      <Filter>src\debugger\events\begin</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\events\exceptions\exceptions.h">
+      <Filter>src\debugger\events\exceptions</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\events\lifetime\lifetime.h">
+      <Filter>src\debugger\events\lifetime</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\events\loop\loop.h">
+      <Filter>src\debugger\events\loop</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\events\publish\publish.h">
+      <Filter>src\debugger\events\publish</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\events\stepping\stepping.h">
+      <Filter>src\debugger\events\stepping</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\target\memory\memory.h">
+      <Filter>src\debugger\target\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\target\modules\modules.h">
+      <Filter>src\debugger\target\modules</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\target\registers\registers.h">
+      <Filter>src\debugger\target\registers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\traps\breakpoints\breakpoints.h">
+      <Filter>src\debugger\traps\breakpoints</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\traps\conditions\conditions.h">
+      <Filter>src\debugger\traps\conditions</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\traps\coverage\coverage.h">
+      <Filter>src\debugger\traps\coverage</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugger\traps\hardware\hardware.h">
+      <Filter>src\debugger\traps\hardware</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\apis\apis.h">
+      <Filter>src\decompiler\apis</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\builder\builder.h">
+      <Filter>src\decompiler\builder</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\cache\cache.h">
+      <Filter>src\decompiler\cache</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\decompile\decompile.h">
+      <Filter>src\decompiler\decompile</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\access\access.h">
+      <Filter>src\decompiler\emit\access</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\arrays\arrays.h">
+      <Filter>src\decompiler\emit\arrays</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\booleans\booleans.h">
+      <Filter>src\decompiler\emit\booleans</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\braces\braces.h">
+      <Filter>src\decompiler\emit\braces</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\branches\branches.h">
+      <Filter>src\decompiler\emit\branches</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\callnames\callnames.h">
+      <Filter>src\decompiler\emit\callnames</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\calltypes\calltypes.h">
+      <Filter>src\decompiler\emit\calltypes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\emitter\emitter.h">
+      <Filter>src\decompiler\emit\emitter</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\expressions\expressions.h">
+      <Filter>src\decompiler\emit\expressions</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\flags\flags.h">
+      <Filter>src\decompiler\emit\flags</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\flow\flow.h">
+      <Filter>src\decompiler\emit\flow</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\increments\increments.h">
+      <Filter>src\decompiler\emit\increments</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\loops\loops.h">
+      <Filter>src\decompiler\emit\loops</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\naming\naming.h">
+      <Filter>src\decompiler\emit\naming</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\narrowing\narrowing.h">
+      <Filter>src\decompiler\emit\narrowing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\numbers\numbers.h">
+      <Filter>src\decompiler\emit\numbers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\pointers\pointers.h">
+      <Filter>src\decompiler\emit\pointers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\program\program.h">
+      <Filter>src\decompiler\emit\program</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\regions\regions.h">
+      <Filter>src\decompiler\emit\regions</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\sink\sink.h">
+      <Filter>src\decompiler\emit\sink</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\statements\statements.h">
+      <Filter>src\decompiler\emit\statements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\vartypes\vartypes.h">
+      <Filter>src\decompiler\emit\vartypes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\emit\vectors\vectors.h">
+      <Filter>src\decompiler\emit\vectors</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\api_types\api_types.h">
+      <Filter>src\decompiler\lift\api_types</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\availability\availability.h">
+      <Filter>src\decompiler\lift\availability</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\divisions\divisions.h">
+      <Filter>src\decompiler\lift\divisions</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\effects\effects.h">
+      <Filter>src\decompiler\lift\effects</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\expressions\expressions.h">
+      <Filter>src\decompiler\lift\expressions</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\facts\facts.h">
+      <Filter>src\decompiler\lift\facts</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\flags\flags.h">
+      <Filter>src\decompiler\lift\flags</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\fold_constants\fold_constants.h">
+      <Filter>src\decompiler\lift\fold_constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\guards\guards.h">
+      <Filter>src\decompiler\lift\guards</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\inline_temps\inline_temps.h">
+      <Filter>src\decompiler\lift\inline_temps</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\intrinsics\intrinsics.h">
+      <Filter>src\decompiler\lift\intrinsics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\lifter\lifter.h">
+      <Filter>src\decompiler\lift\lifter</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\machine\machine.h">
+      <Filter>src\decompiler\lift\machine</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\merge_conditions\merge_conditions.h">
+      <Filter>src\decompiler\lift\merge_conditions</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\propagate\propagate.h">
+      <Filter>src\decompiler\lift\propagate</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\prune\prune.h">
+      <Filter>src\decompiler\lift\prune</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\register_constants\register_constants.h">
+      <Filter>src\decompiler\lift\register_constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\returns\returns.h">
+      <Filter>src\decompiler\lift\returns</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\signs\signs.h">
+      <Filter>src\decompiler\lift\signs</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\sink_tests\sink_tests.h">
+      <Filter>src\decompiler\lift\sink_tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\stack\stack.h">
+      <Filter>src\decompiler\lift\stack</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\switches\switches.h">
+      <Filter>src\decompiler\lift\switches</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\variadic\variadic.h">
+      <Filter>src\decompiler\lift\variadic</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\webs\webs.h">
+      <Filter>src\decompiler\lift\webs</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\yields\yields.h">
+      <Filter>src\decompiler\lift\yields</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\zero_edges\zero_edges.h">
+      <Filter>src\decompiler\lift\zero_edges</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\literals\literals.h">
+      <Filter>src\decompiler\literals</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\namer\namer.h">
+      <Filter>src\decompiler\namer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\output\output.h">
+      <Filter>src\decompiler\output</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\prototypes\prototypes.h">
+      <Filter>src\decompiler\prototypes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\host\dpi\dpi.h">
+      <Filter>src\host\dpi</Filter>
+    </ClInclude>
+    <ClInclude Include="src\host\headless\capture.h">
+      <Filter>src\host\headless</Filter>
+    </ClInclude>
+    <ClInclude Include="src\host\launch\launch.h">
+      <Filter>src\host\launch</Filter>
+    </ClInclude>
+    <ClInclude Include="src\host\loop\loop.h">
+      <Filter>src\host\loop</Filter>
+    </ClInclude>
+    <ClInclude Include="src\host\pacing\pacing.h">
+      <Filter>src\host\pacing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\host\painting\painting.h">
+      <Filter>src\host\painting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\host\state\state.h">
+      <Filter>src\host\state</Filter>
+    </ClInclude>
+    <ClInclude Include="src\host\window\window.h">
+      <Filter>src\host\window</Filter>
+    </ClInclude>
+    <ClInclude Include="src\loader\binary\binary.h">
+      <Filter>src\loader\binary</Filter>
+    </ClInclude>
+    <ClInclude Include="src\loader\symbols\symbols.h">
+      <Filter>src\loader\symbols</Filter>
+    </ClInclude>
+    <ClInclude Include="src\precompiled\interface\interface.h">
+      <Filter>src\precompiled\interface</Filter>
+    </ClInclude>
+    <ClInclude Include="src\precompiled\system\system.h">
+      <Filter>src\precompiled\system</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\canvas\canvas.h">
+      <Filter>src\render\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\colors\colors.h">
+      <Filter>src\render\colors</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\commands\commands.h">
+      <Filter>src\render\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\fonts\fonts.h">
+      <Filter>src\render\fonts</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\gpu\gpu.h">
+      <Filter>src\render\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="src\runtime\memory\memory.h">
+      <Filter>src\runtime\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="src\runtime\rounding\rounding.h">
+      <Filter>src\runtime\rounding</Filter>
+    </ClInclude>
+    <ClInclude Include="src\runtime\startup\startup.h">
+      <Filter>src\runtime\startup</Filter>
+    </ClInclude>
+    <ClInclude Include="src\script\builtins\builtins.h">
+      <Filter>src\script\builtins</Filter>
+    </ClInclude>
+    <ClInclude Include="src\script\engine\engine.h">
+      <Filter>src\script\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="src\script\host\host.h">
+      <Filter>src\script\host</Filter>
+    </ClInclude>
+    <ClInclude Include="src\script\jit\jit.h">
+      <Filter>src\script\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="src\script\lexer\lexer.h">
+      <Filter>src\script\lexer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\script\parser\parser.h">
+      <Filter>src\script\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="src\script\resolver\resolver.h">
+      <Filter>src\script\resolver</Filter>
+    </ClInclude>
+    <ClInclude Include="src\script\tokens\tokens.h">
+      <Filter>src\script\tokens</Filter>
+    </ClInclude>
+    <ClInclude Include="src\script\tree\tree.h">
+      <Filter>src\script\tree</Filter>
+    </ClInclude>
+    <ClInclude Include="src\script\values\values.h">
+      <Filter>src\script\values</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\core\app\app.h">
+      <Filter>src\ui\core\app</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\core\commands\commands.h">
+      <Filter>src\ui\core\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\core\input\input.h">
+      <Filter>src\ui\core\input</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\core\session\session.h">
+      <Filter>src\ui\core\session</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\core\settings\settings.h">
+      <Filter>src\ui\core\settings</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\listing\listing\listing.h">
+      <Filter>src\ui\listing\listing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\listing\rows\rows.h">
+      <Filter>src\ui\listing\rows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\listing\tokens\tokens.h">
+      <Filter>src\ui\listing\tokens</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\listing\widgets\widgets.h">
+      <Filter>src\ui\listing\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\panels\browser\browser.h">
+      <Filter>src\ui\panels\browser</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\panels\inspector\inspector.h">
+      <Filter>src\ui\panels\inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\panels\output\output.h">
+      <Filter>src\ui\panels\output</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\scripting\bridge\bridge.h">
+      <Filter>src\ui\scripting\bridge</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\scripting\code\code.h">
+      <Filter>src\ui\scripting\code</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\scripting\control\control.h">
+      <Filter>src\ui\scripting\control</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\scripting\core\core.h">
+      <Filter>src\ui\scripting\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\scripting\data\data.h">
+      <Filter>src\ui\scripting\data</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\scripting\run\run.h">
+      <Filter>src\ui\scripting\run</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\scripting\structs\structs.h">
+      <Filter>src\ui\scripting\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\scripting\tools\tools.h">
+      <Filter>src\ui\scripting\tools</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\shell\dialogs\colors\colors.h">
+      <Filter>src\ui\shell\dialogs\colors</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\shell\dialogs\dialogs\dialogs.h">
+      <Filter>src\ui\shell\dialogs\dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\shell\dialogs\history\history.h">
+      <Filter>src\ui\shell\dialogs\history</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\shell\dialogs\palette\palette.h">
+      <Filter>src\ui\shell\dialogs\palette</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\shell\dialogs\preferences\preferences.h">
+      <Filter>src\ui\shell\dialogs\preferences</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\shell\frame\docking\docking.h">
+      <Filter>src\ui\shell\frame\docking</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\shell\frame\start\start.h">
+      <Filter>src\ui\shell\frame\start</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\shell\frame\status\status.h">
+      <Filter>src\ui\shell\frame\status</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\shell\frame\title\title.h">
+      <Filter>src\ui\shell\frame\title</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\shell\overlays\peek\peek.h">
+      <Filter>src\ui\shell\overlays\peek</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\style\format\format.h">
+      <Filter>src\ui\style\format</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\style\icons\icons.h">
+      <Filter>src\ui\style\icons</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\style\metrics\metrics.h">
+      <Filter>src\ui\style\metrics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\analysis\classes\classes.h">
+      <Filter>src\ui\tools\analysis\classes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\analysis\coverage\coverage.h">
+      <Filter>src\ui\tools\analysis\coverage</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\analysis\report\report.h">
+      <Filter>src\ui\tools\analysis\report</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\analysis\structs\structs.h">
+      <Filter>src\ui\tools\analysis\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\editing\emulator\emulator.h">
+      <Filter>src\ui\tools\editing\emulator</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\editing\patching\patching.h">
+      <Filter>src\ui\tools\editing\patching</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\mcp\mcp.h">
+      <Filter>src\ui\tools\mcp</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\prompts\prompts.h">
+      <Filter>src\ui\tools\prompts</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\search\compare\compare.h">
+      <Filter>src\ui\tools\search\compare</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\search\library\library.h">
+      <Filter>src\ui\tools\search\library</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\tools\search\query\query.h">
+      <Filter>src\ui\tools\search\query</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\views\calls\calls.h">
+      <Filter>src\ui\views\calls</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\views\disassembly\disassembly.h">
+      <Filter>src\ui\views\disassembly</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\views\graph\graph.h">
+      <Filter>src\ui\views\graph</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\views\headers\headers.h">
+      <Filter>src\ui\views\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\views\hex\hex.h">
+      <Filter>src\ui\views\hex</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\views\pseudocode\pseudocode.h">
+      <Filter>src\ui\views\pseudocode</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\views\tabs\tabs.h">
+      <Filter>src\ui\views\tabs</Filter>
+    </ClInclude>
+    <ClInclude Include="src\x86\assembler\assembler.h">
+      <Filter>src\x86\assembler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\x86\decoder\decoder.h">
+      <Filter>src\x86\decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="src\x86\forms\forms.h">
+      <Filter>src\x86\forms</Filter>
+    </ClInclude>
+    <ClInclude Include="src\x86\instruction\instruction.h">
+      <Filter>src\x86\instruction</Filter>
+    </ClInclude>
+    <ClInclude Include="src\x86\mnemonics\mnemonics.h">
+      <Filter>src\x86\mnemonics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\x86\opcodes\opcodes.h">
+      <Filter>src\x86\opcodes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\x86\printer\printer.h">
+      <Filter>src\x86\printer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\x86\registers\registers.h">
+      <Filter>src\x86\registers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="src\render\shaders\cover_ps.hlsl">
+      <Filter>src\render\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="src\render\shaders\down_ps.hlsl">
+      <Filter>src\render\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="src\render\shaders\full_vs.hlsl">
+      <Filter>src\render\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="src\render\shaders\ui_ps.hlsl">
+      <Filter>src\render\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="src\render\shaders\ui_vs.hlsl">
+      <Filter>src\render\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="src\render\shaders\up_ps.hlsl">
+      <Filter>src\render\shaders</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="assets\plumb.rc">
+      <Filter>assets</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\plumb.manifest">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="src\render\shaders\post.hlsli">
+      <Filter>src\render\shaders</Filter>
+    </None>
+    <None Include="src\render\shaders\ui.hlsli">
+      <Filter>src\render\shaders</Filter>
+    </None>
+  </ItemGroup>
+</Project>
