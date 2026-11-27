@@ -78,4 +78,45 @@ namespace decompiler {
 
 	extern bool sized_shield;
 
+	extern bool ghost_folds;
+	extern bool ghost_exprs;
+	extern bool calls_keep_exprs;
+	extern bool ghost_call_copies;
+	extern bool ghost_forwards;
+	extern bool stack_param_copies;
+	extern bool ghost_sinks;
+	extern bool copy_fixed;
+	extern bool copy_into;
+	extern bool calls_forward;
+	extern bool swap_copies;
+	extern bool copy_local;
+	extern bool expr_fixed;
+	extern bool keep_destination;
+	extern bool shared_results;
+	extern bool intact_exprs;
+	extern bool sink_past_moves;
+	extern bool calls_intact;
+	extern bool broken_keep;
+	extern bool origin_numbers;
+	extern bool fold_pointers;
+	extern bool fold_vector_zero;
+	extern bool ghost_vector_zero;
+	extern bool fold_addresses;
+	extern bool copy_constants;
+	extern bool zero_registers;
+	extern bool zero_stack_slots;
+	extern bool reload_selects;
+	extern bool dead_stack_stores;
+	extern int32_t switch_cases;
+	extern bool ghost_addresses;
+	extern bool keep_returned_constants;
+	extern bool sign_ops;
+	extern bool sign_copies;
+	extern bool widened_returns;
+	extern bool inline_switches;
+	extern bool sign_pointers;
+	extern bool assign_in_tests;
+	extern bool comma_uses;
+	extern bool guard_defs;
+
 }
