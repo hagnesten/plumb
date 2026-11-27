@@ -1613,13 +1613,10 @@ bool ui::app::symbol_name ( uint64_t address, bool code, wchar_t* out, int32_t r
 
 		if ( db->is_start ( address ) ) {
 
-			int32_t inside = db->function_at ( address );
+			x86::instruction ins;
 			base::writer text;
 
-			if ( inside >= 0 )
-				text.add ( L".L" ).hex ( address - db->functions [ static_cast < size_t > ( inside ) ].start );
-			else
-				text.add ( L"loc_" ).hex ( address );
+			text.add ( db->decode ( address, ins ) && ins.name == x86::mnemonic::ret ? L"locret_" : L"loc_" ).hex ( address );
 
 			base::copy_text ( text.text ( ), out, room );
 
