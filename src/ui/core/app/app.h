@@ -944,6 +944,9 @@ namespace ui {
 		float wheel_steps = 0.0f;
 		float wheel_side = 0.0f;
 		bool wheel_control = false;
+		base::text shown_title;
+
+		void sync_window_title ( );
 		float listing_zoom = 1.0f;
 		float code_zoom = 1.0f;
 		float view_scale = 1.0f;

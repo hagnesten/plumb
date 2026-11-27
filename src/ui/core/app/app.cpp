@@ -936,6 +936,26 @@ void ui::app::layout ( ) {
 
 }
 
+void ui::app::sync_window_title ( ) {
+
+	if ( !window )
+		return;
+
+	base::writer wanted;
+
+	if ( file.loaded ( ) && !file.name.empty ( ) )
+		wanted.add ( file.name.get ( ) ).add ( dirty ? L" *" : L"" ).add ( L" - Plumb" );
+	else
+		wanted.add ( L"Plumb" );
+
+	if ( !shown_title.empty ( ) && base::same_text ( shown_title.get ( ), wanted.text ( ) ) )
+		return;
+
+	shown_title.set ( wanted.text ( ) );
+	SetWindowTextW ( static_cast < HWND > ( window ), wanted.text ( ) );
+
+}
+
 void ui::app::frame ( double seconds ) {
 
 	begin_frame ( seconds );
@@ -950,6 +970,7 @@ void ui::app::frame ( double seconds ) {
 	select_state ( current_document ( ) );
 	handle_keys ( );
 	select_state ( current_document ( ) );
+	sync_window_title ( );
 
 	if ( browser_open && browsing == panel::REFERENCES && file.loaded ( ) )
 		refresh_references ( );
