@@ -1206,6 +1206,9 @@ bool decompiler::builder::lift ( ) {
 	fold_constant_trees ( *this );
 	fold_constant_branches ( *this );
 
+	if ( byte_params )
+		narrow_byte_params ( );
+
 	return true;
 
 }

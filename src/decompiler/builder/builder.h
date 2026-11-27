@@ -306,6 +306,8 @@ namespace decompiler {
 
 		void narrow_webs ( );
 
+		void narrow_byte_params ( );
+
 		void narrow_floats ( );
 
 		void substitute_known ( );

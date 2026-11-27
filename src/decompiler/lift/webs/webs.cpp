@@ -632,6 +632,163 @@ void decompiler::builder::narrow_floats ( ) {
 
 }
 
+void decompiler::builder::narrow_byte_params ( ) {
+
+	int32_t total = vars.count ( );
+	base::list < uint8_t > state;
+
+	state.fill ( static_cast < size_t > ( total ), 0 );
+
+	for ( int32_t v = 0; v < total; v++ ) {
+
+		const variable& item = vars [ static_cast < size_t > ( v ) ];
+
+		if ( item.kind == var_kind::PARAMETER && item.family >= 0 && item.family < 16 && !( item.bits & FLOATING ) && item.size > 1 && !item.assigned )
+			state [ static_cast < size_t > ( v ) ] = 1;
+
+	}
+
+	auto walk = [ & ] ( auto& self, int32_t e, bool byte_view, bool widened, int32_t depth ) -> void {
+
+		if ( e < 0 || depth > 96 )
+			return;
+
+		const expr& node = exprs [ static_cast < size_t > ( e ) ];
+
+		if ( node.kind == op::VAR ) {
+
+			if ( node.value < 0 || node.value >= total || !state [ static_cast < size_t > ( node.value ) ] )
+				return;
+
+			uint8_t& slot = state [ static_cast < size_t > ( node.value ) ];
+
+			if ( node.size != 1 && !byte_view )
+				slot = 0;
+			else if ( slot && widened )
+				slot = 2;
+
+			return;
+
+		}
+
+		if ( node.kind == op::ADDRESS && node.a < 0 && node.value >= 0 && node.value < total )
+			state [ static_cast < size_t > ( node.value ) ] = 0;
+
+		if ( node.kind == op::CAST && node.size == 1 && !( node.bits & FLOATING ) ) {
+
+			self ( self, node.a, true, widened, depth + 1 );
+
+			return;
+
+		}
+
+		bool widening = node.kind == op::CAST && node.size > 1 && !( node.bits & ( SIGNED | FLOATING ) ) && node.a >= 0 && exprs [ static_cast < size_t > ( node.a ) ].size == 1;
+		bool low_only = byte_view && !( node.bits & FLOATING ) && ( node.kind == op::ADD || node.kind == op::SUB || node.kind == op::MUL || node.kind == op::AND || node.kind == op::OR || node.kind == op::XOR || node.kind == op::NOT || node.kind == op::NEG );
+
+		if ( low_only ) {
+
+			self ( self, node.a, true, false, depth + 1 );
+			self ( self, node.b, true, false, depth + 1 );
+
+			return;
+
+		}
+
+		self ( self, node.a, false, widening, depth + 1 );
+		self ( self, node.b, false, false, depth + 1 );
+		self ( self, node.c, false, false, depth + 1 );
+
+		for ( int32_t i = 0; i < node.arg_count; i++ )
+			self ( self, args [ static_cast < size_t > ( node.first_arg + i ) ], false, false, depth + 1 );
+
+	};
+
+	for ( const block_code& block : code ) {
+
+		if ( !block.reachable )
+			continue;
+
+		for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ ) {
+
+			const statement& line = statements [ static_cast < size_t > ( s ) ];
+
+			if ( line.kind == stmt::NOP )
+				continue;
+
+			if ( line.kind == stmt::ASM ) {
+
+				for ( uint8_t& slot : state )
+					slot = 0;
+
+				return;
+
+			}
+
+			bool direct = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+
+			if ( direct ) {
+
+				int64_t target = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+				if ( target >= 0 && target < total )
+					state [ static_cast < size_t > ( target ) ] = 0;
+
+			} else
+				walk ( walk, line.left, false, false, 0 );
+
+			walk ( walk, line.right, false, false, 0 );
+
+		}
+
+		walk ( walk, block.condition, false, false, 0 );
+		walk ( walk, block.selector, false, false, 0 );
+
+		if ( returns_value || block.end == term::TAIL )
+			walk ( walk, block.returned, false, false, 0 );
+
+	}
+
+	bool any = false;
+
+	for ( int32_t v = 0; v < total; v++ ) {
+
+		uint8_t slot = state [ static_cast < size_t > ( v ) ];
+
+		if ( !slot )
+			continue;
+
+		variable& item = vars [ static_cast < size_t > ( v ) ];
+
+		item.size = 1;
+		item.bits = static_cast < uint8_t > ( ( item.bits & ~( SIGNED | UNSIGNED ) ) | ( slot == 2 ? UNSIGNED : 0 ) );
+		any = true;
+
+	}
+
+	if ( !any )
+		return;
+
+	for ( expr& node : exprs ) {
+
+		if ( node.kind == op::VAR && node.value >= 0 && node.value < total && state [ static_cast < size_t > ( node.value ) ] )
+			node.size = 1;
+
+	}
+
+	for ( expr& node : exprs ) {
+
+		if ( node.kind != op::CAST || node.size != 1 || node.a < 0 )
+			continue;
+
+		const expr inner = exprs [ static_cast < size_t > ( node.a ) ];
+
+		if ( inner.kind == op::VAR && inner.value >= 0 && inner.value < total && state [ static_cast < size_t > ( inner.value ) ] )
+			node = inner;
+
+	}
+
+}
+
 bool decompiler::narrow_by_callee = true;
 
 bool decompiler::narrow_copies = true;

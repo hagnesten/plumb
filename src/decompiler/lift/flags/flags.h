@@ -34,6 +34,8 @@ namespace decompiler {
 
 	extern bool global_calls;
 
+	extern bool byte_params;
+
 	extern bool sse_extras;
 
 	extern bool find_variadic;
