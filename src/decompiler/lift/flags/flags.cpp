@@ -10,6 +10,8 @@ bool decompiler::retested_loads = true;
 
 bool decompiler::sext_narrowing = true;
 
+bool decompiler::bittest_calls = true;
+
 bool decompiler::ordered_cmov_loads = true;
 
 bool decompiler::quiet_nops = true;

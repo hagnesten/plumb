@@ -14,6 +14,8 @@ namespace decompiler {
 
 	extern bool sext_narrowing;
 
+	extern bool bittest_calls;
+
 	extern bool ordered_cmov_loads;
 
 	extern bool quiet_nops;

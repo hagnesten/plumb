@@ -844,6 +844,15 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 			}
 			bool wide = item.size == 8 && called [ 0 ] == L'_' && called [ 1 ] == L'I' && called [ 2 ] == L'n' && called [ 3 ] == L't';
 
+			if ( item.value == I_BITTEST && item.arg_count == 2 ) {
+
+				const expr& where = b.exprs [ static_cast < size_t > ( b.args [ static_cast < size_t > ( item.first_arg ) ] ) ];
+				int64_t v = where.kind == op::ADDRESS && where.a < 0 ? where.value : -1;
+
+				wide = v >= 0 && v < b.vars.count ( ) && b.vars [ static_cast < size_t > ( v ) ].size == 8;
+
+			}
+
 			out.put ( wide ? base::writer ( ).add ( called ).add ( L"64" ).text ( ) : called, syntax::FUNCTION );
 			out.put ( L"(" );
 			operand = false;

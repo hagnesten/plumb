@@ -1438,6 +1438,17 @@ int32_t decompiler::machine::condition ( int32_t code ) {
 
 		case 5: {
 
+			const expr& tested = k.exprs [ static_cast < size_t > ( flag_a ) ];
+
+			if ( bittest_calls && ( code == 2 || code == 3 ) && tested.kind == op::VAR && tested.value >= 0 && ( tested.size == 4 || tested.size == 8 ) && !( tested.bits & FLOATING ) ) {
+
+				int32_t where = k.make ( op::ADDRESS, 8, -1, -1, tested.value, POINTER );
+				int32_t call = intrinsic ( I_BITTEST, 1, where, flag_b );
+
+				return code == 2 ? call : k.negate ( call );
+
+			}
+
 			int32_t bit = k.binary ( op::AND, k.binary ( op::SHR, a, flag_b, size ), k.constant ( 1, size ), size );
 
 			if ( code == 2 )
@@ -2381,6 +2392,16 @@ void decompiler::machine::step ( const x86::instruction& ins, uint32_t live_afte
 			return;
 
 		case mnemonic::bt:
+
+			if ( bittest_calls && ins.operands [ 0 ].type == x86::kind::REG && ( size == 4 || size == 8 ) ) {
+
+				int32_t slot = slot_of ( ins.operands [ 0 ].reg );
+
+				if ( slot >= 0 && slot < 16 && regs [ slot ] >= 0 && k.exprs [ static_cast < size_t > ( regs [ slot ] ) ].kind != op::VAR )
+					materialize ( slot, ins.address );
+
+			}
+
 			set_flags ( 5, read ( ins, 0 ), read ( ins, 1 ), size );
 			return;
 
