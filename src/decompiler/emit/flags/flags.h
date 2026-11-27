@@ -126,6 +126,10 @@ namespace decompiler {
 
 	extern bool default_returns;
 
+	extern bool guard_returns;
+
+	extern int32_t guard_return_blocks;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

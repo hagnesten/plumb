@@ -347,6 +347,8 @@ namespace decompiler {
 
 		int32_t branch ( int32_t block, int32_t stop, const frame& context, bool chained );
 
+		int32_t region_size ( int32_t start, int32_t stop );
+
 		int32_t loop_step ( int32_t start, const base::list < uint8_t >& members, int32_t condition );
 
 		void name_loop_var ( int32_t var );

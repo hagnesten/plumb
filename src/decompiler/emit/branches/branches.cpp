@@ -498,6 +498,56 @@ bool decompiler::emitter::negative_test ( int32_t condition ) const {
 	return test.kind == op::EQ ? zero : ( right.kind == op::CONST && !zero );
 
 }
+int32_t decompiler::emitter::region_size ( int32_t start, int32_t stop ) {
+
+	base::list < uint8_t > seen;
+	base::list < int32_t > work;
+
+	seen.fill ( static_cast < size_t > ( count ), 0 );
+	work.push ( start );
+	seen [ static_cast < size_t > ( start ) ] = 1;
+
+	int32_t total = 0;
+
+	while ( work.count ( ) ) {
+
+		int32_t at = work [ static_cast < size_t > ( work.count ( ) - 1 ) ];
+
+		work.pop ( );
+		total++;
+
+		const block_code& item = b.code [ static_cast < size_t > ( at ) ];
+		int32_t nexts [ 2 ] = { item.taken, item.end == term::BRANCH ? item.other : -1 };
+
+		for ( int32_t next : nexts ) {
+
+			if ( next < 0 || next >= count || next == stop || seen [ static_cast < size_t > ( next ) ] )
+				continue;
+
+			seen [ static_cast < size_t > ( next ) ] = 1;
+			work.push ( next );
+
+		}
+
+		if ( item.end == term::SWITCH && at < succ.count ( ) ) {
+
+			for ( int32_t next : succ [ static_cast < size_t > ( at ) ] ) {
+
+				if ( next < 0 || next >= count || next == stop || seen [ static_cast < size_t > ( next ) ] )
+					continue;
+
+				seen [ static_cast < size_t > ( next ) ] = 1;
+				work.push ( next );
+
+			}
+
+		}
+
+	}
+
+	return total;
+
+}
 int32_t decompiler::emitter::branch ( int32_t block, int32_t stop, const frame& context, bool chained ) {
 
 	const block_code& item = b.code [ static_cast < size_t > ( block ) ];
@@ -850,6 +900,22 @@ int32_t decompiler::emitter::branch ( int32_t block, int32_t stop, const frame& 
 		then_part = else_part;
 		else_part = held;
 		negated = !negated;
+
+	}
+
+	if ( guard_returns && !chained && follow >= 0 && else_part == follow && then_part >= 0 && then_part != follow && context.loop < 0 && b.code [ static_cast < size_t > ( follow ) ].end == term::RETURN && empty_block ( follow ) && !emitted [ static_cast < size_t > ( then_part ) ] && region_size ( then_part, follow ) >= guard_return_blocks ) {
+
+		open_brace ( item.last, L"if", item.condition, !negated );
+		ended = false;
+		return_line ( b.code [ static_cast < size_t > ( follow ) ] );
+		out.indent--;
+		brace ( L"}" );
+		ended = false;
+
+		if ( !special ( then_part, -2, context, item.last ) )
+			region ( then_part, follow, context );
+
+		return follow;
 
 	}
 
