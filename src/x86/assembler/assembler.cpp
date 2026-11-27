@@ -133,6 +133,14 @@ bool x86::parse_number ( const char* text, int64_t& value ) {
 
 }
 
+const x86::simple_op x86::simple_ops [ 21 ] = {
+	{ "ret", { 0xC3 }, 1 }, { "retn", { 0xC3 }, 1 }, { "nop", { 0x90 }, 1 }, { "int3", { 0xCC }, 1 }, { "leave", { 0xC9 }, 1 },
+	{ "hlt", { 0xF4 }, 1 }, { "cdq", { 0x99 }, 1 }, { "cqo", { 0x48, 0x99 }, 2 }, { "cwde", { 0x98 }, 1 }, { "cdqe", { 0x48, 0x98 }, 2 },
+	{ "pushfq", { 0x9C }, 1 }, { "popfq", { 0x9D }, 1 }, { "clc", { 0xF8 }, 1 }, { "stc", { 0xF9 }, 1 }, { "cld", { 0xFC }, 1 },
+	{ "syscall", { 0x0F, 0x05 }, 2 }, { "ud2", { 0x0F, 0x0B }, 2 }, { "cpuid", { 0x0F, 0xA2 }, 2 }, { "rdtsc", { 0x0F, 0x31 }, 2 },
+	{ "pause", { 0xF3, 0x90 }, 2 }, { "int1", { 0xF1 }, 1 }
+};
+
 int32_t x86::assemble ( const wchar_t* text, uint64_t address, bool long_mode, resolver* names, uint8_t* out, int32_t room, wchar_t* problem, int32_t problem_room ) {
 
 	char line [ 256 ];
@@ -1061,23 +1069,7 @@ int32_t x86::assemble ( const wchar_t* text, uint64_t address, bool long_mode, r
 
 	{
 
-		struct simple {
-
-			const char* name;
-			uint8_t bytes [ 3 ];
-			int32_t length;
-
-		};
-
-		static const simple plain [ ] = {
-			{ "ret", { 0xC3 }, 1 }, { "retn", { 0xC3 }, 1 }, { "nop", { 0x90 }, 1 }, { "int3", { 0xCC }, 1 }, { "leave", { 0xC9 }, 1 },
-			{ "hlt", { 0xF4 }, 1 }, { "cdq", { 0x99 }, 1 }, { "cqo", { 0x48, 0x99 }, 2 }, { "cwde", { 0x98 }, 1 }, { "cdqe", { 0x48, 0x98 }, 2 },
-			{ "pushfq", { 0x9C }, 1 }, { "popfq", { 0x9D }, 1 }, { "clc", { 0xF8 }, 1 }, { "stc", { 0xF9 }, 1 }, { "cld", { 0xFC }, 1 },
-			{ "syscall", { 0x0F, 0x05 }, 2 }, { "ud2", { 0x0F, 0x0B }, 2 }, { "cpuid", { 0x0F, 0xA2 }, 2 }, { "rdtsc", { 0x0F, 0x31 }, 2 },
-			{ "pause", { 0xF3, 0x90 }, 2 }, { "int1", { 0xF1 }, 1 }
-		};
-
-		for ( const simple& item : plain ) {
+		for ( const simple_op& item : simple_ops ) {
 
 			if ( !same ( mnemonic, item.name ) )
 				continue;

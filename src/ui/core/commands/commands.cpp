@@ -401,17 +401,7 @@ void ui::app::run ( command action ) {
 
 				x86::instruction ins;
 				wchar_t text [ 300 ];
-				struct names_bridge : x86::symbolizer {
-
-					const app* owner;
-
-					bool name ( uint64_t address, bool code, wchar_t* out, int32_t room ) override {
-
-						return owner->symbol_name ( address, code, out, room );
-
-					}
-
-				} bridge;
+				names_bridge bridge;
 
 				bridge.owner = this;
 

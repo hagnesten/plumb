@@ -1787,17 +1787,7 @@ void decompiler::machine::clobber ( ) {
 void decompiler::machine::unhandled ( const x86::instruction& ins, uint32_t def ) {
 
 	wchar_t text [ 200 ];
-	struct bridge : x86::symbolizer {
-
-		namer* target;
-
-		bool name ( uint64_t address, bool code, wchar_t* out, int32_t room ) override {
-
-			return target->name ( address, code, out, room );
-
-		}
-
-	} names_bridge;
+	namer_bridge names_bridge;
 
 	names_bridge.target = b->names;
 	flush ( 0xFFFFFFFFu );

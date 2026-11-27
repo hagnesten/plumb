@@ -430,13 +430,6 @@ void ui::app::draw_inspector ( math::rect area, float inner ) {
 
 	}
 
-	struct value_row {
-
-		const wchar_t* name;
-		int32_t bytes;
-
-	};
-
 	const value_row values [ ] = { { L"int8", 1 }, { L"uint8", 1 }, { L"int16", 2 }, { L"uint16", 2 }, { L"int32", 4 }, { L"uint32", 4 }, { L"int64", 8 }, { L"uint64", 8 }, { L"float", 4 }, { L"double", 8 } };
 
 	for ( int32_t i = 0; i < 10; i++ ) {

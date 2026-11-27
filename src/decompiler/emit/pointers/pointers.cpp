@@ -78,20 +78,11 @@ void decompiler::flow_pointers ( builder& b, base::list < uint8_t >& element ) {
 
 	};
 
-	struct access {
-
-		int32_t var;
-		int64_t offset;
-		uint8_t form;
-		bool indexed;
-
-	};
-
-	base::list < access > accesses;
+	base::list < pointer_access > accesses;
 
 	auto deref = [ & ] ( int32_t v, int64_t offset, uint8_t form, bool indexed ) {
 
-		access a;
+		pointer_access a;
 
 		a.var = v;
 		a.offset = offset;
@@ -407,7 +398,7 @@ void decompiler::flow_pointers ( builder& b, base::list < uint8_t >& element ) {
 
 	}
 
-	for ( const access& a : accesses ) {
+	for ( const pointer_access& a : accesses ) {
 
 		if ( bad [ static_cast < size_t > ( a.var ) ] )
 			continue;

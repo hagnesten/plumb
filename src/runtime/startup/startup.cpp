@@ -6,8 +6,6 @@ extern "C" {
 
 }
 
-typedef void ( __cdecl* runtime_callback ) ( );
-
 extern "C" int _fltused = 0;
 
 #pragma section ( ".CRT$XCA", long, read )
@@ -16,15 +14,16 @@ extern "C" int _fltused = 0;
 extern "C" __declspec ( allocate ( ".CRT$XCA" ) ) runtime_callback runtime_initializers_begin [ ] = { nullptr };
 extern "C" __declspec ( allocate ( ".CRT$XCZ" ) ) runtime_callback runtime_initializers_end [ ] = { nullptr };
 
-static runtime_callback exit_callbacks [ 64 ];
-static int exit_callback_count = 0;
+runtime_callback runtime::exit_callbacks [ 64 ];
+
+int runtime::exit_callback_count = 0;
 
 extern "C" int __cdecl atexit ( runtime_callback callback ) {
 
-	if ( exit_callback_count >= 64 )
+	if ( runtime::exit_callback_count >= 64 )
 		return 1;
 
-	exit_callbacks [ exit_callback_count++ ] = callback;
+	runtime::exit_callbacks [ runtime::exit_callback_count++ ] = callback;
 
 	return 0;
 
@@ -38,8 +37,8 @@ extern "C" int __cdecl _purecall ( ) {
 
 extern "C" void runtime_exit ( int code ) {
 
-	while ( exit_callback_count > 0 )
-		exit_callbacks [ --exit_callback_count ] ( );
+	while ( runtime::exit_callback_count > 0 )
+		runtime::exit_callbacks [ --runtime::exit_callback_count ] ( );
 
 	ExitProcess ( static_cast < unsigned int > ( code ) );
 

@@ -20,6 +20,14 @@ namespace host {
 
 	extern wchar_t** arguments;
 
+	struct harvested_key {
+
+		uint64_t key = 0;
+		base::text name;
+		bool clash = false;
+
+	};
+
 	struct script_reader {
 
 		const wchar_t* cursor;

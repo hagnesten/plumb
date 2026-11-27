@@ -2,11 +2,25 @@
 
 #include "decompiler/builder/builder.h"
 #include "decompiler/lift/flags/flags.h"
+#include "decompiler/namer/namer.h"
+#include "x86/printer/printer.h"
 #include "base/list/list.h"
 
 namespace decompiler {
 
 	using x86::mnemonic;
+
+	struct namer_bridge : x86::symbolizer {
+
+		namer* target;
+
+		bool name ( uint64_t address, bool code, wchar_t* out, int32_t room ) override {
+
+			return target->name ( address, code, out, room );
+
+		}
+
+	};
 
 	struct machine {
 

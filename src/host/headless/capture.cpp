@@ -1103,15 +1103,7 @@ bool host::runtime_keys_mode ( ) {
 	if ( !target )
 		return false;
 
-	struct harvested {
-
-		uint64_t key = 0;
-		base::text name;
-		bool clash = false;
-
-	};
-
-	base::list < harvested > found;
+	base::list < harvested_key > found;
 	x86::prepare ( );
 
 	for ( int32_t a = 1; a < argument_count; a++ ) {
@@ -1211,7 +1203,7 @@ bool host::runtime_keys_mode ( ) {
 
 			bool known = false;
 
-			for ( harvested& item : found ) {
+			for ( harvested_key& item : found ) {
 
 				if ( item.key != key )
 					continue;
@@ -1225,7 +1217,7 @@ bool host::runtime_keys_mode ( ) {
 
 			if ( !known ) {
 
-				harvested& item = found.emplace ( );
+				harvested_key& item = found.emplace ( );
 
 				item.key = key;
 				item.name.set ( name );
@@ -1241,7 +1233,7 @@ bool host::runtime_keys_mode ( ) {
 
 	base::list < char > out;
 
-	for ( const harvested& item : found ) {
+	for ( const harvested_key& item : found ) {
 
 		if ( item.clash )
 			continue;

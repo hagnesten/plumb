@@ -3,20 +3,20 @@
 #include "base/strings/strings.h"
 #include <windows.h>
 
-static SRWLOCK queue_lock = SRWLOCK_INIT;
+SRWLOCK files::queue_lock = SRWLOCK_INIT;
 
-static SRWLOCK disk_lock = SRWLOCK_INIT;
+SRWLOCK files::disk_lock = SRWLOCK_INIT;
 
-static HANDLE writer = nullptr;
+HANDLE files::writer = nullptr;
 
-static HANDLE writer_wake = nullptr;
+HANDLE files::writer_wake = nullptr;
 
-static DWORD __stdcall writer_loop ( void* ) {
+DWORD __stdcall files::writer_loop ( void* ) {
 
 	while ( true ) {
 
 		WaitForSingleObject ( writer_wake, INFINITE );
-		files::flush_pending ( );
+		flush_pending ( );
 
 	}
 

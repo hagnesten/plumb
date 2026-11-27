@@ -382,17 +382,7 @@ const wchar_t* ui::app::stack_string ( uint64_t address ) const {
 
 		stack_seen.push ( start );
 
-		struct write {
-
-			int64_t disp;
-			int32_t size;
-			uint64_t value;
-			uint64_t address;
-			int32_t base;
-
-		};
-
-		base::list < write > writes;
+		base::list < stack_write > writes;
 		uint64_t at = start;
 		uint64_t end = db->functions [ static_cast < size_t > ( owner ) ].end;
 		uint64_t known [ 16 ] = { };
@@ -421,7 +411,7 @@ const wchar_t* ui::app::stack_string ( uint64_t address ) const {
 
 				if ( constant ) {
 
-					write item = { target.value, target.size, source.type == x86::kind::IMM ? static_cast < uint64_t > ( source.value ) : known [ from ], at, target.base };
+					stack_write item = { target.value, target.size, source.type == x86::kind::IMM ? static_cast < uint64_t > ( source.value ) : known [ from ], at, target.base };
 
 					writes.push ( item );
 
@@ -445,7 +435,7 @@ const wchar_t* ui::app::stack_string ( uint64_t address ) const {
 
 			for ( int32_t k = i; k > 0 && ( writes [ static_cast < size_t > ( k - 1 ) ].base > writes [ static_cast < size_t > ( k ) ].base || ( writes [ static_cast < size_t > ( k - 1 ) ].base == writes [ static_cast < size_t > ( k ) ].base && writes [ static_cast < size_t > ( k - 1 ) ].disp > writes [ static_cast < size_t > ( k ) ].disp ) ); k-- ) {
 
-				write held = writes [ static_cast < size_t > ( k ) ];
+				stack_write held = writes [ static_cast < size_t > ( k ) ];
 
 				writes [ static_cast < size_t > ( k ) ] = writes [ static_cast < size_t > ( k - 1 ) ];
 				writes [ static_cast < size_t > ( k - 1 ) ] = held;
@@ -466,7 +456,7 @@ const wchar_t* ui::app::stack_string ( uint64_t address ) const {
 
 			while ( j < writes.count ( ) && writes [ static_cast < size_t > ( j ) ].base == writes [ static_cast < size_t > ( i ) ].base && writes [ static_cast < size_t > ( j ) ].disp == next_disp && length + writes [ static_cast < size_t > ( j ) ].size <= 512 ) {
 
-				const write& item = writes [ static_cast < size_t > ( j ) ];
+				const stack_write& item = writes [ static_cast < size_t > ( j ) ];
 
 				for ( int32_t b = 0; b < item.size; b++ )
 					bytes [ length++ ] = static_cast < uint8_t > ( item.value >> ( b * 8 ) );

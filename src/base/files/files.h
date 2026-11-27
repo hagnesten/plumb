@@ -3,7 +3,19 @@
 #include "base/list/list.h"
 #include "base/text/text.h"
 
+struct _RTL_SRWLOCK;
+
 namespace files {
+
+	extern _RTL_SRWLOCK queue_lock;
+
+	extern _RTL_SRWLOCK disk_lock;
+
+	extern void* writer;
+
+	extern void* writer_wake;
+
+	unsigned long __stdcall writer_loop ( void* );
 
 	const wchar_t* folder ( );
 

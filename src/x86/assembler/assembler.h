@@ -89,4 +89,14 @@ namespace x86 {
 
 	bool parse_number ( const char* text, int64_t& value );
 
+	struct simple_op {
+
+		const char* name;
+		uint8_t bytes [ 3 ];
+		int32_t length;
+
+	};
+
+	extern const simple_op simple_ops [ 21 ];
+
 }
