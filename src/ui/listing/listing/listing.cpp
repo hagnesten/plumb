@@ -1785,6 +1785,82 @@ const wchar_t* ui::app::data_prefix ( uint64_t address ) const {
 
 	}
 
+	for ( int32_t i = 0; i < count; i++ ) {
+
+		const analysis::xref& ref = db->refs [ static_cast < size_t > ( first + i ) ];
+
+		if ( ref.type != analysis::ref::ADDRESS )
+			continue;
+
+		x86::instruction ins;
+		uint64_t at = file.base + ref.source;
+
+		if ( !db->decode ( at, ins ) || ins.name != x86::mnemonic::lea || ins.count < 2 || ins.operands [ 0 ].type != x86::kind::REG )
+			continue;
+
+		int32_t family = x86::register_family ( ins.operands [ 0 ].reg );
+
+		at = ins.next ( );
+
+		for ( int32_t step = 0; step < 8; step++ ) {
+
+			x86::instruction next;
+
+			if ( !db->decode ( at, next ) || next.control != x86::flow::NONE )
+				break;
+
+			uint8_t size = 0;
+			bool vector = false;
+			bool written = false;
+
+			for ( int32_t k = 0; k < next.count; k++ ) {
+
+				const x86::operand& item = next.operands [ k ];
+
+				if ( item.type == x86::kind::MEM && ( ( item.base && x86::register_family ( item.base ) == family ) || ( item.index && x86::register_family ( item.index ) == family ) ) )
+					size = item.size;
+				else if ( item.type == x86::kind::REG && item.reg >= x86::XMM0 && item.reg < x86::YMM0 )
+					vector = true;
+				else if ( k == 0 && item.type == x86::kind::REG && x86::register_family ( item.reg ) == family )
+					written = true;
+
+			}
+
+			if ( next.name != x86::mnemonic::lea ) {
+
+				switch ( size ) {
+
+					case 1:
+						return L"byte_";
+
+					case 2:
+						return L"word_";
+
+					case 4:
+						return vector ? L"flt_" : L"dword_";
+
+					case 8:
+						return vector && next.name != x86::mnemonic::movq ? L"dbl_" : L"qword_";
+
+					case 16:
+						return L"xmmword_";
+
+					default:
+						break;
+
+				}
+
+			}
+
+			if ( written )
+				break;
+
+			at = next.next ( );
+
+		}
+
+	}
+
 	return L"unk_";
 
 }
