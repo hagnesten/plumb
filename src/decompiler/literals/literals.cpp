@@ -1,5 +1,6 @@
 #include "decompiler/literals/literals.h"
 #include "decompiler/builder/builder.h"
+#include "decompiler/emit/flags/flags.h"
 
 bool decompiler::string_literal ( const loader::binary& file, uint64_t address, wchar_t* out, int32_t room ) {
 
@@ -55,6 +56,23 @@ bool decompiler::string_literal ( const loader::binary& file, uint64_t address, 
 			return false;
 		else
 			out [ length++ ] = c;
+
+	}
+
+	if ( single_wide_strings && wide && length - first == 1 && room >= 20 ) {
+
+		static const wchar_t head [ ] = L"(__int16 *)\"";
+		wchar_t kept = out [ first ];
+		int32_t n = 0;
+
+		for ( const wchar_t* c = head; *c; c++ )
+			out [ n++ ] = *c;
+
+		out [ n++ ] = kept;
+		out [ n++ ] = L'"';
+		out [ n ] = 0;
+
+		return true;
 
 	}
 

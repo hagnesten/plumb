@@ -132,6 +132,8 @@ namespace decompiler {
 
 	extern bool narrow_store_untruncate;
 
+	extern bool single_wide_strings;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;
