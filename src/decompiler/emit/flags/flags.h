@@ -104,6 +104,8 @@ namespace decompiler {
 
 	extern bool arithmetic_elements;
 
+	extern bool void_compares;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

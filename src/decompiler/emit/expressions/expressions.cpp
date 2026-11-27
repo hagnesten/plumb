@@ -1422,6 +1422,28 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 
 			operand = true;
 
+			if ( void_compares && item.kind == op::MUL && item.size == 8 && !( item.bits & FLOATING ) && item.a >= 0 ) {
+
+				const expr& left_side = b.exprs [ static_cast < size_t > ( item.a ) ];
+				int32_t scaled = left_side.kind == op::CONST ? item.b : ( right.kind == op::CONST ? item.a : -1 );
+				const expr& factor = left_side.kind == op::CONST ? left_side : right;
+				const expr* held_var = scaled >= 0 ? &b.exprs [ static_cast < size_t > ( scaled ) ] : nullptr;
+
+				if ( held_var && held_var->kind == op::VAR && held_var->value >= 0 && held_var->value < element.count ( ) && element [ static_cast < size_t > ( held_var->value ) ] == 0x10 && b.vars [ static_cast < size_t > ( held_var->value ) ].kind == var_kind::PARAMETER ) {
+
+					operand = false;
+					number ( factor.value, 8, !simple_constant ( factor.value ), false );
+					operand = true;
+					out.put ( L" * ", syntax::OPERATOR );
+					out.put ( L"(_QWORD)", syntax::TYPE );
+					value ( scaled, 14 );
+
+					break;
+
+				}
+
+			}
+
 			if ( mask_forms && item.kind == op::AND && right.kind == op::CONST && !( right.bits & POINTER ) && !( item.bits & FLOATING ) && item.a >= 0 ) {
 
 				const expr& masked = b.exprs [ static_cast < size_t > ( item.a ) ];

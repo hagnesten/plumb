@@ -21,4 +21,6 @@ namespace decompiler {
 
 	void typed_pointers ( builder& b, base::list < uint8_t >& element );
 
+	void void_compare_params ( builder& b, base::list < uint8_t >& element );
+
 }

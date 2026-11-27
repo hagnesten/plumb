@@ -1108,4 +1108,90 @@ void decompiler::typed_pointers ( builder& b, base::list < uint8_t >& element ) 
 
 	}
 
+	if ( void_compares )
+		void_compare_params ( b, element );
+
+}
+
+void decompiler::void_compare_params ( builder& b, base::list < uint8_t >& element ) {
+
+	int32_t total = b.vars.count ( );
+
+	auto void_load = [ & ] ( int32_t e ) {
+
+		if ( e < 0 || b.exprs [ static_cast < size_t > ( e ) ].kind != op::LOAD || b.exprs [ static_cast < size_t > ( e ) ].size != 8 || b.exprs [ static_cast < size_t > ( e ) ].a < 0 )
+			return false;
+
+		const expr& where = b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( e ) ].a ) ];
+		int32_t base_expr = where.kind == op::ADD && where.a >= 0 ? where.a : b.exprs [ static_cast < size_t > ( e ) ].a;
+
+		if ( base_expr < 0 || b.exprs [ static_cast < size_t > ( base_expr ) ].kind != op::VAR )
+			return false;
+
+		int64_t p = b.exprs [ static_cast < size_t > ( base_expr ) ].value;
+
+		return p >= 0 && p < total && ( element [ static_cast < size_t > ( p ) ] & 0x9F ) == 8 && ( element [ static_cast < size_t > ( p ) ] & 0x40 );
+
+	};
+
+	auto bare_param = [ & ] ( int32_t e ) -> int32_t {
+
+		if ( e < 0 || b.exprs [ static_cast < size_t > ( e ) ].kind != op::VAR )
+			return -1;
+
+		int64_t p = b.exprs [ static_cast < size_t > ( e ) ].value;
+
+		if ( p < 0 || p >= total || b.vars [ static_cast < size_t > ( p ) ].kind != var_kind::PARAMETER || b.vars [ static_cast < size_t > ( p ) ].size != 8 || ( b.vars [ static_cast < size_t > ( p ) ].bits & FLOATING ) || element [ static_cast < size_t > ( p ) ] || ( p < b.var_types.count ( ) && !b.var_types [ static_cast < size_t > ( p ) ].empty ( ) ) )
+			return -1;
+
+		return static_cast < int32_t > ( p );
+
+	};
+
+	auto unsigned_local = [ & ] ( int32_t e ) {
+
+		if ( e < 0 || b.exprs [ static_cast < size_t > ( e ) ].kind != op::VAR )
+			return false;
+
+		int64_t v = b.exprs [ static_cast < size_t > ( e ) ].value;
+
+		return v >= 0 && v < total && b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER && !element [ static_cast < size_t > ( v ) ];
+
+	};
+
+	base::list < uint8_t > wanted;
+	base::list < uint8_t > vetoed;
+
+	wanted.fill ( static_cast < size_t > ( total ), 0 );
+	vetoed.fill ( static_cast < size_t > ( total ), 0 );
+
+	for ( const block_code& block : b.code ) {
+
+		if ( !block.reachable || block.condition < 0 )
+			continue;
+
+		const expr& test = b.exprs [ static_cast < size_t > ( block.condition ) ];
+
+		if ( test.kind < op::LT || test.kind > op::GE || test.a < 0 || test.b < 0 )
+			continue;
+
+		int32_t p = void_load ( test.a ) ? bare_param ( test.b ) : ( void_load ( test.b ) ? bare_param ( test.a ) : -1 );
+
+		if ( p >= 0 )
+			wanted [ static_cast < size_t > ( p ) ] = 1;
+
+		int32_t q = unsigned_local ( test.a ) ? bare_param ( test.b ) : ( unsigned_local ( test.b ) ? bare_param ( test.a ) : -1 );
+
+		if ( q >= 0 )
+			vetoed [ static_cast < size_t > ( q ) ] = 1;
+
+	}
+
+	for ( int32_t p = 0; p < total; p++ ) {
+
+		if ( wanted [ static_cast < size_t > ( p ) ] && !vetoed [ static_cast < size_t > ( p ) ] )
+			element [ static_cast < size_t > ( p ) ] = 0x10;
+
+	}
+
 }
