@@ -13,7 +13,7 @@ namespace x86 {
 		MEM,
 		IMM,
 		REL,
-		FAR,
+		PTR,
 
 	};
 

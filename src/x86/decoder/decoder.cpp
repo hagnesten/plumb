@@ -418,7 +418,7 @@ bool x86::build_operand ( uint8_t which, cursor& in, state& s, instruction& out,
 			uint64_t offset_part = in.read ( os == 2 ? 2 : 4 );
 			uint64_t selector = in.read ( 2 );
 
-			item.type = kind::FAR;
+			item.type = kind::PTR;
 			item.size = static_cast < uint8_t > ( os == 2 ? 4 : 6 );
 			item.value = static_cast < int64_t > ( ( selector << 32 ) | offset_part );
 

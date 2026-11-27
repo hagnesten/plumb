@@ -510,7 +510,7 @@ void x86::format ( const instruction& item, printer& printer_out, symbolizer* na
 
 			}
 
-			case kind::FAR: {
+			case kind::PTR: {
 
 				out.put ( L"far ", token::SIZE );
 				put_number ( out, static_cast < uint64_t > ( value.value ) >> 32, flags );
