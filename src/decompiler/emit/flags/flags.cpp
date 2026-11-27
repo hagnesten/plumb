@@ -60,6 +60,7 @@ bool decompiler::void_params = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;
+bool decompiler::signed_rights = true;
 
 bool decompiler::unnamed_results = true;
 

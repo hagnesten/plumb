@@ -94,6 +94,8 @@ namespace decompiler {
 
 	extern bool value_falls;
 
+	extern bool signed_rights;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

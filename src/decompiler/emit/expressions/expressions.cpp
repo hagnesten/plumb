@@ -1632,6 +1632,11 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 				out.put ( ( b.vars [ static_cast < size_t > ( lhs.value ) ].bits & UNSIGNED ) ? L"(unsigned __int64)" : L"(__int64)", syntax::TYPE );
 				value ( item.b, 14 );
 
+			} else if ( signed_rights && signed_compare && !no_casts && right.kind == op::CAST && right.a >= 0 && right.size < b.exprs [ static_cast < size_t > ( right.a ) ].size && right.size <= 4 && !( right.bits & FLOATING ) && b.exprs [ static_cast < size_t > ( right.a ) ].kind == op::VAR ) {
+
+				out.put ( right.size == 1 ? L"(char)" : ( right.size == 2 ? L"(__int16)" : L"(int)" ), syntax::TYPE );
+				value ( right.a, 14 );
+
 			} else if ( ( item.kind == op::LAND || item.kind == op::LOR ) && item.b >= 0 && b.exprs [ static_cast < size_t > ( item.b ) ].kind == item.kind )
 				value ( item.b, mine, bitwise );
 			else
