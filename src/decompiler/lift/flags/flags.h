@@ -12,6 +12,8 @@ namespace decompiler {
 
 	extern bool retested_loads;
 
+	extern bool sext_narrowing;
+
 	extern bool ordered_cmov_loads;
 
 	extern bool quiet_nops;

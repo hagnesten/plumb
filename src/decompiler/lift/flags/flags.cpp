@@ -8,6 +8,8 @@ bool decompiler::store_loads = true;
 
 bool decompiler::retested_loads = true;
 
+bool decompiler::sext_narrowing = true;
+
 bool decompiler::ordered_cmov_loads = true;
 
 bool decompiler::quiet_nops = true;

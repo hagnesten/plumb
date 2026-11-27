@@ -936,6 +936,52 @@ void decompiler::builder::narrow_webs ( ) {
 
 	}
 
+	base::list < uint8_t > sign_only;
+	base::list < int32_t > wide_uses;
+
+	sign_only.fill ( static_cast < size_t > ( total ), 0 );
+
+	base::list < int32_t > wide_count;
+	base::list < int32_t > narrow_count;
+
+	wide_count.fill ( static_cast < size_t > ( total ), 0 );
+	narrow_count.fill ( static_cast < size_t > ( total ), 0 );
+
+	if ( sext_narrowing ) {
+
+		base::list < uint8_t > other_def;
+
+		other_def.fill ( static_cast < size_t > ( total ), 0 );
+
+		for ( const statement& line : statements ) {
+
+			if ( line.kind != stmt::ASSIGN || line.left < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+				continue;
+
+			int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+			if ( v < 0 || v >= total )
+				continue;
+
+			const expr* source = line.right >= 0 ? &exprs [ static_cast < size_t > ( line.right ) ] : nullptr;
+			bool widened = source && source->kind == op::CAST && ( source->bits & SIGNED ) && !( source->bits & ( FLOATING | POINTER ) ) && source->size == 8 && source->a >= 0 && exprs [ static_cast < size_t > ( source->a ) ].size == 4 && !( exprs [ static_cast < size_t > ( source->a ) ].bits & FLOATING );
+
+			if ( widened )
+				sign_only [ static_cast < size_t > ( v ) ] = 1;
+			else
+				other_def [ static_cast < size_t > ( v ) ] = 1;
+
+		}
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			if ( other_def [ static_cast < size_t > ( v ) ] || vars [ static_cast < size_t > ( v ) ].kind != var_kind::REGISTER )
+				sign_only [ static_cast < size_t > ( v ) ] = 0;
+
+		}
+
+	}
+
 	auto note_use = [ & ] ( int32_t child, int32_t width ) {
 
 		if ( child < 0 || child >= exprs.count ( ) )
@@ -950,6 +996,19 @@ void decompiler::builder::narrow_webs ( ) {
 
 		if ( width <= 0 && node.size < vars [ v ].size && node.size <= 4 )
 			width = node.size;
+
+		if ( ( width <= 0 || width > 4 ) && sign_only [ v ] && node.size == 8 ) {
+
+			wide_uses.push ( child );
+			wide_count [ v ]++;
+			widest [ v ] = static_cast < uint8_t > ( base::max ( static_cast < int32_t > ( widest [ v ] ), 4 ) );
+
+			return;
+
+		}
+
+		if ( width > 0 && width <= 4 )
+			narrow_count [ v ]++;
 
 		if ( width <= 0 || width > 4 )
 			blocked [ v ] = 1;
@@ -1233,8 +1292,33 @@ void decompiler::builder::narrow_webs ( ) {
 		if ( width == 3 )
 			width = 4;
 
+		if ( wide_count [ static_cast < size_t > ( v ) ] && ( wide_count [ static_cast < size_t > ( v ) ] >= narrow_count [ static_cast < size_t > ( v ) ] || width != 4 ) )
+			continue;
+
 		chosen [ static_cast < size_t > ( v ) ] = width;
 		vars [ static_cast < size_t > ( v ) ].size = width;
+
+	}
+
+	for ( int32_t use : wide_uses ) {
+
+		expr inner = exprs [ static_cast < size_t > ( use ) ];
+
+		if ( inner.kind != op::VAR || inner.size != 8 || inner.value < 0 || inner.value >= total || chosen [ static_cast < size_t > ( inner.value ) ] != 4 )
+			continue;
+
+		inner.size = 4;
+		exprs.push ( inner );
+
+		expr& widened = exprs [ static_cast < size_t > ( use ) ];
+
+		widened.kind = op::CAST;
+		widened.size = 8;
+		widened.bits = SIGNED;
+		widened.a = exprs.count ( ) - 1;
+		widened.b = -1;
+		widened.c = -1;
+		widened.value = 0;
 
 	}
 
