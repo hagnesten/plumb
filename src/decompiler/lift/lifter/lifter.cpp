@@ -1,4 +1,5 @@
 #include "decompiler/lift/lifter/lifter.h"
+#include "decompiler/lift/constant_branches/constant_branches.h"
 #include "decompiler/lift/machine/machine.h"
 #include "decompiler/lift/flags/flags.h"
 #include "decompiler/lift/effects/effects.h"
@@ -1184,6 +1185,7 @@ bool decompiler::builder::lift ( ) {
 	fold_returns ( );
 	split_webs ( );
 	fold_constants ( );
+	fold_constant_branches ( *this );
 
 	if ( zero_paths )
 		zero_edges ( );

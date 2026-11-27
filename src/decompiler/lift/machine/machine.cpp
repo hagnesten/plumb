@@ -403,6 +403,39 @@ int32_t decompiler::machine::address_of ( const x86::instruction& ins, const x86
 
 }
 
+bool decompiler::machine::read_only_value ( uint64_t address, uint8_t size, int64_t& value ) const {
+
+	const loader::binary& file = *b->file;
+	int32_t index = file.section_at ( address );
+	uint64_t offset = 0;
+	uint8_t pointer = b->long_mode ? 8 : 4;
+
+	if ( index < 0 || ( size != 1 && size != 2 && size != 4 && size != 8 ) )
+		return false;
+
+	const loader::section& owner = file.sections [ static_cast < size_t > ( index ) ];
+
+	if ( owner.write || owner.execute || address + size > owner.address + owner.raw || !file.offset_of ( address, offset ) )
+		return false;
+
+	for ( const loader::import& item : file.imports ) {
+
+		if ( address + size > item.slot && address < item.slot + pointer )
+			return false;
+
+	}
+
+	uint64_t raw = size == 1 ? file.byte ( offset ) : ( size == 2 ? file.read16 ( offset ) : ( size == 4 ? file.read32 ( offset ) : file.read64 ( offset ) ) );
+
+	if ( size == pointer && raw && file.section_at ( raw ) >= 0 )
+		return false;
+
+	value = static_cast < int64_t > ( raw );
+
+	return true;
+
+}
+
 int32_t decompiler::machine::read_memory ( const x86::instruction& ins, const x86::operand& m, uint8_t size, uint8_t bits ) {
 
 	int64_t slot = 0;
@@ -443,6 +476,11 @@ int32_t decompiler::machine::read_memory ( const x86::instruction& ins, const x8
 	const expr& where = b->exprs [ static_cast < size_t > ( address ) ];
 
 	if ( where.kind == op::CONST && ( where.bits & POINTER ) ) {
+
+		int64_t known = 0;
+
+		if ( !( bits & FLOATING ) && read_only_value ( static_cast < uint64_t > ( where.value ), size, known ) )
+			return b->constant ( known, size );
 
 		if ( bits & FLOATING )
 			b->float_globals.push ( static_cast < uint64_t > ( where.value ) );

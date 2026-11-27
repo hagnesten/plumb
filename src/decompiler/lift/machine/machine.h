@@ -123,6 +123,8 @@ namespace decompiler {
 
 		bool jumps_through_rax ( uint64_t address ) const;
 
+		bool read_only_value ( uint64_t address, uint8_t size, int64_t& value ) const;
+
 		int32_t call_expr ( const x86::instruction& ins, uint32_t live_after );
 
 		bool cookie_call ( int32_t call );

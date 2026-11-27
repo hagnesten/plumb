@@ -7,4 +7,6 @@ namespace decompiler {
 
 	extern bool lone_return_folds;
 
+	void sweep_unreachable ( builder& b );
+
 }

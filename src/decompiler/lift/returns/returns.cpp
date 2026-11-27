@@ -221,9 +221,18 @@ void decompiler::builder::fold_returns ( ) {
 		return;
 
 	reindex_edges ( );
+	sweep_unreachable ( *this );
 
+}
+
+void decompiler::sweep_unreachable ( builder& b ) {
+
+	int32_t total = b.code.count ( );
 	base::list < uint8_t > seen;
 	base::list < int32_t > work;
+
+	if ( total <= 0 || total != b.graph.blocks.count ( ) )
+		return;
 
 	seen.fill ( static_cast < size_t > ( total ), 0 );
 	seen [ 0 ] = 1;
@@ -235,7 +244,7 @@ void decompiler::builder::fold_returns ( ) {
 
 		work.pop ( );
 
-		for ( const analysis::edge& link : graph.edges ) {
+		for ( const analysis::edge& link : b.graph.edges ) {
 
 			if ( link.from != at || link.to < 0 || link.to >= total || seen [ static_cast < size_t > ( link.to ) ] )
 				continue;
@@ -250,7 +259,7 @@ void decompiler::builder::fold_returns ( ) {
 	for ( int32_t i = 0; i < total; i++ ) {
 
 		if ( !seen [ static_cast < size_t > ( i ) ] )
-			code [ static_cast < size_t > ( i ) ].reachable = false;
+			b.code [ static_cast < size_t > ( i ) ].reachable = false;
 
 	}
 
