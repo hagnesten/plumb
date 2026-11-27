@@ -306,7 +306,7 @@ namespace decompiler {
 
 		void narrow_webs ( );
 
-		void narrow_byte_params ( );
+		void narrow_byte_params ( uint8_t width );
 
 		void narrow_floats ( );
 

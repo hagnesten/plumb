@@ -632,7 +632,7 @@ void decompiler::builder::narrow_floats ( ) {
 
 }
 
-void decompiler::builder::narrow_byte_params ( ) {
+void decompiler::builder::narrow_byte_params ( uint8_t width ) {
 
 	int32_t total = vars.count ( );
 	base::list < uint8_t > state;
@@ -643,7 +643,7 @@ void decompiler::builder::narrow_byte_params ( ) {
 
 		const variable& item = vars [ static_cast < size_t > ( v ) ];
 
-		if ( item.kind == var_kind::PARAMETER && item.family >= 0 && item.family < 16 && !( item.bits & FLOATING ) && item.size > 1 && !item.assigned )
+		if ( item.kind == var_kind::PARAMETER && item.family >= 0 && item.family < 16 && !( item.bits & FLOATING ) && item.size > width && !item.assigned )
 			state [ static_cast < size_t > ( v ) ] = 1;
 
 	}
@@ -662,7 +662,7 @@ void decompiler::builder::narrow_byte_params ( ) {
 
 			uint8_t& slot = state [ static_cast < size_t > ( node.value ) ];
 
-			if ( node.size != 1 && !byte_view )
+			if ( node.size > width && !byte_view )
 				slot = 0;
 			else if ( slot && widened )
 				slot = 2;
@@ -674,7 +674,7 @@ void decompiler::builder::narrow_byte_params ( ) {
 		if ( node.kind == op::ADDRESS && node.a < 0 && node.value >= 0 && node.value < total )
 			state [ static_cast < size_t > ( node.value ) ] = 0;
 
-		if ( node.kind == op::CAST && node.size == 1 && !( node.bits & FLOATING ) ) {
+		if ( node.kind == op::CAST && node.size <= width && !( node.bits & FLOATING ) ) {
 
 			self ( self, node.a, true, widened, depth + 1 );
 
@@ -682,7 +682,7 @@ void decompiler::builder::narrow_byte_params ( ) {
 
 		}
 
-		bool widening = node.kind == op::CAST && node.size > 1 && !( node.bits & ( SIGNED | FLOATING ) ) && node.a >= 0 && exprs [ static_cast < size_t > ( node.a ) ].size == 1;
+		bool widening = node.kind == op::CAST && node.size > width && !( node.bits & ( SIGNED | FLOATING ) ) && node.a >= 0 && exprs [ static_cast < size_t > ( node.a ) ].size <= width;
 		bool low_only = byte_view && !( node.bits & FLOATING ) && ( node.kind == op::ADD || node.kind == op::SUB || node.kind == op::MUL || node.kind == op::AND || node.kind == op::OR || node.kind == op::XOR || node.kind == op::NOT || node.kind == op::NEG );
 
 		if ( low_only ) {
@@ -759,7 +759,7 @@ void decompiler::builder::narrow_byte_params ( ) {
 
 		variable& item = vars [ static_cast < size_t > ( v ) ];
 
-		item.size = 1;
+		item.size = width;
 		item.bits = static_cast < uint8_t > ( ( item.bits & ~( SIGNED | UNSIGNED ) ) | ( slot == 2 ? UNSIGNED : 0 ) );
 		any = true;
 
@@ -770,14 +770,14 @@ void decompiler::builder::narrow_byte_params ( ) {
 
 	for ( expr& node : exprs ) {
 
-		if ( node.kind == op::VAR && node.value >= 0 && node.value < total && state [ static_cast < size_t > ( node.value ) ] )
-			node.size = 1;
+		if ( node.kind == op::VAR && node.value >= 0 && node.value < total && state [ static_cast < size_t > ( node.value ) ] && node.size > width )
+			node.size = width;
 
 	}
 
 	for ( expr& node : exprs ) {
 
-		if ( node.kind != op::CAST || node.size != 1 || node.a < 0 )
+		if ( node.kind != op::CAST || node.size != width || node.a < 0 )
 			continue;
 
 		const expr inner = exprs [ static_cast < size_t > ( node.a ) ];
