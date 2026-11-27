@@ -487,6 +487,7 @@ void decompiler::emitter::statement_line ( const statement& item ) {
 					out.indent++;
 					out.begin ( item.address );
 					out.indent--;
+
 					value ( item.left, 0 );
 					out.put ( L" = ", syntax::OPERATOR );
 					select_arm ( item.left, right.b );

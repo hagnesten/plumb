@@ -278,6 +278,8 @@ namespace decompiler {
 
 		void body ( int32_t block );
 
+		int32_t default_return ( int32_t block );
+
 		bool empty_block ( int32_t block );
 
 		void open_brace ( uint64_t address, const wchar_t* keyword, int32_t condition, bool negated );

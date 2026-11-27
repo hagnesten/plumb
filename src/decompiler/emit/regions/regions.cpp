@@ -17,9 +17,112 @@ void decompiler::emitter::body ( int32_t block ) {
 	emitted [ static_cast < size_t > ( block ) ] = 1;
 
 	const block_code& item = b.code [ static_cast < size_t > ( block ) ];
+	int32_t direct = default_returns ? default_return ( block ) : -1;
 
-	for ( int32_t i = 0; i < item.count; i++ )
+	for ( int32_t i = 0; i < item.count; i++ ) {
+
+		if ( item.first + i == direct ) {
+
+			block_code shown = b.code [ static_cast < size_t > ( item.taken ) ];
+
+			shown.returned = b.statements [ static_cast < size_t > ( direct ) ].right;
+
+			const expr& loaded = b.exprs [ static_cast < size_t > ( shown.returned ) ];
+
+			shown.last = b.statements [ static_cast < size_t > ( direct ) ].address;
+
+			if ( loaded.kind == op::LOAD && loaded.size < 8 && !( loaded.bits & ( FLOATING | SIGNED ) ) && b.exprs [ static_cast < size_t > ( b.statements [ static_cast < size_t > ( direct ) ].left ) ].size == 8 ) {
+
+				ended = true;
+
+				if ( dry || dead_exit ( ) )
+					continue;
+
+				expr copy = loaded;
+
+				out.begin ( shown.last );
+				out.put ( L"return", syntax::CONTROL );
+				out.put ( L" " );
+				extended_load ( copy, 0, UNSIGNED );
+				out.put ( L";" );
+				out.finish ( );
+				out.terminal = out.indent;
+
+				continue;
+
+			}
+
+			return_line ( shown );
+
+			continue;
+
+		}
+
 		statement_line ( b.statements [ static_cast < size_t > ( item.first + i ) ] );
+
+	}
+
+}
+int32_t decompiler::emitter::default_return ( int32_t block ) {
+
+	const block_code& item = b.code [ static_cast < size_t > ( block ) ];
+
+	if ( !b.returns_value || item.end != term::FALL || item.taken < 0 || item.taken >= count || block >= pred.count ( ) )
+		return -1;
+
+	const block_code& target = b.code [ static_cast < size_t > ( item.taken ) ];
+
+	if ( target.end != term::RETURN || target.returned < 0 || b.exprs [ static_cast < size_t > ( target.returned ) ].kind != op::VAR || !empty_block ( item.taken ) || pred [ static_cast < size_t > ( item.taken ) ].count ( ) < 2 )
+		return -1;
+
+	int64_t v = b.exprs [ static_cast < size_t > ( target.returned ) ].value;
+	int32_t only = -1;
+
+	for ( int32_t s = item.first; s < item.first + item.count; s++ ) {
+
+		if ( b.statements [ static_cast < size_t > ( s ) ].kind == stmt::NOP )
+			continue;
+
+		if ( only >= 0 )
+			return -1;
+
+		only = s;
+
+	}
+
+	if ( only < 0 )
+		return -1;
+
+	const statement& line = b.statements [ static_cast < size_t > ( only ) ];
+
+	if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || b.exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || b.exprs [ static_cast < size_t > ( line.left ) ].value != v )
+		return -1;
+
+	op source = b.exprs [ static_cast < size_t > ( line.right ) ].kind;
+
+	if ( source == op::CONST || source == op::VAR || ( source >= op::EQ && source <= op::GE ) || source == op::LAND || source == op::LOR || source == op::LNOT || b.result_width )
+		return -1;
+
+	if ( pred [ static_cast < size_t > ( block ) ].count ( ) != 1 || b.code [ static_cast < size_t > ( pred [ static_cast < size_t > ( block ) ] [ 0 ] ) ].end != term::BRANCH )
+		return -1;
+
+	int32_t constants = 0;
+
+	for ( int32_t s = 0; s < b.statements.count ( ); s++ ) {
+
+		const statement& prior = b.statements [ static_cast < size_t > ( s ) ];
+
+		if ( s == only || prior.kind != stmt::ASSIGN || prior.left < 0 || b.exprs [ static_cast < size_t > ( prior.left ) ].kind != op::VAR || b.exprs [ static_cast < size_t > ( prior.left ) ].value != v )
+			continue;
+
+		if ( prior.right < 0 || b.exprs [ static_cast < size_t > ( prior.right ) ].kind != op::CONST )
+			return -1;
+
+		constants++;
+
+	}
+
+	return constants == 1 ? only : -1;
 
 }
 bool decompiler::emitter::empty_block ( int32_t block ) {

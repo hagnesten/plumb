@@ -124,6 +124,8 @@ namespace decompiler {
 
 	extern bool unsigned_sum_compares;
 
+	extern bool default_returns;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;
