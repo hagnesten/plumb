@@ -16,6 +16,8 @@ namespace decompiler {
 
 	bool callee_parameter_type ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, int32_t index, wchar_t* out, int32_t room );
 
+	bool callee_void_elements ( const analysis::database& db, const loader::binary& file, namer* names, uint64_t function, int32_t index, int32_t depth );
+
 	bool callee_thread_parameter ( const analysis::database& db, namer* names, uint64_t function, int32_t index, int32_t depth );
 
 	bool stack_probe (const analysis::database& db, const x86::instruction& ins );

@@ -86,6 +86,8 @@ namespace decompiler {
 
 	extern bool byte_indexes;
 
+	extern bool void_params;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

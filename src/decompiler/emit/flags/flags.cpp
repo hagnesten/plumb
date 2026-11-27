@@ -56,6 +56,7 @@ bool decompiler::plain_sources = true;
 bool decompiler::known_names = true;
 bool decompiler::win_structs = true;
 bool decompiler::byte_indexes = true;
+bool decompiler::void_params = true;
 
 bool decompiler::unnamed_results = true;
 

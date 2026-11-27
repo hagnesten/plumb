@@ -602,6 +602,16 @@ void decompiler::flavor_elements ( builder& b, base::list < uint8_t >& element )
 			for ( int32_t i = 0; i < node.arg_count && i < 4; i++ ) {
 
 				int32_t passed = b.args [ static_cast < size_t > ( node.first_arg + i ) ];
+
+				if ( void_params && b.db && b.long_mode && passed >= 0 && b.exprs [ static_cast < size_t > ( passed ) ].kind == op::VAR ) {
+
+					int64_t p = b.exprs [ static_cast < size_t > ( passed ) ].value;
+
+					if ( p >= 0 && p < total && ( element [ static_cast < size_t > ( p ) ] & 0x9F ) == 8 && !( element [ static_cast < size_t > ( p ) ] & 0x40 ) && callee_void_elements ( *b.db, *b.file, b.names, static_cast < uint64_t > ( node.value ), i, 0 ) )
+						mark ( static_cast < int32_t > ( p ), 0x40 );
+
+				}
+
 				int32_t v = loaded_from ( passed );
 
 				if ( v < 0 )
