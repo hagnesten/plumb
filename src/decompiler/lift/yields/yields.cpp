@@ -1174,6 +1174,9 @@ int32_t decompiler::yields_value ( const analysis::database& db, const loader::b
 	if ( found_void || !( found_plain || ( found_call && !found_undefined ) ) )
 		return 0;
 
+	if ( byte_returns && ( kinds & ( ( 1u << 2 ) | ( 1u << 3 ) ) ) && !( kinds & ( 1u << 8 ) ) )
+		return ( kinds & ( 1u << 3 ) ) ? 3 : 2;
+
 	if ( byte_returns && plain_byte )
 		return 1;
 
