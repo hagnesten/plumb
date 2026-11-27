@@ -102,6 +102,8 @@ namespace decompiler {
 
 	extern bool and_zero;
 
+	extern bool arithmetic_elements;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

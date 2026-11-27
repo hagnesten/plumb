@@ -559,6 +559,8 @@ void decompiler::flavor_elements ( builder& b, base::list < uint8_t >& element )
 
 	};
 
+	int32_t skip_root = -1;
+
 	auto walk = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
 
 		if ( e < 0 || depth > 96 )
@@ -566,7 +568,7 @@ void decompiler::flavor_elements ( builder& b, base::list < uint8_t >& element )
 
 		const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
 
-		if ( ( node.kind == op::ADD || node.kind == op::SUB || node.kind == op::MUL ) && !( node.bits & FLOATING ) ) {
+		if ( ( arithmetic_elements || e != skip_root ) && ( node.kind == op::ADD || node.kind == op::SUB || node.kind == op::MUL ) && !( node.bits & FLOATING ) ) {
 
 			mark ( loaded_from ( node.a ), 0x20 );
 			mark ( loaded_from ( node.b ), 0x20 );
@@ -647,8 +649,10 @@ void decompiler::flavor_elements ( builder& b, base::list < uint8_t >& element )
 			if ( item.kind == stmt::NOP || item.kind == stmt::ASM )
 				continue;
 
+			skip_root = item.kind == stmt::ASSIGN && item.left >= 0 && b.exprs [ static_cast < size_t > ( item.left ) ].kind == op::VAR ? item.right : -1;
 			walk ( walk, item.left, 0 );
 			walk ( walk, item.right, 0 );
+			skip_root = -1;
 
 			int32_t right = item.right;
 
