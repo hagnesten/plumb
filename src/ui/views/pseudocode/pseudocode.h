@@ -4,4 +4,6 @@
 
 namespace ui {
 
+	tone syntax_tone ( decompiler::syntax kind );
+
 }

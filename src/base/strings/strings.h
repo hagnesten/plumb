@@ -30,7 +30,7 @@ namespace base {
 
 		int32_t i = 0;
 
-		for ( ; source [ i ] && i < room - 1; i++ )
+		for ( ; source && source [ i ] && i < room - 1; i++ )
 			out [ i ] = source [ i ];
 
 		out [ i ] = 0;
