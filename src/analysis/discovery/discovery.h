@@ -33,6 +33,7 @@ namespace analysis {
 		engine* owner = nullptr;
 		base::list < xref > refs;
 		base::list < uint64_t > calls;
+		base::list < uint64_t > taken;
 		base::list < jump_table > found;
 		base::list < uint64_t > stack;
 		x86::instruction ring [ 24 ];

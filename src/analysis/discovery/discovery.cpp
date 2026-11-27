@@ -557,7 +557,24 @@ void analysis::walk ( worker& w, uint64_t seed ) {
 
 			switch ( ins.control ) {
 
-				case x86::flow::CALL:
+				case x86::flow::CALL: {
+
+					static const uint8_t passed [ 4 ] = { x86::RCX, x86::RDX, x86::R8, x86::R9 };
+
+					for ( int32_t k = 0; k < 4 && e.long_mode; k++ ) {
+
+						uint64_t value = 0;
+
+						if ( register_value ( w, w.ring_count - 1, passed [ k ], value ) && db.map_of ( value ) >= 0 ) {
+
+							w.taken.push ( value );
+							w.calls.push ( value );
+
+						}
+
+					}
+
+				}
 
 					if ( ins.direct ( ) ) {
 
@@ -1284,6 +1301,20 @@ bool analysis::database::build ( const loader::binary& source, progress* report 
 		seed_entry seed = { value, 0, FROM_PROLOGUE };
 
 		seeds.push ( seed );
+
+	}
+
+	for ( worker& w : workers ) {
+
+		for ( uint64_t value : w.taken ) {
+
+			seed_entry seed = { value, 0, FROM_POINTER };
+
+			seeds.push ( seed );
+
+		}
+
+		w.taken.clear ( );
 
 	}
 
