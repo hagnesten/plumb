@@ -16,11 +16,20 @@ namespace decompiler {
 		CASE,
 		LABEL,
 		RETURN,
+		JUMP,
 		CONTINUATION,
 
 	};
 
 	line_shape shape_of ( const result& code, const line& item, int32_t& column );
+
+	int32_t paren_delta ( const result& code, const line& item );
+
+	line_shape shape_at ( const result& code, int32_t index, int32_t& column, int32_t& open );
+
+	int32_t unreachable_end ( const result& code, int32_t from, int32_t column );
+
+	void drop_unreachable ( result& code );
 
 	bool wants_gap ( line_shape shape, int32_t column, line_shape before, int32_t before_column );
 

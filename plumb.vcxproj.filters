@@ -196,6 +196,9 @@
     <Filter Include="src\decompiler\emit\increments">
       <UniqueIdentifier>{DDC88D3E-CEAD-2AA7-45D7-D741623EAD0F}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\decompiler\emit\layout">
+      <UniqueIdentifier>{214A39B3-0B89-F6D5-D131-B26BDB8756A8}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\decompiler\emit\loops">
       <UniqueIdentifier>{7CDF4195-020D-E00D-EF8C-1CCD38949F68}</UniqueIdentifier>
     </Filter>
@@ -219,9 +222,6 @@
     </Filter>
     <Filter Include="src\decompiler\emit\sink">
       <UniqueIdentifier>{2224AC18-A1EB-C33D-3636-FA082364BF5D}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\decompiler\emit\spacing">
-      <UniqueIdentifier>{BCD89478-A64A-7280-9325-0D9F701BA348}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\decompiler\emit\statements">
       <UniqueIdentifier>{1D44FD9B-3167-E985-6A0E-6884FE514719}</UniqueIdentifier>
@@ -801,6 +801,9 @@
     <ClCompile Include="src\decompiler\emit\increments\increments.cpp">
       <Filter>src\decompiler\emit\increments</Filter>
     </ClCompile>
+    <ClCompile Include="src\decompiler\emit\layout\layout.cpp">
+      <Filter>src\decompiler\emit\layout</Filter>
+    </ClCompile>
     <ClCompile Include="src\decompiler\emit\loops\loops.cpp">
       <Filter>src\decompiler\emit\loops</Filter>
     </ClCompile>
@@ -824,9 +827,6 @@
     </ClCompile>
     <ClCompile Include="src\decompiler\emit\sink\sink.cpp">
       <Filter>src\decompiler\emit\sink</Filter>
-    </ClCompile>
-    <ClCompile Include="src\decompiler\emit\spacing\spacing.cpp">
-      <Filter>src\decompiler\emit\spacing</Filter>
     </ClCompile>
     <ClCompile Include="src\decompiler\emit\statements\statements.cpp">
       <Filter>src\decompiler\emit\statements</Filter>
@@ -1316,6 +1316,9 @@
     <ClInclude Include="src\decompiler\emit\increments\increments.h">
       <Filter>src\decompiler\emit\increments</Filter>
     </ClInclude>
+    <ClInclude Include="src\decompiler\emit\layout\layout.h">
+      <Filter>src\decompiler\emit\layout</Filter>
+    </ClInclude>
     <ClInclude Include="src\decompiler\emit\loops\loops.h">
       <Filter>src\decompiler\emit\loops</Filter>
     </ClInclude>
@@ -1339,9 +1342,6 @@
     </ClInclude>
     <ClInclude Include="src\decompiler\emit\sink\sink.h">
       <Filter>src\decompiler\emit\sink</Filter>
-    </ClInclude>
-    <ClInclude Include="src\decompiler\emit\spacing\spacing.h">
-      <Filter>src\decompiler\emit\spacing</Filter>
     </ClInclude>
     <ClInclude Include="src\decompiler\emit\statements\statements.h">
       <Filter>src\decompiler\emit\statements</Filter>

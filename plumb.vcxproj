@@ -99,7 +99,7 @@
     <ClCompile Include="src\decompiler\emit\program\program.cpp" />
     <ClCompile Include="src\decompiler\emit\regions\regions.cpp" />
     <ClCompile Include="src\decompiler\emit\sink\sink.cpp" />
-    <ClCompile Include="src\decompiler\emit\spacing\spacing.cpp" />
+    <ClCompile Include="src\decompiler\emit\layout\layout.cpp" />
     <ClCompile Include="src\decompiler\emit\statements\statements.cpp" />
     <ClCompile Include="src\decompiler\emit\vartypes\vartypes.cpp" />
     <ClCompile Include="src\decompiler\emit\vectors\vectors.cpp" />
@@ -325,7 +325,7 @@
     <ClInclude Include="src\decompiler\emit\program\program.h" />
     <ClInclude Include="src\decompiler\emit\regions\regions.h" />
     <ClInclude Include="src\decompiler\emit\sink\sink.h" />
-    <ClInclude Include="src\decompiler\emit\spacing\spacing.h" />
+    <ClInclude Include="src\decompiler\emit\layout\layout.h" />
     <ClInclude Include="src\decompiler\emit\statements\statements.h" />
     <ClInclude Include="src\decompiler\emit\vartypes\vartypes.h" />
     <ClInclude Include="src\decompiler\emit\vectors\vectors.h" />
