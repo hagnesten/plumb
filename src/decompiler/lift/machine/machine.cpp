@@ -2827,7 +2827,9 @@ void decompiler::machine::step ( const x86::instruction& ins, uint32_t live_afte
 				if ( held == slot || value < 0 || !( live & ( 1u << held ) ) || !( 0xF0E8u & ( 1u << held ) ) || reg_at [ held ] >= reg_at [ slot ] )
 					continue;
 
-				if ( k.exprs [ static_cast < size_t > ( value ) ].kind == op::LOAD )
+				const expr& held_value = k.exprs [ static_cast < size_t > ( value ) ];
+
+				if ( held_value.kind == op::LOAD || ( held_value.kind == op::CAST && held_value.a >= 0 && k.exprs [ static_cast < size_t > ( held_value.a ) ].kind == op::LOAD ) )
 					materialize ( held, ins.address );
 
 			}
