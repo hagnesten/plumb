@@ -62,6 +62,10 @@ namespace decompiler {
 
 	extern bool offset_folds;
 
+	extern bool round_trips;
+
+	extern bool exact_reals;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

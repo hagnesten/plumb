@@ -224,6 +224,18 @@ void decompiler::emitter::real ( int64_t bits, uint8_t size ) {
 
 			uint64_t digits = static_cast < uint64_t > ( mantissa * scale + 0.5 );
 			uint64_t limit = static_cast < uint64_t > ( scale * 10.0 );
+			int32_t shift = significant - 1 - exponent;
+
+			if ( exact_reals && shift >= -22 && shift <= 22 ) {
+
+				double exact = 1.0;
+
+				for ( int32_t i = 0; i < ( shift < 0 ? -shift : shift ); i++ )
+					exact *= 10.0;
+
+				digits = static_cast < uint64_t > ( ( shift >= 0 ? value * exact : value / exact ) + 0.5 );
+
+			}
 
 			if ( digits >= limit ) {
 

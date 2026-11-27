@@ -1135,6 +1135,29 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 
 			}
 
+			int32_t truncated = item.a;
+
+			while ( round_trips && truncated >= 0 && b.exprs [ static_cast < size_t > ( truncated ) ].kind == op::CAST && b.exprs [ static_cast < size_t > ( truncated ) ].size == 8 && !( b.exprs [ static_cast < size_t > ( truncated ) ].bits & FLOATING ) && b.exprs [ static_cast < size_t > ( truncated ) ].a >= 0 && !( b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( truncated ) ].a ) ].bits & FLOATING ) )
+				truncated = b.exprs [ static_cast < size_t > ( truncated ) ].a;
+
+			if ( shown && round_trips && ( item.bits & FLOATING ) && truncated >= 0 && b.exprs [ static_cast < size_t > ( truncated ) ].kind == op::CAST && b.exprs [ static_cast < size_t > ( truncated ) ].size == 8 && !( b.exprs [ static_cast < size_t > ( truncated ) ].bits & FLOATING ) && b.exprs [ static_cast < size_t > ( truncated ) ].a >= 0 && ( b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( truncated ) ].a ) ].bits & FLOATING ) ) {
+
+				if ( parent > 14 )
+					out.put ( L"(" );
+
+				out.put ( L"(" );
+				type_name ( item.size, item.bits, false );
+				out.put ( L")" );
+				out.put ( L"(int)", syntax::TYPE );
+				value ( b.exprs [ static_cast < size_t > ( truncated ) ].a, 14 );
+
+				if ( parent > 14 )
+					out.put ( L")" );
+
+				break;
+
+			}
+
 			if ( shown ) {
 
 				bool narrow = !float_change && item.size < inner.size && !( item.bits & ( SIGNED | UNSIGNED ) );

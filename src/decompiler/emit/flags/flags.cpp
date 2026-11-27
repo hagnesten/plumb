@@ -44,6 +44,8 @@ bool decompiler::cast_bounds = true;
 bool decompiler::plain_stores = true;
 bool decompiler::thread_names = true;
 bool decompiler::offset_folds = true;
+bool decompiler::round_trips = true;
+bool decompiler::exact_reals = true;
 
 bool decompiler::unnamed_results = true;
 
