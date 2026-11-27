@@ -64,6 +64,8 @@ namespace decompiler {
 
 	extern bool narrow_copy_groups;
 
+	extern bool wide_zero_args;
+
 	extern bool scaled_counters;
 
 	extern bool import_callees;

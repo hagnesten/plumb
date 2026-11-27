@@ -51,6 +51,7 @@ bool decompiler::masked_casts = true;
 bool decompiler::cookie_keeps_result = true;
 bool decompiler::next_reloads = true;
 bool decompiler::narrow_copy_groups = true;
+bool decompiler::wide_zero_args = true;
 
 bool decompiler::scaled_counters = true;
 

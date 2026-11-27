@@ -1128,6 +1128,15 @@ void decompiler::machine::write_memory ( const x86::instruction& ins, const x86:
 			stack_args [ position ] = value;
 			stack_stmt [ position ] = made;
 
+			const expr& stored = b->exprs [ static_cast < size_t > ( value ) ];
+
+			if ( wide_zero_args && item.size == 16 && position + 1 < 16 && stored.kind == op::CONST && stored.value == 0 ) {
+
+				stack_args [ position + 1 ] = b->constant ( 0, 8 );
+				stack_stmt [ position + 1 ] = made;
+
+			}
+
 		}
 
 		return;
