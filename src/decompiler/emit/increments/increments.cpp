@@ -239,8 +239,159 @@ void decompiler::emitter::plan_increments ( ) {
 
 				if ( ( !( last_line && latch ) || ( memory && latch_folds ) ) && !calls && ( prior.kind == stmt::ASSIGN || prior.kind == stmt::STORE ) && uses == 1 && fold_at [ static_cast < size_t > ( before ) ] < 0 && !hidden [ static_cast < size_t > ( before ) ] && !( defines && b.exprs [ static_cast < size_t > ( prior.left ) ].value == x ) ) {
 
+					bool pre = false;
+
+					if ( pre_index_folds && defines && up ) {
+
+						int32_t found = -1;
+						int32_t inner = -1;
+
+						auto scaled = [ & ] ( int32_t e ) -> int64_t {
+
+							if ( e < 0 )
+								return 0;
+
+							const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+							if ( node.kind == op::VAR && node.value == x )
+								return 1;
+
+							if ( node.kind == op::MUL && node.a >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( node.a ) ].value == x && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST )
+								return b.exprs [ static_cast < size_t > ( node.b ) ].value;
+
+							if ( node.kind == op::MUL && node.a >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( node.b ) ].value == x && b.exprs [ static_cast < size_t > ( node.a ) ].kind == op::CONST )
+								return b.exprs [ static_cast < size_t > ( node.a ) ].value;
+
+							if ( node.kind == op::SHL && node.a >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( node.a ) ].value == x && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( node.b ) ].value < 5 )
+								return 1ll << b.exprs [ static_cast < size_t > ( node.b ) ].value;
+
+							return 0;
+
+						};
+
+						auto seek = [ & ] ( auto& self, int32_t e, int32_t depth ) -> void {
+
+							if ( e < 0 || depth > 32 || found >= 0 )
+								return;
+
+							const expr& node = b.exprs [ static_cast < size_t > ( e ) ];
+
+							if ( node.kind == op::LOAD && node.a >= 0 ) {
+
+								const expr& where = b.exprs [ static_cast < size_t > ( node.a ) ];
+
+								if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::CONST ) {
+
+									const expr& sum = b.exprs [ static_cast < size_t > ( where.a ) ];
+									int64_t step = sum.kind == op::ADD && sum.b >= 0 ? scaled ( sum.b ) : 0;
+
+									if ( !step && sum.kind == op::ADD && sum.a >= 0 )
+										step = scaled ( sum.a );
+
+									if ( step > 0 && step == node.size && b.exprs [ static_cast < size_t > ( where.b ) ].value == step * unit ) {
+
+										found = e;
+										inner = where.a;
+
+										return;
+
+									}
+
+								}
+
+								if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.a ) ].kind == op::ADD ) {
+
+									const expr& head = b.exprs [ static_cast < size_t > ( where.a ) ];
+									int64_t step = scaled ( where.b );
+
+									if ( step > 0 && step == node.size && head.a >= 0 && head.b >= 0 && b.exprs [ static_cast < size_t > ( head.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( head.b ) ].value == step * unit ) {
+
+										expr joined = where;
+
+										joined.a = head.a;
+										b.exprs.push ( joined );
+										found = e;
+										inner = b.exprs.count ( ) - 1;
+
+										return;
+
+									}
+
+								}
+
+								if ( where.kind == op::ADD && where.a >= 0 && where.b >= 0 && b.exprs [ static_cast < size_t > ( where.b ) ].kind == op::ADD ) {
+
+									const expr& tail = b.exprs [ static_cast < size_t > ( where.b ) ];
+									int64_t step = tail.a >= 0 ? scaled ( tail.a ) : 0;
+
+									if ( step > 0 && step == node.size && tail.b >= 0 && b.exprs [ static_cast < size_t > ( tail.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( tail.b ) ].value == step * unit ) {
+
+										expr joined = where;
+
+										joined.b = tail.a;
+										b.exprs.push ( joined );
+										found = e;
+										inner = b.exprs.count ( ) - 1;
+
+										return;
+
+									}
+
+								}
+
+							}
+
+							self ( self, node.a, depth + 1 );
+							self ( self, node.b, depth + 1 );
+							self ( self, node.c, depth + 1 );
+
+						};
+
+						seek ( seek, prior.right, 0 );
+
+						if ( found >= 0 ) {
+
+							expr moved = b.exprs [ static_cast < size_t > ( found ) ];
+
+							moved.a = inner;
+							b.exprs.push ( moved );
+
+							int32_t replacement = b.exprs.count ( ) - 1;
+
+							auto rebuild = [ & ] ( auto& self, int32_t e, int32_t depth ) -> int32_t {
+
+								if ( e < 0 || depth > 32 )
+									return e;
+
+								if ( e == found )
+									return replacement;
+
+								expr copy = b.exprs [ static_cast < size_t > ( e ) ];
+								int32_t na = self ( self, copy.a, depth + 1 );
+								int32_t nb = self ( self, copy.b, depth + 1 );
+								int32_t nc = self ( self, copy.c, depth + 1 );
+
+								if ( na == copy.a && nb == copy.b && nc == copy.c )
+									return e;
+
+								copy.a = na;
+								copy.b = nb;
+								copy.c = nc;
+								b.exprs.push ( copy );
+
+								return b.exprs.count ( ) - 1;
+
+							};
+
+							b.statements [ static_cast < size_t > ( before ) ].right = rebuild ( rebuild, prior.right, 0 );
+							pre = true;
+
+						}
+
+					}
+
 					fold_at [ static_cast < size_t > ( before ) ] = static_cast < int32_t > ( x );
-					fold_how [ static_cast < size_t > ( before ) ] = up ? 3 : 4;
+					fold_how [ static_cast < size_t > ( before ) ] = pre ? 1 : ( up ? 3 : 4 );
 					fold_inc [ static_cast < size_t > ( before ) ] = at;
 					fold_unit [ static_cast < size_t > ( before ) ] = unit;
 					hidden [ static_cast < size_t > ( at ) ] = 1;

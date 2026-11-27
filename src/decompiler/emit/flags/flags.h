@@ -106,6 +106,8 @@ namespace decompiler {
 
 	extern bool void_compares;
 
+	extern bool pre_index_folds;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

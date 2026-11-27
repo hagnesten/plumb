@@ -66,6 +66,7 @@ bool decompiler::joined_returns = true;
 bool decompiler::and_zero = true;
 bool decompiler::arithmetic_elements = false;
 bool decompiler::void_compares = true;
+bool decompiler::pre_index_folds = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;
