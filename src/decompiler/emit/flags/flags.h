@@ -68,6 +68,8 @@ namespace decompiler {
 
 	extern bool int_sources;
 
+	extern bool unequal_falls;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;
