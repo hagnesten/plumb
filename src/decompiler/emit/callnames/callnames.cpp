@@ -211,6 +211,36 @@ void decompiler::name_from_calls ( builder& b, int32_t result_var ) {
 		if ( !text && b.names->name ( static_cast < uint64_t > ( node.value ), true, callee, 200 ) )
 			text = api_prototype ( callee );
 
+		if ( !text && thread_names && b.db && b.long_mode ) {
+
+			for ( int32_t i = 0; i < node.arg_count && i < 4; i++ ) {
+
+				int32_t arg = b.args [ static_cast < size_t > ( node.first_arg + i ) ];
+
+				while ( arg >= 0 && b.exprs [ static_cast < size_t > ( arg ) ].kind == op::CAST )
+					arg = b.exprs [ static_cast < size_t > ( arg ) ].a;
+
+				if ( arg < 0 || b.exprs [ static_cast < size_t > ( arg ) ].kind != op::VAR )
+					continue;
+
+				int32_t v = static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( arg ) ].value );
+
+				if ( v < 0 || v >= b.vars.count ( ) || b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER || !b.call_names [ static_cast < size_t > ( v ) ].empty ( ) )
+					continue;
+
+				wchar_t chosen [ 80 ];
+
+				if ( callee_thread_parameter ( *b.db, b.names, static_cast < uint64_t > ( node.value ), i, 0 ) && unique_name ( taken, L"lpParameter", chosen ) ) {
+
+					taken.push ( base::text ( chosen ) );
+					b.call_names [ static_cast < size_t > ( v ) ].set ( chosen );
+
+				}
+
+			}
+
+		}
+
 		if ( !text )
 			continue;
 

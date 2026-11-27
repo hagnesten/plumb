@@ -58,6 +58,8 @@ namespace decompiler {
 
 	extern bool plain_stores;
 
+	extern bool thread_names;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;
