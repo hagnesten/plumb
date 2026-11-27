@@ -48,6 +48,8 @@ namespace decompiler {
 
 	extern bool case_styles;
 
+	extern bool void_skips;
+
 	extern bool unnamed_results;
 
 	extern bool intrinsic_types;

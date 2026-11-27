@@ -37,6 +37,7 @@ bool decompiler::simd_converts = true;
 bool decompiler::ending_fall_first = true;
 bool decompiler::call_pointers = true;
 bool decompiler::case_styles = true;
+bool decompiler::void_skips = true;
 
 bool decompiler::unnamed_results = true;
 

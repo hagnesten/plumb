@@ -613,6 +613,24 @@ int32_t decompiler::emitter::branch ( int32_t block, int32_t stop, const frame& 
 
 	}
 
+	if ( void_skips && !b.returns_value && follow < 0 && context.loop < 0 && taken >= 0 && other >= 0 && taken < count && other < count && taken != other ) {
+
+		auto bare_return = [ & ] ( int32_t x ) {
+
+			return b.code [ static_cast < size_t > ( x ) ].end == term::RETURN && empty_block ( x ) && !emitted [ static_cast < size_t > ( x ) ] && !wanted_label [ static_cast < size_t > ( x ) ];
+
+		};
+
+		bool taken_bare = bare_return ( taken );
+		bool other_bare = bare_return ( other );
+
+		if ( taken_bare && !other_bare )
+			follow = taken;
+		else if ( other_bare && !taken_bare )
+			follow = other;
+
+	}
+
 	if ( context.loop >= 0 && stop == context.loop && ( taken == context.loop ) != ( other == context.loop ) ) {
 
 		int32_t away = taken == context.loop ? other : taken;
