@@ -44,6 +44,8 @@ bool decompiler::narrow_lea = true;
 
 bool decompiler::shared_products = true;
 
+bool decompiler::param_copies = true;
+
 bool decompiler::carry_ops = true;
 
 bool decompiler::shared_vectors = true;

@@ -485,8 +485,58 @@ void decompiler::builder::inline_temps ( ) {
 
 			}
 
-			if ( source.kind != op::VAR || source.value == v || source.size != exprs [ static_cast < size_t > ( line.left ) ].size || vars [ static_cast < size_t > ( source.value ) ].size != vars [ static_cast < size_t > ( v ) ].size || ( ( vars [ static_cast < size_t > ( source.value ) ].bits ^ vars [ static_cast < size_t > ( v ) ].bits ) & FLOATING ) )
+			bool cast_param = false;
+
+			if ( param_copies && source.kind == op::CAST && source.a >= 0 && !( source.bits & FLOATING ) && exprs [ static_cast < size_t > ( source.a ) ].kind == op::VAR ) {
+
+				int64_t p = exprs [ static_cast < size_t > ( source.a ) ].value;
+
+				cast_param = p >= 0 && p < total && p != v && vars [ static_cast < size_t > ( p ) ].kind == var_kind::PARAMETER && fixed ( p ) && !( vars [ static_cast < size_t > ( p ) ].bits & FLOATING ) && !( vars [ static_cast < size_t > ( v ) ].bits & FLOATING ) && ( !long_mode || vars [ static_cast < size_t > ( p ) ].position < 4 );
+
+			}
+
+			if ( !cast_param && ( source.kind != op::VAR || source.value == v || source.size != exprs [ static_cast < size_t > ( line.left ) ].size || vars [ static_cast < size_t > ( source.value ) ].size != vars [ static_cast < size_t > ( v ) ].size || ( ( vars [ static_cast < size_t > ( source.value ) ].bits ^ vars [ static_cast < size_t > ( v ) ].bits ) & FLOATING ) ) )
 				continue;
+
+			if ( cast_param ) {
+
+				int32_t value = line.right;
+				int64_t p = exprs [ static_cast < size_t > ( source.a ) ].value;
+
+				line.kind = stmt::NOP;
+				uses [ static_cast < size_t > ( p ) ] += uses [ static_cast < size_t > ( v ) ] - 1;
+				uses [ static_cast < size_t > ( v ) ] = 0;
+				defs [ static_cast < size_t > ( v ) ] = 0;
+				vars [ static_cast < size_t > ( v ) ].ghost = true;
+				vars [ static_cast < size_t > ( v ) ].born = line.origin ? line.origin : line.address;
+
+				for ( statement& other : statements ) {
+
+					if ( other.kind == stmt::NOP || other.kind == stmt::ASM )
+						continue;
+
+					bool defines = other.kind == stmt::ASSIGN && other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind == op::VAR;
+
+					if ( !defines )
+						other.left = substitute ( *this, other.left, v, value, 0 );
+
+					other.right = substitute ( *this, other.right, v, value, 0 );
+
+				}
+
+				for ( block_code& block : code ) {
+
+					block.condition = substitute ( *this, block.condition, v, value, 0 );
+					block.selector = substitute ( *this, block.selector, v, value, 0 );
+					block.returned = substitute ( *this, block.returned, v, value, 0 );
+
+				}
+
+				changed = true;
+
+				continue;
+
+			}
 
 			if ( !fixed ( source.value ) && !( copy_local && local_only ( v, single [ static_cast < size_t > ( v ) ], source.value, uses [ static_cast < size_t > ( v ) ] ) ) )
 				continue;

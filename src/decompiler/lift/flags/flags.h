@@ -52,6 +52,8 @@ namespace decompiler {
 
 	extern bool shared_products;
 
+	extern bool param_copies;
+
 	extern bool carry_ops;
 
 	extern bool shared_vectors;
