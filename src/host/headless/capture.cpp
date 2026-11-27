@@ -1,5 +1,3 @@
-#ifdef PLUMB_DEBUG
-
 #include "host/headless/capture.h"
 #include "ui/core/app/app.h"
 #include "x86/instruction/instruction.h"
@@ -13,10 +11,11 @@
 #include <windows.h>
 #include <shellapi.h>
 
-static int32_t argument_count = 0;
-static wchar_t** arguments = nullptr;
+int32_t host::argument_count = 0;
 
-const wchar_t* argument ( const wchar_t* name ) {
+wchar_t** host::arguments = nullptr;
+
+const wchar_t* host::argument ( const wchar_t* name ) {
 
 	for ( int32_t i = 1; i + 1 < argument_count; i++ ) {
 
@@ -29,7 +28,7 @@ const wchar_t* argument ( const wchar_t* name ) {
 
 }
 
-float parse_float ( const wchar_t* text ) {
+float host::parse_float ( const wchar_t* text ) {
 
 	float value = 0.0f;
 	float scale = 0.0f;
@@ -69,7 +68,130 @@ float parse_float ( const wchar_t* text ) {
 
 }
 
-static uint32_t key_code ( const wchar_t* name, bool& control, bool& shift, bool& alt ) {
+bool host::plain_names::name ( uint64_t address, bool code, wchar_t* out, int32_t room ) {
+
+	return owner->symbol_name ( address, code, out, room );
+
+}
+
+bool host::plain_names::literal ( uint64_t address, wchar_t* out, int32_t room ) {
+
+	return decompiler::string_literal ( owner->file, address, out, room );
+
+}
+
+wchar_t host::plain_names::number_form ( uint64_t address, int64_t value, int32_t occurrence ) {
+
+	return owner->code_number_form ( address, value, occurrence );
+
+}
+
+const wchar_t* host::plain_names::prototype ( uint64_t function ) {
+
+	return owner->prototype_for ( function );
+
+}
+
+const wchar_t* host::plain_names::derived ( uint64_t function ) {
+
+	for ( int32_t i = 0; i < derived_at.count ( ); i++ ) {
+
+		if ( derived_at [ static_cast < size_t > ( i ) ] == function )
+			return derived_chars.data ( ) + derived_offset [ static_cast < size_t > ( i ) ];
+
+	}
+
+	return nullptr;
+
+}
+
+void host::plain_names::derive ( uint64_t function, const decompiler::result& code ) {
+
+	int32_t start = derived_chars.count ( );
+	bool spaced = false;
+
+	for ( const decompiler::line& line : code.lines ) {
+
+		if ( line.length == 1 && code.text [ static_cast < size_t > ( line.text ) ] == L'{' )
+			break;
+
+		for ( int32_t k = 0; k < line.length; k++ ) {
+
+			wchar_t c = code.text [ static_cast < size_t > ( line.text + k ) ];
+
+			if ( c == L' ' || c == L'\t' ) {
+
+				spaced = derived_chars.count ( ) > start;
+
+				continue;
+
+			}
+
+			if ( spaced )
+				derived_chars.push ( L' ' );
+
+			spaced = false;
+			derived_chars.push ( c );
+
+		}
+
+		spaced = derived_chars.count ( ) > start;
+
+	}
+
+	if ( derived_chars.count ( ) == start )
+		return;
+
+	derived_chars.push ( 0 );
+
+	decompiler::c_prototype* shape = new decompiler::c_prototype ( );
+	base::writer problem;
+	bool parsed = decompiler::parse_prototype ( derived_chars.data ( ) + start, true, *shape, problem );
+
+	derived_chars.resize ( static_cast < size_t > ( start ) );
+
+	if ( parsed ) {
+
+		base::writer text;
+
+		text.add ( shape->result ).add ( L" __fastcall " ).add ( shape->name ).add ( L"(" );
+
+		for ( int32_t j = 0; j < shape->count; j++ )
+			text.add ( j ? L", " : L"" ).add ( shape->types [ j ] );
+
+		if ( shape->variadic )
+			text.add ( shape->count ? L", ..." : L"..." );
+
+		text.add ( L")" );
+
+		for ( const wchar_t* c = text.text ( ); *c; c++ )
+			derived_chars.push ( *c );
+
+		derived_chars.push ( 0 );
+		derived_at.push ( function );
+		derived_offset.push ( start );
+
+	}
+
+	delete shape;
+
+}
+
+bool host::plain_names::number_notes ( ) {
+
+	return argument ( L"--numbers" ) != nullptr;
+
+}
+
+bool host::plain_names::expand_ternary ( ) {
+
+	const wchar_t* style = argument ( L"--ternary" );
+
+	return style && base::same_text ( style, L"if" );
+
+}
+
+uint32_t host::key_code ( const wchar_t* name, bool& control, bool& shift, bool& alt ) {
 
 	control = false;
 	shift = false;
@@ -114,7 +236,7 @@ static uint32_t key_code ( const wchar_t* name, bool& control, bool& shift, bool
 
 }
 
-static bool capture_mode ( ) {
+bool host::capture_mode ( ) {
 
 	const wchar_t* prefix = argument ( L"--capture" );
 
@@ -366,7 +488,7 @@ static bool capture_mode ( ) {
 
 }
 
-static bool disasm_mode ( ) {
+bool host::disasm_mode ( ) {
 
 	const wchar_t* source = argument ( L"--disasm" );
 	const wchar_t* target = argument ( L"--out" );
@@ -473,7 +595,7 @@ static bool disasm_mode ( ) {
 
 }
 
-static void write_text ( const wchar_t* path, const base::list < char >& out ) {
+void host::write_text ( const wchar_t* path, const base::list < char >& out ) {
 
 	HANDLE handle = CreateFileW ( path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr );
 
@@ -487,7 +609,7 @@ static void write_text ( const wchar_t* path, const base::list < char >& out ) {
 
 }
 
-static void append ( base::list < char >& out, const base::writer& line ) {
+void host::append ( base::list < char >& out, const base::writer& line ) {
 
 	char utf8 [ 4200 ];
 	int32_t length = WideCharToMultiByte ( CP_UTF8, 0, line.text ( ), line.size ( ), utf8, 4199, nullptr, nullptr );
@@ -499,7 +621,7 @@ static void append ( base::list < char >& out, const base::writer& line ) {
 
 }
 
-static bool analyze_mode ( ) {
+bool host::analyze_mode ( ) {
 
 	const wchar_t* source = argument ( L"--analyze" );
 	const wchar_t* target = argument ( L"--out" );
@@ -593,9 +715,9 @@ static bool analyze_mode ( ) {
 
 }
 
-static const wchar_t* crash_path = nullptr;
+const wchar_t* host::crash_path = nullptr;
 
-static long __stdcall crash_report ( EXCEPTION_POINTERS* info ) {
+long __stdcall host::crash_report ( EXCEPTION_POINTERS* info ) {
 
 	if ( !crash_path || info->ExceptionRecord->ExceptionCode != 0xC0000005u )
 		return EXCEPTION_CONTINUE_SEARCH;
@@ -629,7 +751,7 @@ static long __stdcall crash_report ( EXCEPTION_POINTERS* info ) {
 
 }
 
-static bool decompile_mode ( ) {
+bool host::decompile_mode ( ) {
 
 	const wchar_t* source = argument ( L"--decompile" );
 	const wchar_t* target = argument ( L"--out" );
@@ -853,7 +975,7 @@ static bool decompile_mode ( ) {
 
 }
 
-static bool assemble_mode ( ) {
+bool host::assemble_mode ( ) {
 
 	const wchar_t* source = argument ( L"--assemble" );
 	const wchar_t* target = argument ( L"--out" );
@@ -932,7 +1054,7 @@ static bool assemble_mode ( ) {
 
 }
 
-static bool psc_mode ( ) {
+bool host::psc_mode ( ) {
 
 	const wchar_t* script_path = argument ( L"--psc" );
 	const wchar_t* target = argument ( L"--out" );
@@ -974,7 +1096,7 @@ static bool psc_mode ( ) {
 
 }
 
-static bool runtime_keys_mode ( ) {
+bool host::runtime_keys_mode ( ) {
 
 	const wchar_t* target = argument ( L"--runtime-keys" );
 
@@ -1137,7 +1259,7 @@ static bool runtime_keys_mode ( ) {
 
 }
 
-bool debug_main ( ) {
+bool host::debug_main ( ) {
 
 	arguments = CommandLineToArgvW ( GetCommandLineW ( ), &argument_count );
 
@@ -1165,5 +1287,3 @@ bool debug_main ( ) {
 	return capture_mode ( );
 
 }
-
-#endif

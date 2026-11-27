@@ -114,10 +114,19 @@
     <ClCompile Include="src\decompiler\lift\yields\yields.cpp" />
     <ClCompile Include="src\decompiler\literals\literals.cpp" />
     <ClCompile Include="src\decompiler\prototypes\prototypes.cpp" />
-    <ClCompile Include="src\host\headless\capture.cpp" />
-    <ClCompile Include="src\host\main\main.cpp" />
+    <ClCompile Include="src\host\dpi\dpi.cpp" />
+    <ClCompile Include="src\host\headless\capture.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)'!='Debug'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="src\host\launch\launch.cpp" />
+    <ClCompile Include="src\host\loop\loop.cpp" />
+    <ClCompile Include="src\host\pacing\pacing.cpp" />
+    <ClCompile Include="src\host\painting\painting.cpp" />
+    <ClCompile Include="src\host\state\state.cpp" />
+    <ClCompile Include="src\host\window\window.cpp" />
     <ClCompile Include="src\loader\binary\binary.cpp" />
     <ClCompile Include="src\loader\symbols\symbols.cpp" />
+    <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\render\canvas\canvas.cpp" />
     <ClCompile Include="src\render\gpu\gpu.cpp" />
     <ClCompile Include="src\runtime\memory\memory.cpp">
@@ -313,8 +322,14 @@
     <ClInclude Include="src\decompiler\namer\namer.h" />
     <ClInclude Include="src\decompiler\output\output.h" />
     <ClInclude Include="src\decompiler\prototypes\prototypes.h" />
+    <ClInclude Include="src\host\dpi\dpi.h" />
     <ClInclude Include="src\host\headless\capture.h" />
-    <ClInclude Include="src\host\main\main.h" />
+    <ClInclude Include="src\host\launch\launch.h" />
+    <ClInclude Include="src\host\loop\loop.h" />
+    <ClInclude Include="src\host\pacing\pacing.h" />
+    <ClInclude Include="src\host\painting\painting.h" />
+    <ClInclude Include="src\host\state\state.h" />
+    <ClInclude Include="src\host\window\window.h" />
     <ClInclude Include="src\loader\binary\binary.h" />
     <ClInclude Include="src\loader\symbols\symbols.h" />
     <ClInclude Include="src\render\canvas\canvas.h" />

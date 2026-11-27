@@ -6,176 +6,104 @@
 #include "base/writer/writer.h"
 #include "base/strings/strings.h"
 
-bool debug_main ( );
+struct _EXCEPTION_POINTERS;
 
-const wchar_t* argument ( const wchar_t* name );
+namespace host {
 
-float parse_float ( const wchar_t* text );
+	bool debug_main ( );
 
-struct script_reader {
+	const wchar_t* argument ( const wchar_t* name );
 
-	const wchar_t* cursor;
+	float parse_float ( const wchar_t* text );
 
-	bool word ( wchar_t* out, int32_t room ) {
+	extern int32_t argument_count;
 
-		while ( *cursor == L' ' || *cursor == L';' || *cursor == L'\n' || *cursor == L'\r' || *cursor == L'\t' )
-			cursor++;
+	extern wchar_t** arguments;
 
-		if ( !*cursor )
-			return false;
+	struct script_reader {
 
-		int32_t length = 0;
+		const wchar_t* cursor;
 
-		while ( *cursor && *cursor != L' ' && *cursor != L';' && *cursor != L'\n' && *cursor != L'\r' && length < room - 1 )
-			out [ length++ ] = *cursor++;
+		bool word ( wchar_t* out, int32_t room ) {
 
-		out [ length ] = 0;
+			while ( *cursor == L' ' || *cursor == L';' || *cursor == L'\n' || *cursor == L'\r' || *cursor == L'\t' )
+				cursor++;
 
-		return true;
+			if ( !*cursor )
+				return false;
 
-	}
+			int32_t length = 0;
 
-	float number ( ) {
+			while ( *cursor && *cursor != L' ' && *cursor != L';' && *cursor != L'\n' && *cursor != L'\r' && length < room - 1 )
+				out [ length++ ] = *cursor++;
 
-		wchar_t token [ 64 ];
+			out [ length ] = 0;
 
-		if ( !word ( token, 64 ) )
-			return 0.0f;
-
-		return parse_float ( token );
-
-	}
-
-};
-struct plain_names : decompiler::namer {
-
-	ui::app* owner = nullptr;
-
-	bool name ( uint64_t address, bool code, wchar_t* out, int32_t room ) override {
-
-		return owner->symbol_name ( address, code, out, room );
-
-	}
-
-	bool literal ( uint64_t address, wchar_t* out, int32_t room ) override {
-
-		return decompiler::string_literal ( owner->file, address, out, room );
-
-	}
-
-	wchar_t number_form ( uint64_t address, int64_t value, int32_t occurrence ) override {
-
-		return owner->code_number_form ( address, value, occurrence );
-
-	}
-
-	base::list < uint64_t > derived_at;
-	base::list < int32_t > derived_offset;
-	base::list < wchar_t > derived_chars;
-
-	const wchar_t* prototype ( uint64_t function ) override {
-
-		return owner->prototype_for ( function );
-
-	}
-
-	const wchar_t* derived ( uint64_t function ) override {
-
-		for ( int32_t i = 0; i < derived_at.count ( ); i++ ) {
-
-			if ( derived_at [ static_cast < size_t > ( i ) ] == function )
-				return derived_chars.data ( ) + derived_offset [ static_cast < size_t > ( i ) ];
+			return true;
 
 		}
 
-		return nullptr;
+		float number ( ) {
 
-	}
+			wchar_t token [ 64 ];
 
-	void derive ( uint64_t function, const decompiler::result& code ) {
+			if ( !word ( token, 64 ) )
+				return 0.0f;
 
-		int32_t start = derived_chars.count ( );
-		bool spaced = false;
-
-		for ( const decompiler::line& line : code.lines ) {
-
-			if ( line.length == 1 && code.text [ static_cast < size_t > ( line.text ) ] == L'{' )
-				break;
-
-			for ( int32_t k = 0; k < line.length; k++ ) {
-
-				wchar_t c = code.text [ static_cast < size_t > ( line.text + k ) ];
-
-				if ( c == L' ' || c == L'\t' ) {
-
-					spaced = derived_chars.count ( ) > start;
-
-					continue;
-
-				}
-
-				if ( spaced )
-					derived_chars.push ( L' ' );
-
-				spaced = false;
-				derived_chars.push ( c );
-
-			}
-
-			spaced = derived_chars.count ( ) > start;
+			return parse_float ( token );
 
 		}
 
-		if ( derived_chars.count ( ) == start )
-			return;
+	};
 
-		derived_chars.push ( 0 );
+	struct plain_names : decompiler::namer {
 
-		decompiler::c_prototype* shape = new decompiler::c_prototype ( );
-		base::writer problem;
-		bool parsed = decompiler::parse_prototype ( derived_chars.data ( ) + start, true, *shape, problem );
+		ui::app* owner = nullptr;
 
-		derived_chars.resize ( static_cast < size_t > ( start ) );
+		bool name ( uint64_t address, bool code, wchar_t* out, int32_t room ) override;
 
-		if ( parsed ) {
+		bool literal ( uint64_t address, wchar_t* out, int32_t room ) override;
 
-			base::writer text;
+		wchar_t number_form ( uint64_t address, int64_t value, int32_t occurrence ) override;
 
-			text.add ( shape->result ).add ( L" __fastcall " ).add ( shape->name ).add ( L"(" );
+		base::list < uint64_t > derived_at;
+		base::list < int32_t > derived_offset;
+		base::list < wchar_t > derived_chars;
 
-			for ( int32_t j = 0; j < shape->count; j++ )
-				text.add ( j ? L", " : L"" ).add ( shape->types [ j ] );
+		const wchar_t* prototype ( uint64_t function ) override;
 
-			if ( shape->variadic )
-				text.add ( shape->count ? L", ..." : L"..." );
+		const wchar_t* derived ( uint64_t function ) override;
 
-			text.add ( L")" );
+		void derive ( uint64_t function, const decompiler::result& code );
 
-			for ( const wchar_t* c = text.text ( ); *c; c++ )
-				derived_chars.push ( *c );
+		bool number_notes ( ) override;
 
-			derived_chars.push ( 0 );
-			derived_at.push ( function );
-			derived_offset.push ( start );
+		bool expand_ternary ( ) override;
 
-		}
+	};
 
-		delete shape;
+	uint32_t key_code ( const wchar_t* name, bool& control, bool& shift, bool& alt );
 
-	}
+	bool capture_mode ( );
 
-	bool number_notes ( ) override {
+	bool disasm_mode ( );
 
-		return argument ( L"--numbers" ) != nullptr;
+	void write_text ( const wchar_t* path, const base::list < char >& out );
 
-	}
+	void append ( base::list < char >& out, const base::writer& line );
 
-	bool expand_ternary ( ) override {
+	bool analyze_mode ( );
 
-		const wchar_t* style = argument ( L"--ternary" );
+	extern const wchar_t* crash_path;
 
-		return style && base::same_text ( style, L"if" );
+	long __stdcall crash_report ( _EXCEPTION_POINTERS* info );
 
-	}
+	bool decompile_mode ( );
 
-};
+	bool assemble_mode ( );
+
+	bool psc_mode ( );
+
+	bool runtime_keys_mode ( );
+
+}
