@@ -241,8 +241,8 @@
     <Filter Include="src\decompiler\lift\availability">
       <UniqueIdentifier>{D1B1B249-79FC-A06A-8BEA-33FBCBEC753A}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\decompiler\lift\constant_branches">
-      <UniqueIdentifier>{4C12F219-2987-FB8A-DBCD-1F7736D90072}</UniqueIdentifier>
+    <Filter Include="src\decompiler\lift\constants">
+      <UniqueIdentifier>{721EE9D3-537E-C524-769C-92A0F18FBB6F}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\decompiler\lift\divisions">
       <UniqueIdentifier>{F44C8954-DA62-3A3B-020C-3164C551EE18}</UniqueIdentifier>
@@ -846,8 +846,8 @@
     <ClCompile Include="src\decompiler\lift\availability\availability.cpp">
       <Filter>src\decompiler\lift\availability</Filter>
     </ClCompile>
-    <ClCompile Include="src\decompiler\lift\constant_branches\constant_branches.cpp">
-      <Filter>src\decompiler\lift\constant_branches</Filter>
+    <ClCompile Include="src\decompiler\lift\constants\constants.cpp">
+      <Filter>src\decompiler\lift\constants</Filter>
     </ClCompile>
     <ClCompile Include="src\decompiler\lift\divisions\divisions.cpp">
       <Filter>src\decompiler\lift\divisions</Filter>
@@ -1364,8 +1364,8 @@
     <ClInclude Include="src\decompiler\lift\availability\availability.h">
       <Filter>src\decompiler\lift\availability</Filter>
     </ClInclude>
-    <ClInclude Include="src\decompiler\lift\constant_branches\constant_branches.h">
-      <Filter>src\decompiler\lift\constant_branches</Filter>
+    <ClInclude Include="src\decompiler\lift\constants\constants.h">
+      <Filter>src\decompiler\lift\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\decompiler\lift\divisions\divisions.h">
       <Filter>src\decompiler\lift\divisions</Filter>

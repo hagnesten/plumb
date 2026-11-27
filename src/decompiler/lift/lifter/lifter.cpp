@@ -1,5 +1,5 @@
 #include "decompiler/lift/lifter/lifter.h"
-#include "decompiler/lift/constant_branches/constant_branches.h"
+#include "decompiler/lift/constants/constants.h"
 #include "decompiler/lift/machine/machine.h"
 #include "decompiler/lift/flags/flags.h"
 #include "decompiler/lift/effects/effects.h"
@@ -1200,6 +1200,8 @@ bool decompiler::builder::lift ( ) {
 	fold_divisions ( );
 	infer_signs ( );
 	guard_expressions ( );
+	fold_constant_trees ( *this );
+	fold_constant_branches ( *this );
 
 	return true;
 
