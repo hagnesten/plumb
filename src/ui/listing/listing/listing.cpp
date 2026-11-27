@@ -2057,9 +2057,23 @@ void ui::app::build_api_names ( ) {
 			for ( int32_t k = 0; k < 4 && k < shape.count; k++ ) {
 
 				bool fits = false;
+				const wchar_t* type_text = shape.types [ k ];
 
 				for ( const wchar_t* type : named_types )
-					fits = fits || base::same_text ( shape.types [ k ], type );
+					fits = fits || base::same_text ( type_text, type );
+
+				bool prefixed = ( type_text [ 0 ] == L'P' && type_text [ 1 ] >= L'A' && type_text [ 1 ] <= L'Z' ) || ( type_text [ 0 ] == L'L' && type_text [ 1 ] == L'P' && type_text [ 2 ] >= L'A' && type_text [ 2 ] <= L'Z' );
+
+				if ( !fits && ( shape.params [ k ].pointer || prefixed ) ) {
+
+					static const wchar_t* const vague [ ] = { L"LPVOID", L"PVOID", L"LPCVOID", L"PCVOID", L"LPBYTE", L"PBYTE", L"PUCHAR", L"PCHAR", L"LPHANDLE", L"PHANDLE", L"HANDLE", L"HMODULE", L"HINSTANCE", L"HWND", L"HKEY", L"PHKEY", L"FARPROC", L"LPARAM", L"WPARAM", L"va_list" };
+
+					fits = !base::starts_with ( type_text, base::text_length ( type_text ), L"REF" ) && !base::starts_with ( type_text, base::text_length ( type_text ), L"void" ) && !base::starts_with ( type_text, base::text_length ( type_text ), L"const void" );
+
+					for ( const wchar_t* item : vague )
+						fits = fits && !base::same_text ( type_text, item );
+
+				}
 
 				const wchar_t* name = shape.names [ k ];
 
@@ -2074,8 +2088,6 @@ void ui::app::build_api_names ( ) {
 
 				if ( name [ 0 ] == L'l' && name [ 1 ] == L'p' && name [ 2 ] >= L'A' && name [ 2 ] <= L'Z' )
 					name += 2;
-				else if ( name [ 0 ] == L'p' && name [ 1 ] >= L'A' && name [ 1 ] <= L'Z' )
-					name += 1;
 
 				user_name site;
 
@@ -2108,8 +2120,13 @@ void ui::app::build_api_names ( ) {
 		const user_name& candidate = api_names [ static_cast < size_t > ( index ) ];
 		bool seen = false;
 
+		static const wchar_t* const tags [ ] = { L"WSAData", L"GUID", L"IID", L"CLSID" };
+
+		for ( const wchar_t* tag : tags )
+			seen = seen || base::same_text ( candidate.text.get ( ), tag );
+
 		for ( const user_name& item : kept )
-			seen = seen || item.address == candidate.address;
+			seen = seen || item.address == candidate.address || base::same_text ( item.text.get ( ), candidate.text.get ( ) );
 
 		if ( seen )
 			continue;

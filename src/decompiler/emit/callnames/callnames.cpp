@@ -332,7 +332,7 @@ void decompiler::name_from_calls ( builder& b, int32_t result_var ) {
 
 				if ( rest [ 0 ] == L'l' && rest [ 1 ] == L'p' && rest [ 2 ] >= L'A' && rest [ 2 ] <= L'Z' )
 					rest += 2;
-				else if ( rest [ 0 ] == L'p' && rest [ 1 ] >= L'A' && rest [ 1 ] <= L'Z' )
+				else if ( !keep_p_prefix && rest [ 0 ] == L'p' && rest [ 1 ] >= L'A' && rest [ 1 ] <= L'Z' )
 					rest += 1;
 
 			}

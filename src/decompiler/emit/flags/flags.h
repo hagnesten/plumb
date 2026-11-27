@@ -94,6 +94,8 @@ namespace decompiler {
 
 	extern bool result_suffixes;
 
+	extern bool keep_p_prefix;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

@@ -60,6 +60,7 @@ bool decompiler::void_params = true;
 bool decompiler::signed_elements = true;
 bool decompiler::local_suffixes = false;
 bool decompiler::result_suffixes = false;
+bool decompiler::keep_p_prefix = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;
