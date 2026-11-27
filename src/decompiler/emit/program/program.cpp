@@ -147,6 +147,9 @@ bool decompiler::emit ( builder& b ) {
 		if ( !declared && known_names && item.kind == var_kind::PARAMETER && !b.has_prototype && b.names && b.names->name ( b.function, true, own, 200 ) )
 			declared = known_parameter_type ( own, item.position );
 
+		if ( !declared && known_names && item.kind == var_kind::PARAMETER && !b.has_prototype && b.names && b.names->role ( b.function ) )
+			declared = known_parameter_type ( b.names->role ( b.function ), item.position );
+
 		if ( !declared && !( item.kind == var_kind::PARAMETER && b.has_prototype ) && v < inferred.count ( ) && !inferred [ static_cast < size_t > ( v ) ].empty ( ) ) {
 
 			declared = inferred [ static_cast < size_t > ( v ) ].get ( );
@@ -168,6 +171,9 @@ bool decompiler::emit ( builder& b ) {
 			}
 
 		}
+
+		if ( !declared && known_names && item.kind == var_kind::PARAMETER && !b.has_prototype && b.names && b.names->role ( b.function ) && known_parameter ( b.names->role ( b.function ), item.position ) )
+			declared = L"LPVOID";
 
 		if ( !declared || !parse_type ( declared, b.long_mode, shape, clean, 64 ) || shape.empty )
 			continue;

@@ -82,6 +82,8 @@ namespace host {
 
 		const wchar_t* derived ( uint64_t function ) override;
 
+		const wchar_t* role ( uint64_t function ) override;
+
 		void derive ( uint64_t function, const decompiler::result& code );
 
 		bool number_notes ( ) override;

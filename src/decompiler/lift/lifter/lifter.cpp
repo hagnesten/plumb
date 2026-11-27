@@ -347,6 +347,15 @@ bool decompiler::builder::lift ( ) {
 
 		}
 
+		const wchar_t* role = names && !has_prototype ? names->role ( function ) : nullptr;
+
+		for ( int32_t i = 0; role && i < 4; i++ ) {
+
+			if ( known_parameter ( role, i ) && !( entry_live & ( 1u << ( 16 + i ) ) ) )
+				entry_live |= 1u << gpr [ i ];
+
+		}
+
 		for ( int32_t i = 0; i < 4; i++ ) {
 
 			bool integer = ( entry_live & ( 1u << gpr [ i ] ) ) != 0;

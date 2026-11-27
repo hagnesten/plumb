@@ -1408,127 +1408,184 @@ void ui::app::function_name ( int32_t index, wchar_t* out, int32_t room ) const 
 
 }
 
-bool ui::app::callback_name ( uint64_t start, wchar_t* out, int32_t room ) const {
+const ui::user_name* ui::app::named_at ( const base::list < user_name >& items, uint64_t address ) {
 
-	if ( !db || !analysis_applied || file.arch != loader::machine::X64 )
-		return false;
+	int32_t low = 0;
+	int32_t high = items.count ( ) - 1;
 
-	int32_t first = 0;
-	int32_t count = 0;
+	while ( low <= high ) {
 
-	db->refs_to ( start, first, count );
+		int32_t middle = ( low + high ) / 2;
+		const user_name& item = items [ static_cast < size_t > ( middle ) ];
 
-	static const uint8_t families [ 4 ] = { 1, 2, 8, 9 };
+		if ( item.address == address )
+			return &item;
 
-	for ( int32_t i = 0; i < count && i < 16; i++ ) {
+		if ( item.address < address )
+			low = middle + 1;
+		else
+			high = middle - 1;
 
-		const analysis::xref& ref = db->refs [ static_cast < size_t > ( first + i ) ];
+	}
 
-		if ( ref.type != analysis::ref::ADDRESS )
+	return nullptr;
+
+}
+
+void ui::app::build_callback_names ( ) {
+
+	callback_roles.clear ( );
+	callback_names.clear ( );
+
+	if ( !db || file.arch != loader::machine::X64 )
+		return;
+
+	static const int32_t passed [ 4 ] = { 1, 2, 8, 9 };
+	static const wchar_t* const endings [ ] = { L"ROUTINE", L"PROC", L"FILTER", L"CALLBACK", L"HANDLER", L"_proc_type", L"FUNC" };
+	base::list < uint64_t > sites;
+	base::list < user_name > found;
+
+	for ( int32_t m = 0; m < file.imports.count ( ); m++ ) {
+
+		const loader::import& item = file.imports [ static_cast < size_t > ( m ) ];
+
+		if ( item.name.empty ( ) )
 			continue;
 
-		x86::instruction ins;
-		uint64_t at = file.base + ref.source;
+		const wchar_t* text = decompiler::api_prototype ( item.name.get ( ) );
+		decompiler::c_prototype shape;
+		base::writer problem;
 
-		if ( !db->decode ( at, ins ) || ins.name != x86::mnemonic::lea || ins.count < 2 || ins.operands [ 0 ].type != x86::kind::REG || x86::register_size ( ins.operands [ 0 ].reg ) != 8 )
+		if ( !text || !decompiler::parse_prototype ( text, true, shape, problem ) )
 			continue;
 
-		int32_t family = x86::register_family ( ins.operands [ 0 ].reg );
-		int32_t index = -1;
+		base::list < uint64_t > targets;
 
-		for ( int32_t k = 0; k < 4; k++ ) {
+		targets.push ( item.slot );
 
-			if ( families [ k ] == family )
-				index = k;
+		for ( const analysis::function_info& function : db->functions ) {
+
+			if ( ( function.flags & analysis::THUNK ) && function.import == m )
+				targets.push ( function.start );
 
 		}
 
-		if ( index < 0 )
-			continue;
+		base::list < uint64_t > calls;
 
-		at = ins.next ( );
+		for ( uint64_t slot : targets )
+			import_call_sites ( slot, calls );
 
-		for ( int32_t step = 0; step < 12; step++ ) {
+		for ( uint64_t at : calls ) {
 
-			x86::instruction next;
+			for ( int32_t k = 0; k < 4 && k < shape.count; k++ ) {
 
-			if ( !db->decode ( at, next ) )
-				break;
+				const wchar_t* type = shape.types [ k ];
+				const wchar_t* name = shape.names [ k ];
+				int32_t type_length = base::text_length ( type );
+				bool routine = false;
 
-			at = next.next ( );
+				for ( const wchar_t* ending : endings ) {
 
-			if ( next.name != x86::mnemonic::call ) {
+					int32_t n = base::text_length ( ending );
 
-				if ( next.count && next.operands [ 0 ].type == x86::kind::REG && x86::register_family ( next.operands [ 0 ].reg ) == family && next.name != x86::mnemonic::cmp && next.name != x86::mnemonic::test && next.name != x86::mnemonic::push )
-					break;
+					if ( type_length >= n && base::same_text ( type + type_length - n, ending ) )
+						routine = true;
 
-				if ( next.control != x86::flow::NONE )
-					break;
+				}
 
-				continue;
+				if ( !routine || !name [ 0 ] )
+					continue;
 
-			}
+				uint64_t routine_at = traced_address ( at, passed [ k ] );
 
-			uint64_t target = decompiler::call_target ( next );
-			const wchar_t* api = nullptr;
+				if ( !routine_at || db->function_starting ( routine_at ) < 0 )
+					continue;
 
-			for ( const loader::import& item : file.imports ) {
+				while ( *name == L'_' )
+					name++;
 
-				if ( item.slot == target && !item.name.empty ( ) )
-					api = item.name.get ( );
+				if ( name [ 0 ] == L'l' && name [ 1 ] == L'p' && name [ 2 ] == L'f' && name [ 3 ] == L'n' && name [ 4 ] >= L'A' && name [ 4 ] <= L'Z' )
+					name += 4;
+				else if ( name [ 0 ] == L'l' && name [ 1 ] == L'p' && name [ 2 ] >= L'A' && name [ 2 ] <= L'Z' )
+					name += 2;
+				else if ( name [ 0 ] == L'p' && name [ 1 ] == L'f' && name [ 2 ] == L'n' && name [ 3 ] >= L'A' && name [ 3 ] <= L'Z' )
+					name += 3;
 
-			}
+				user_name entry;
 
-			int32_t callee = target ? db->function_starting ( target ) : -1;
-
-			if ( !api && callee >= 0 && ( db->functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK ) && db->functions [ static_cast < size_t > ( callee ) ].import >= 0 )
-				api = file.imports [ static_cast < size_t > ( db->functions [ static_cast < size_t > ( callee ) ].import ) ].name.get ( );
-
-			const wchar_t* text = api ? decompiler::api_prototype ( api ) : nullptr;
-			decompiler::c_prototype shape;
-			base::writer problem;
-
-			if ( !text || !decompiler::parse_prototype ( text, true, shape, problem ) || index >= shape.count )
-				break;
-
-			const wchar_t* type = shape.types [ index ];
-			const wchar_t* name = shape.names [ index ];
-			int32_t type_length = base::text_length ( type );
-			bool routine = false;
-
-			static const wchar_t* const endings [ ] = { L"ROUTINE", L"PROC", L"FILTER", L"CALLBACK", L"HANDLER", L"_proc_type", L"FUNC" };
-
-			for ( const wchar_t* ending : endings ) {
-
-				int32_t n = base::text_length ( ending );
-
-				if ( type_length >= n && base::same_text ( type + type_length - n, ending ) )
-					routine = true;
+				entry.address = routine_at;
+				entry.text.set ( name );
+				found.push ( static_cast < user_name&& > ( entry ) );
+				sites.push ( at * 4 + static_cast < uint64_t > ( k ) );
 
 			}
-
-			if ( !routine || !name [ 0 ] )
-				break;
-
-			while ( *name == L'_' )
-				name++;
-
-			if ( name [ 0 ] == L'l' && name [ 1 ] == L'p' && name [ 2 ] == L'f' && name [ 3 ] == L'n' && name [ 4 ] >= L'A' && name [ 4 ] <= L'Z' )
-				name += 4;
-			else if ( name [ 0 ] == L'l' && name [ 1 ] == L'p' && name [ 2 ] >= L'A' && name [ 2 ] <= L'Z' )
-				name += 2;
-			else if ( name [ 0 ] == L'p' && name [ 1 ] == L'f' && name [ 2 ] == L'n' && name [ 3 ] >= L'A' && name [ 3 ] <= L'Z' )
-				name += 3;
-
-			base::copy_text ( name, out, room );
-
-			return true;
 
 		}
 
 	}
 
-	return false;
+	base::list < int32_t > order;
+
+	for ( int32_t i = 0; i < sites.count ( ); i++ )
+		order.push ( i );
+
+	base::sort ( order.data ( ), order.count ( ), [ & ] ( int32_t a, int32_t b ) { return sites [ static_cast < size_t > ( a ) ] < sites [ static_cast < size_t > ( b ) ]; } );
+
+	for ( int32_t index : order ) {
+
+		const user_name& candidate = found [ static_cast < size_t > ( index ) ];
+		bool role_seen = false;
+		bool name_seen = false;
+
+		for ( const user_name& item : callback_roles )
+			role_seen = role_seen || item.address == candidate.address;
+
+		if ( role_seen )
+			continue;
+
+		for ( const user_name& item : callback_names )
+			name_seen = name_seen || base::same_text ( item.text.get ( ), candidate.text.get ( ) );
+
+		user_name role;
+
+		role.address = candidate.address;
+		role.text.set ( candidate.text.get ( ) );
+		callback_roles.push ( static_cast < user_name&& > ( role ) );
+
+		if ( name_seen )
+			continue;
+
+		user_name named;
+
+		named.address = candidate.address;
+		named.text.set ( candidate.text.get ( ) );
+		callback_names.push ( static_cast < user_name&& > ( named ) );
+
+	}
+
+	base::sort ( callback_roles.data ( ), callback_roles.count ( ), [ ] ( const user_name& a, const user_name& b ) { return a.address < b.address; } );
+	base::sort ( callback_names.data ( ), callback_names.count ( ), [ ] ( const user_name& a, const user_name& b ) { return a.address < b.address; } );
+
+}
+
+const wchar_t* ui::app::callback_role ( uint64_t function ) const {
+
+	const user_name* item = named_at ( callback_roles, function );
+
+	return item ? item->text.get ( ) : nullptr;
+
+}
+
+bool ui::app::callback_name ( uint64_t start, wchar_t* out, int32_t room ) const {
+
+	const user_name* item = named_at ( callback_names, start );
+
+	if ( !item )
+		return false;
+
+	base::copy_text ( item->text.get ( ), out, room );
+
+	return true;
 
 }
 
@@ -1870,6 +1927,9 @@ uint64_t ui::app::traced_address ( uint64_t call, int32_t family ) const {
 
 		at = before;
 
+		if ( !db->is_covered ( at ) )
+			continue;
+
 		x86::instruction ins;
 
 		if ( !db->decode ( at, ins ) )
@@ -1910,6 +1970,61 @@ uint64_t ui::app::traced_address ( uint64_t call, int32_t family ) const {
 
 }
 
+void ui::app::import_call_sites ( uint64_t slot, base::list < uint64_t >& out ) const {
+
+	int32_t first = 0;
+	int32_t count = 0;
+
+	db->refs_to ( slot, first, count );
+
+	for ( int32_t i = 0; i < count; i++ ) {
+
+		uint64_t at = file.base + db->refs [ static_cast < size_t > ( first + i ) ].source;
+		x86::instruction ins;
+
+		if ( !db->decode ( at, ins ) )
+			continue;
+
+		if ( ins.control == x86::flow::CALL ) {
+
+			if ( decompiler::call_target ( ins ) == slot )
+				out.push ( at );
+
+			continue;
+
+		}
+
+		if ( ins.name != x86::mnemonic::mov || ins.count < 2 || ins.operands [ 0 ].type != x86::kind::REG || ins.operands [ 1 ].type != x86::kind::MEM || !ins.operands [ 1 ].rip_relative ( ) || x86::register_size ( ins.operands [ 0 ].reg ) != 8 )
+			continue;
+
+		int32_t family = x86::register_family ( ins.operands [ 0 ].reg );
+		bool keeps = family == 3 || family == 5 || family == 6 || family == 7 || family >= 12;
+		int32_t function = db->function_at ( at );
+		uint64_t end = function >= 0 ? db->functions [ static_cast < size_t > ( function ) ].end : at + 0x400;
+		uint64_t cursor = ins.next ( );
+
+		for ( int32_t step = 0; step < 400 && cursor < end; step++ ) {
+
+			x86::instruction next;
+
+			if ( !db->decode ( cursor, next ) )
+				break;
+
+			if ( next.control == x86::flow::CALL && next.count && next.operands [ 0 ].type == x86::kind::REG && x86::register_family ( next.operands [ 0 ].reg ) == family )
+				out.push ( cursor );
+			else if ( next.control == x86::flow::CALL && !keeps )
+				break;
+			else if ( next.count && next.operands [ 0 ].type == x86::kind::REG && x86::register_family ( next.operands [ 0 ].reg ) == family && next.name != x86::mnemonic::cmp && next.name != x86::mnemonic::test && next.name != x86::mnemonic::push )
+				break;
+
+			cursor = next.next ( );
+
+		}
+
+	}
+
+}
+
 void ui::app::build_api_names ( ) {
 
 	api_names.clear ( );
@@ -1933,18 +2048,11 @@ void ui::app::build_api_names ( ) {
 		if ( !text || !decompiler::parse_prototype ( text, true, shape, problem ) )
 			continue;
 
-		int32_t first = 0;
-		int32_t count = 0;
+		base::list < uint64_t > calls;
 
-		db->refs_to ( item.slot, first, count );
+		import_call_sites ( item.slot, calls );
 
-		for ( int32_t i = 0; i < count; i++ ) {
-
-			uint64_t at = file.base + db->refs [ static_cast < size_t > ( first + i ) ].source;
-			x86::instruction ins;
-
-			if ( !db->decode ( at, ins ) || ins.control != x86::flow::CALL || decompiler::call_target ( ins ) != item.slot )
-				continue;
+		for ( uint64_t at : calls ) {
 
 			for ( int32_t k = 0; k < 4 && k < shape.count; k++ ) {
 
@@ -2021,30 +2129,14 @@ void ui::app::build_api_names ( ) {
 
 bool ui::app::api_data_name ( uint64_t address, wchar_t* out, int32_t room ) const {
 
-	int32_t low = 0;
-	int32_t high = api_names.count ( ) - 1;
+	const user_name* item = named_at ( api_names, address );
 
-	while ( low <= high ) {
+	if ( !item )
+		return false;
 
-		int32_t middle = ( low + high ) / 2;
-		const user_name& item = api_names [ static_cast < size_t > ( middle ) ];
+	base::copy_text ( item->text.get ( ), out, room );
 
-		if ( item.address == address ) {
-
-			base::copy_text ( item.text.get ( ), out, room );
-
-			return true;
-
-		}
-
-		if ( item.address < address )
-			low = middle + 1;
-		else
-			high = middle - 1;
-
-	}
-
-	return false;
+	return true;
 
 }
 

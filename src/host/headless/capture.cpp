@@ -92,6 +92,12 @@ const wchar_t* host::plain_names::prototype ( uint64_t function ) {
 
 }
 
+const wchar_t* host::plain_names::role ( uint64_t function ) {
+
+	return owner->callback_role ( function );
+
+}
+
 const wchar_t* host::plain_names::derived ( uint64_t function ) {
 
 	for ( int32_t i = 0; i < derived_at.count ( ); i++ ) {

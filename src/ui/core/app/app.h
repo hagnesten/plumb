@@ -732,6 +732,14 @@ namespace ui {
 
 		void build_api_names ( );
 
+		void build_callback_names ( );
+
+		void import_call_sites ( uint64_t slot, base::list < uint64_t >& out ) const;
+
+		const wchar_t* callback_role ( uint64_t function ) const;
+
+		static const user_name* named_at ( const base::list < user_name >& items, uint64_t address );
+
 		bool number_text ( uint64_t at, uint64_t raw, uint8_t size, wchar_t* out, int32_t room ) const;
 
 		const local_entry* local_for ( uint64_t function, const wchar_t* key ) const;
@@ -1173,6 +1181,8 @@ namespace ui {
 		base::list < int32_t > string_order;
 		base::list < user_name > renamed;
 		base::list < user_name > api_names;
+		base::list < user_name > callback_roles;
+		base::list < user_name > callback_names;
 		base::list < user_name > comments;
 		base::list < user_name > bookmarks;
 		base::list < user_name > notes;

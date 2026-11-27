@@ -20,6 +20,8 @@ namespace ui {
 
 		const wchar_t* prototype ( uint64_t function ) override;
 
+		const wchar_t* role ( uint64_t function ) override;
+
 		bool spaced ( ) override;
 
 		bool expand_ternary ( ) override;

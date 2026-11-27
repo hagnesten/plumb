@@ -618,6 +618,7 @@ void ui::app::analysis_finished ( ) {
 	wait_analysis ( );
 	analysis_applied = true;
 	build_api_names ( );
+	build_callback_names ( );
 	apply_library ( );
 	build_listing ( );
 	refresh_filter ( panel::FUNCTIONS );
@@ -900,6 +901,12 @@ const wchar_t* ui::code_names::local_type ( uint64_t function, const wchar_t* ke
 	const local_entry* found = owner->local_for ( function, key );
 
 	return found && !found->type.empty ( ) ? found->type.get ( ) : nullptr;
+
+}
+
+const wchar_t* ui::code_names::role ( uint64_t function ) {
+
+	return owner->callback_role ( function );
 
 }
 
