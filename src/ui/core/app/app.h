@@ -17,6 +17,9 @@
 #include "debugger/control/session/session.h"
 #include "debugger/target/modules/modules.h"
 #include "debugger/traps/hardware/hardware.h"
+#include "base/text/text.h"
+#include "base/writer/writer.h"
+#include "base/list/list.h"
 
 namespace json {
 
@@ -1440,5 +1443,11 @@ namespace ui {
 	const wchar_t* command_label ( command action );
 
 	const wchar_t* command_keys ( command action );
+
+	extern const uint32_t dark_tones [ ];
+
+	extern const uint32_t light_tones [ ];
+
+	extern const float tone_alpha [ static_cast < int32_t > ( tone::COUNT ) ] [ 2 ];
 
 }

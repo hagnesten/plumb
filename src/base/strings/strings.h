@@ -26,6 +26,17 @@ namespace base {
 
 	}
 
+	inline void copy_text ( const wchar_t* source, wchar_t* out, int32_t room ) {
+
+		int32_t i = 0;
+
+		for ( ; source [ i ] && i < room - 1; i++ )
+			out [ i ] = source [ i ];
+
+		out [ i ] = 0;
+
+	}
+
 	inline bool same_text ( const char* a, const char* b ) {
 
 		while ( *a && *a == *b ) {
