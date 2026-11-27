@@ -4,4 +4,11 @@
 
 namespace ui {
 
+	struct keyed_index {
+
+		uint64_t key;
+		int32_t index;
+
+	};
+
 }

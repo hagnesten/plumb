@@ -225,6 +225,7 @@
     <ClInclude Include="src\ui\views\graph\graph.h" />
     <ClInclude Include="src\ui\views\disassembly\disassembly.h" />
     <ClInclude Include="src\ui\views\calls\calls.h" />
+    <ClInclude Include="src\ui\tools\mcp\mcp.h" />
     <ClInclude Include="src\ui\tools\prompts\prompts.h" />
     <ClInclude Include="src\ui\tools\search\query\query.h" />
     <ClInclude Include="src\ui\tools\search\library\library.h" />
