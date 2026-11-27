@@ -60,6 +60,8 @@ namespace decompiler {
 
 	extern bool cookie_keeps_result;
 
+	extern bool next_reloads;
+
 	extern bool scaled_counters;
 
 	extern bool import_callees;

@@ -209,6 +209,57 @@ void decompiler::builder::global_reloads ( ) {
 
 	}
 
+	if ( next_reloads ) {
+
+		for ( const block_code& head : code ) {
+
+			if ( !head.reachable )
+				continue;
+
+			for ( int32_t s = head.first; s < head.first + head.count && s < statements.count ( ); s++ ) {
+
+				const statement& line = statements [ static_cast < size_t > ( s ) ];
+
+				if ( line.kind != stmt::ASSIGN || line.left < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR || !global_slot_load ( *this, line.right ) )
+					continue;
+
+				int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+				if ( v < 0 || v >= vars.count ( ) || vars [ static_cast < size_t > ( v ) ].kind != var_kind::REGISTER || vars [ static_cast < size_t > ( v ) ].flags || vars [ static_cast < size_t > ( v ) ].cookie || reads [ static_cast < size_t > ( v ) ] < 3 || defs [ static_cast < size_t > ( v ) ] != 1 )
+					continue;
+
+				int32_t t = s + 1;
+
+				while ( t < head.first + head.count && t < statements.count ( ) && statements [ static_cast < size_t > ( t ) ].kind == stmt::NOP )
+					t++;
+
+				if ( t >= head.first + head.count || t >= statements.count ( ) )
+					continue;
+
+				statement& use = statements [ static_cast < size_t > ( t ) ];
+
+				if ( use.kind == stmt::ASM )
+					continue;
+
+				bool defines = use.kind == stmt::ASSIGN && use.left >= 0 && exprs [ static_cast < size_t > ( use.left ) ].kind == op::VAR;
+				bool in_left = !defines && use.left >= 0 && mentions ( *this, use.left, v, 0 );
+				bool in_right = use.right >= 0 && mentions ( *this, use.right, v, 0 );
+
+				if ( !in_left && !in_right )
+					continue;
+
+				if ( in_left )
+					use.left = substitute ( *this, use.left, v, line.right, 0 );
+
+				if ( in_right )
+					use.right = substitute ( *this, use.right, v, line.right, 0 );
+
+			}
+
+		}
+
+	}
+
 	if ( !import_callees || !file )
 		return;
 
