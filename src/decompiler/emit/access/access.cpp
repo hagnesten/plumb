@@ -917,6 +917,31 @@ void decompiler::emitter::lvalue_or_load ( const expr& item, int32_t parent ) {
 
 	}
 
+	if ( cast_index_access && var >= 0 && var < element.count ( ) && element [ static_cast < size_t > ( var ) ] && ( element [ static_cast < size_t > ( var ) ] & 0x1F ) != item.size && offset > 0 && item.size > 0 && offset % item.size == 0 && !( item.bits & FLOATING ) && item.size <= 16 ) {
+
+		var_name ( var, name );
+
+		if ( parent > 14 )
+			out.put ( L"(" );
+
+		out.put ( L"*((", syntax::OPERATOR );
+		type_name ( item.size, item.bits, false, true );
+		out.put ( L" *)" );
+
+		if ( !put_folded ( var, name ) )
+			out.put ( name, b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER ? syntax::PARAMETER : syntax::LOCAL );
+
+		out.put ( L" + ", syntax::OPERATOR );
+		index_number ( offset / item.size );
+		out.put ( L")" );
+
+		if ( parent > 14 )
+			out.put ( L")" );
+
+		return;
+
+	}
+
 	if ( var >= 0 && field_of ( var, offset ) ) {
 
 		wchar_t field [ 32 ] = L"field_";

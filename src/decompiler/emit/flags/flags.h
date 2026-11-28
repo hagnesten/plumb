@@ -166,6 +166,8 @@ namespace decompiler {
 
 	extern bool exiting_falls_first;
 
+	extern bool cast_index_access;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

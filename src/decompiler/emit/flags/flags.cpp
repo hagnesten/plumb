@@ -96,6 +96,7 @@ bool decompiler::strict_rotation = true;
 bool decompiler::self_ands = true;
 bool decompiler::call_sum_returns = true;
 bool decompiler::exiting_falls_first = true;
+bool decompiler::cast_index_access = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;
