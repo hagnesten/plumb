@@ -694,8 +694,17 @@ int32_t decompiler::callee_argument_width ( const analysis::database& db, uint64
 		if ( ins.name == mnemonic::push || ins.name == mnemonic::pop )
 			continue;
 
-		if ( ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::MEM && ins.operands [ 0 ].base && x86::register_family ( ins.operands [ 0 ].base ) == 4 && ins.operands [ 0 ].index == x86::NONE && ins.operands [ 1 ].type == x86::kind::REG )
+		if ( ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::MEM && ins.operands [ 0 ].base && x86::register_family ( ins.operands [ 0 ].base ) == 4 && ins.operands [ 0 ].index == x86::NONE && ins.operands [ 1 ].type == x86::kind::REG ) {
+
+			int32_t family = x86::register_family ( ins.operands [ 1 ].reg );
+			int32_t width = x86::register_size ( ins.operands [ 1 ].reg );
+
+			if ( narrow_spills && family >= 0 && family < 16 && ( mask & ( 1u << family ) ) && width < 8 )
+				return width;
+
 			continue;
+
+		}
 
 		if ( ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::REG && x86::register_size ( ins.operands [ 0 ].reg ) == 8 && x86::register_size ( ins.operands [ 1 ].reg ) == 8 ) {
 

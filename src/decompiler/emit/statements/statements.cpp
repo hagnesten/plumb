@@ -1033,7 +1033,17 @@ void decompiler::emitter::return_line ( const block_code& item ) {
 
 			}
 
-			if ( widened ) {
+			const expr& sum = b.exprs [ static_cast < size_t > ( inner >= 0 ? inner : item.returned ) ];
+			int32_t truncated = sum.a >= 0 ? b.exprs [ static_cast < size_t > ( sum.a ) ].a : -1;
+
+			if ( widened && call_sum_returns && ( sum.kind == op::ADD || sum.kind == op::SUB ) && sum.a >= 0 && sum.b >= 0 && b.exprs [ static_cast < size_t > ( sum.a ) ].kind == op::CAST && b.exprs [ static_cast < size_t > ( sum.a ) ].size == 4 && truncated >= 0 && b.exprs [ static_cast < size_t > ( truncated ) ].size == 8 && b.exprs [ static_cast < size_t > ( truncated ) ].kind == op::CALL && b.exprs [ static_cast < size_t > ( sum.b ) ].kind == op::CONST ) {
+
+				out.put ( L"(unsigned int)", syntax::TYPE );
+				value ( truncated, 14 );
+				out.put ( sum.kind == op::ADD ? L" + " : L" - ", syntax::OPERATOR );
+				value ( sum.b, 13 );
+
+			} else if ( widened ) {
 
 				out.put ( L"(unsigned int)", syntax::TYPE );
 				value ( inner, 14 );

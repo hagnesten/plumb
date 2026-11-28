@@ -34,6 +34,8 @@ namespace decompiler {
 
 	extern bool self_tests;
 
+	extern bool narrow_spills;
+
 	extern bool tail_stack_args;
 
 	extern bool ordered_cmov_loads;

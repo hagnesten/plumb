@@ -30,6 +30,8 @@ bool decompiler::widened_arith_uses = true;
 
 bool decompiler::self_tests = true;
 
+bool decompiler::narrow_spills = true;
+
 bool decompiler::tail_stack_args = true;
 
 bool decompiler::ordered_cmov_loads = true;
