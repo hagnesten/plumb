@@ -569,6 +569,21 @@ bool decompiler::emitter::var_type_text ( int32_t index, wchar_t* text, int32_t 
 
 }
 
+bool decompiler::emitter::derived_narrow_param ( uint64_t target, int32_t index ) {
+
+	if ( !derived_int_args )
+		return false;
+
+	bool pointer = false;
+	const wchar_t* wanted = derived_param ( target, index, pointer );
+
+	if ( !wanted || pointer )
+		return false;
+
+	return base::same_text ( wanted, L"int" ) || base::same_text ( wanted, L"unsigned int" ) || base::same_text ( wanted, L"char" ) || base::same_text ( wanted, L"__int16" ) || base::same_text ( wanted, L"unsigned __int8" ) || base::same_text ( wanted, L"unsigned __int16" );
+
+}
+
 bool decompiler::emitter::derived_same ( uint64_t target, int32_t index, int32_t v ) {
 
 	bool pointer = false;

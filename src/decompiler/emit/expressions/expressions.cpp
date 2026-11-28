@@ -757,7 +757,7 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 					number ( passed.value, 8, !simple_constant ( passed.value ), false );
 				else if ( wide_internal_args && passed.kind == op::CONST && !( passed.bits & POINTER ) && b.long_mode && target && !shape_ok && i < 4 && b.db->function_starting ( target ) >= 0 && callee_argument_width ( *b.db, target, i, 0 ) == 8 )
 					number ( passed.value, 8, !simple_constant ( passed.value ), false );
-				else if ( b.long_mode && !no_casts && target && passed.kind != op::CONST && passed.size == 4 && !( passed.bits & FLOATING ) && ( callee_unsigned ( target, i ), !shape_ok ) && !( i < 4 && callee_argument_width ( *b.db, target, i, 0 ) == 4 ) && !( passed.kind == op::VAR && passed.value >= 0 && passed.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( passed.value ) ].bits & UNSIGNED ) && b.vars [ static_cast < size_t > ( passed.value ) ].size == 4 ) ) {
+				else if ( b.long_mode && !no_casts && target && passed.kind != op::CONST && passed.size == 4 && !( passed.bits & FLOATING ) && ( callee_unsigned ( target, i ), !shape_ok ) && !( i < 4 && callee_argument_width ( *b.db, target, i, 0 ) == 4 ) && !derived_narrow_param ( target, i ) && !( passed.kind == op::VAR && passed.value >= 0 && passed.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( passed.value ) ].bits & UNSIGNED ) && b.vars [ static_cast < size_t > ( passed.value ) ].size == 4 ) ) {
 
 					out.put ( L"(unsigned int)" );
 

@@ -156,6 +156,8 @@ namespace decompiler {
 
 	extern bool loop_follows;
 
+	extern bool derived_int_args;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

@@ -157,6 +157,8 @@ namespace decompiler {
 
 		bool derived_same ( uint64_t target, int32_t index, int32_t v );
 
+		bool derived_narrow_param ( uint64_t target, int32_t index );
+
 		bool callee_unsigned ( uint64_t target, int32_t index );
 
 		bool no_return ( const expr& call );

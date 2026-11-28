@@ -91,6 +91,7 @@ bool decompiler::part_macro_slots = true;
 bool decompiler::signed_divisions = true;
 bool decompiler::scalar_vector_returns = true;
 bool decompiler::loop_follows = true;
+bool decompiler::derived_int_args = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;
