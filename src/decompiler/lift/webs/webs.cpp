@@ -219,6 +219,8 @@ void decompiler::web_state::run ( ) {
 
 	reaching.fill ( static_cast < size_t > ( words ), 0 );
 
+	int32_t returned_anchor = -1;
+
 	for ( int32_t k = 0; k < blocks; k++ ) {
 
 		const block_code& block = b.code [ static_cast < size_t > ( k ) ];
@@ -254,7 +256,23 @@ void decompiler::web_state::run ( ) {
 		seen.clear ( );
 		uses_in ( block.condition, reaching.data ( ), seen );
 		uses_in ( block.selector, reaching.data ( ), seen );
+
+		int32_t before_return = use_expr.count ( );
+
 		uses_in ( block.returned, reaching.data ( ), seen );
+
+		if ( joined_results && block.end == term::RETURN && block.reachable && block.returned >= 0 && b.exprs [ static_cast < size_t > ( block.returned ) ].kind == op::VAR && b.vars [ static_cast < size_t > ( var ) ].family == 0 ) {
+
+			for ( int32_t i = before_return; i < use_expr.count ( ); i++ ) {
+
+				if ( returned_anchor < 0 )
+					returned_anchor = use_def [ static_cast < size_t > ( i ) ];
+				else
+					join ( returned_anchor, use_def [ static_cast < size_t > ( i ) ] );
+
+			}
+
+		}
 
 	}
 

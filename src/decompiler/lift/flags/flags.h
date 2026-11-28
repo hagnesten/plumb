@@ -24,6 +24,8 @@ namespace decompiler {
 
 	extern bool global_pre_increments;
 
+	extern bool joined_results;
+
 	extern bool tail_stack_args;
 
 	extern bool ordered_cmov_loads;

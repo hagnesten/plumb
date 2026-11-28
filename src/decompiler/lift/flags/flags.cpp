@@ -20,6 +20,8 @@ bool decompiler::split_magic_divisions = true;
 
 bool decompiler::global_pre_increments = true;
 
+bool decompiler::joined_results = true;
+
 bool decompiler::tail_stack_args = true;
 
 bool decompiler::ordered_cmov_loads = true;
