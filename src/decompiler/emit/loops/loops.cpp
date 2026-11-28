@@ -318,6 +318,8 @@ int32_t decompiler::emitter::loop ( int32_t start, const frame& outer ) {
 
 		open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
 
+		int32_t open_line = !dry && out.r ? out.r->lines.count ( ) - 1 : -1;
+
 		if ( moved >= 0 )
 			hidden [ static_cast < size_t > ( moved ) ] = 1;
 
@@ -330,7 +332,7 @@ int32_t decompiler::emitter::loop ( int32_t start, const frame& outer ) {
 
 		}
 
-		close_brace ( );
+		close_do ( open_line );
 		while_tail ( item.last, test );
 
 		return leaving;
@@ -390,6 +392,8 @@ int32_t decompiler::emitter::loop ( int32_t start, const frame& outer ) {
 
 			open_brace ( b.graph.blocks [ static_cast < size_t > ( start ) ].start, L"do", -1, false );
 
+			int32_t open_line = !dry && out.r ? out.r->lines.count ( ) - 1 : -1;
+
 			emitted [ static_cast < size_t > ( latch ) ] = 1;
 
 			if ( plain && latch_continues )
@@ -416,7 +420,7 @@ int32_t decompiler::emitter::loop ( int32_t start, const frame& outer ) {
 			}
 
 			emitted [ static_cast < size_t > ( latch ) ] = 1;
-			close_brace ( );
+			close_do ( open_line );
 			while_tail ( tail.last, test );
 
 			return exit;

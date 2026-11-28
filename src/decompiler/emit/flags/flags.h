@@ -168,6 +168,12 @@ namespace decompiler {
 
 	extern bool cast_index_access;
 
+	extern bool indexed_typing;
+
+	extern bool bare_do_bodies;
+
+	extern bool param_increments;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

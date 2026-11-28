@@ -219,6 +219,59 @@ void decompiler::emitter::close_brace ( ) {
 	brace ( L"}" );
 
 }
+void decompiler::emitter::close_do ( int32_t open_line ) {
+
+	if ( dry || !bare_do_bodies || open_line < 0 || !out.r || out.r->lines.count ( ) != open_line + 2 ) {
+
+		close_brace ( );
+
+		return;
+
+	}
+
+	const line& body_line = out.r->lines [ static_cast < size_t > ( open_line + 1 ) ];
+	int32_t at = body_line.text;
+	int32_t end = out.r->text.count ( );
+
+	while ( at < end && out.r->text [ static_cast < size_t > ( at ) ] == L' ' )
+		at++;
+
+	auto starts = [ & ] ( const wchar_t* word ) {
+
+		int32_t k = 0;
+
+		for ( ; word [ k ]; k++ ) {
+
+			if ( at + k >= end || out.r->text [ static_cast < size_t > ( at + k ) ] != word [ k ] )
+				return false;
+
+		}
+
+		wchar_t next = at + k < end ? out.r->text [ static_cast < size_t > ( at + k ) ] : L' ';
+
+		return !( ( next >= L'a' && next <= L'z' ) || ( next >= L'A' && next <= L'Z' ) || ( next >= L'0' && next <= L'9' ) || next == L'_' );
+
+	};
+
+	const wchar_t* const control [ ] = { L"if", L"for", L"while", L"do", L"switch", L"goto", L"break", L"continue", L"return", L"else" };
+	bool simple = at < end && out.r->text [ static_cast < size_t > ( at ) ] != L'{' && out.r->text [ static_cast < size_t > ( at ) ] != L'}' && !( at + 5 < end && out.r->text [ static_cast < size_t > ( at ) ] == L'L' && out.r->text [ static_cast < size_t > ( at + 1 ) ] == L'A' );
+
+	for ( const wchar_t* word : control )
+		simple = simple && !starts ( word );
+
+	if ( !simple ) {
+
+		close_brace ( );
+
+		return;
+
+	}
+
+	out.r->lines.remove_at ( static_cast < size_t > ( open_line ) );
+	ended = false;
+	out.indent--;
+
+}
 void decompiler::emitter::brace ( const wchar_t* text ) {
 
 	if ( dry )

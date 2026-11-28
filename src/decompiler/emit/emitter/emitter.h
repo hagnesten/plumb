@@ -296,6 +296,8 @@ namespace decompiler {
 
 		void close_brace ( );
 
+		void close_do ( int32_t open_line );
+
 		void brace ( const wchar_t* text );
 
 		void paren_open ( );

@@ -167,7 +167,7 @@ void decompiler::emitter::plan_increments ( ) {
 			int64_t x = b.exprs [ static_cast < size_t > ( line.left ) ].value;
 			const expr& right = b.exprs [ static_cast < size_t > ( line.right ) ];
 
-			if ( x < 0 || x >= b.vars.count ( ) || b.vars [ static_cast < size_t > ( x ) ].kind != var_kind::REGISTER || ( right.bits & FLOATING ) || right.kind != op::ADD || right.a < 0 || right.b < 0 )
+			if ( x < 0 || x >= b.vars.count ( ) || ( b.vars [ static_cast < size_t > ( x ) ].kind != var_kind::REGISTER && !( param_increments && b.vars [ static_cast < size_t > ( x ) ].kind == var_kind::PARAMETER ) ) || ( right.bits & FLOATING ) || right.kind != op::ADD || right.a < 0 || right.b < 0 )
 				continue;
 
 			const expr& self_node = b.exprs [ static_cast < size_t > ( right.a ) ];

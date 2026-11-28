@@ -880,6 +880,39 @@ void decompiler::typed_pointers ( builder& b, base::list < uint8_t >& element ) 
 
 			}
 
+			if ( indexed_typing && where.kind == op::ADD && where.a >= 0 && where.b >= 0 && !( node.bits & FLOATING ) ) {
+
+				for ( int32_t side = 0; side < 2; side++ ) {
+
+					int32_t base_side = side ? where.b : where.a;
+					int32_t scaled_side = side ? where.a : where.b;
+					int32_t v = var_of ( base_side );
+
+					if ( v < 0 || v >= total || b.vars [ static_cast < size_t > ( v ) ].kind != var_kind::PARAMETER )
+						continue;
+
+					const expr& scaled = b.exprs [ static_cast < size_t > ( scaled_side ) ];
+					int64_t scale = 0;
+
+					if ( scaled.kind == op::MUL && scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST )
+						scale = b.exprs [ static_cast < size_t > ( scaled.b ) ].value;
+					else if ( scaled.kind == op::MUL && scaled.a >= 0 && b.exprs [ static_cast < size_t > ( scaled.a ) ].kind == op::CONST )
+						scale = b.exprs [ static_cast < size_t > ( scaled.a ) ].value;
+					else if ( scaled.kind == op::SHL && scaled.b >= 0 && b.exprs [ static_cast < size_t > ( scaled.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( scaled.b ) ].value < 4 )
+						scale = 1ll << b.exprs [ static_cast < size_t > ( scaled.b ) ].value;
+
+					if ( scale <= 1 || scale != node.size )
+						continue;
+
+					record ( v, node, node.size );
+					self ( self, scaled_side, depth + 1 );
+
+					return;
+
+				}
+
+			}
+
 		}
 
 		if ( ( node.kind == op::EQ || node.kind == op::NE ) && var_of ( node.a ) >= 0 && node.b >= 0 && b.exprs [ static_cast < size_t > ( node.b ) ].kind == op::CONST && b.exprs [ static_cast < size_t > ( node.b ) ].value == 0 )
