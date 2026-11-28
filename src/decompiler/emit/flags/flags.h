@@ -154,6 +154,8 @@ namespace decompiler {
 
 	extern bool scalar_vector_returns;
 
+	extern bool loop_follows;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

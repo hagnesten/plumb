@@ -327,6 +327,8 @@ namespace decompiler {
 
 		int32_t follow_of ( int32_t block, int32_t stop, const frame& context );
 
+		int32_t loop_follow ( int32_t block, int32_t loop );
+
 		bool silent_return ( int32_t block );
 
 		static op swapped ( op kind );

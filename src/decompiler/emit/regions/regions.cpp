@@ -423,6 +423,15 @@ int32_t decompiler::emitter::follow_of ( int32_t block, int32_t stop, const fram
 
 	}
 
+	if ( loop_follows && context.loop >= 0 && ( follow < 0 || !in_loop ( context.loop, follow ) ) ) {
+
+		int32_t local = loop_follow ( block, context.loop );
+
+		if ( local >= 0 && !emitted [ static_cast < size_t > ( local ) ] )
+			return local;
+
+	}
+
 	if ( context.loop >= 0 && follow >= 0 && !in_loop ( context.loop, follow ) )
 		follow = exits_inline && stop == context.loop ? context.loop : context.exit;
 
@@ -430,6 +439,68 @@ int32_t decompiler::emitter::follow_of ( int32_t block, int32_t stop, const fram
 		follow = stop;
 
 	return follow;
+
+}
+int32_t decompiler::emitter::loop_follow ( int32_t block, int32_t loop ) {
+
+	if ( block < 0 || block >= count || block >= succ.count ( ) )
+		return -1;
+
+	base::list < int32_t > hits;
+	int32_t branches = 0;
+
+	hits.fill ( static_cast < size_t > ( count ), 0 );
+
+	for ( int32_t start : succ [ static_cast < size_t > ( block ) ] ) {
+
+		if ( start < 0 || start >= count || start == loop || !in_loop ( loop, start ) )
+			continue;
+
+		base::list < uint8_t > seen;
+		base::list < int32_t > work;
+
+		seen.fill ( static_cast < size_t > ( count ), 0 );
+		seen [ static_cast < size_t > ( start ) ] = 1;
+		work.push ( start );
+
+		for ( int32_t q = 0; q < work.count ( ); q++ ) {
+
+			int32_t at = work [ static_cast < size_t > ( q ) ];
+
+			hits [ static_cast < size_t > ( at ) ]++;
+
+			for ( int32_t next : succ [ static_cast < size_t > ( at ) ] ) {
+
+				if ( next < 0 || next >= count || next == loop || next == block || seen [ static_cast < size_t > ( next ) ] || !in_loop ( loop, next ) )
+					continue;
+
+				seen [ static_cast < size_t > ( next ) ] = 1;
+				work.push ( next );
+
+			}
+
+		}
+
+		branches++;
+
+	}
+
+	if ( branches < 2 )
+		return -1;
+
+	int32_t best = -1;
+
+	for ( int32_t k = 0; k < count; k++ ) {
+
+		if ( k == block || hits [ static_cast < size_t > ( k ) ] != branches )
+			continue;
+
+		if ( best < 0 || b.graph.blocks [ static_cast < size_t > ( k ) ].start < b.graph.blocks [ static_cast < size_t > ( best ) ].start )
+			best = k;
+
+	}
+
+	return best;
 
 }
 bool decompiler::emitter::silent_return ( int32_t block ) {
