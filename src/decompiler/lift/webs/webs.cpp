@@ -1819,13 +1819,18 @@ void decompiler::builder::coalesce_copies ( ) {
 		const variable& into = vars [ static_cast < size_t > ( copy ) ];
 		const variable& from = vars [ static_cast < size_t > ( source ) ];
 
-		if ( into.kind != var_kind::REGISTER || into.cookie || into.saved || writes [ static_cast < size_t > ( copy ) ] != 1 )
+		if ( into.kind != var_kind::REGISTER || into.cookie || into.saved || writes [ static_cast < size_t > ( copy ) ] < 1 )
+			continue;
+
+		bool reassigned = writes [ static_cast < size_t > ( copy ) ] != 1;
+
+		if ( reassigned && ( !reassigned_param_copies || widened ) )
 			continue;
 
 		if ( from.kind != var_kind::PARAMETER || writes [ static_cast < size_t > ( source ) ] != 0 || ( widened ? ( into.size != 8 || ( into.bits & FLOATING ) || ( from.bits & FLOATING ) ) : ( into.size != from.size || ( into.bits & FLOATING ) != ( from.bits & FLOATING ) ) ) )
 			continue;
 
-		if ( widened && dying_widened_copies ) {
+		if ( ( widened && dying_widened_copies ) || reassigned ) {
 
 			bool other_reads = false;
 
