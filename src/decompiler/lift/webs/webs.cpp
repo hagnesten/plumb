@@ -1,5 +1,6 @@
 #include "decompiler/lift/webs/webs.h"
 #include "decompiler/lift/yields/yields.h"
+#include "decompiler/lift/expressions/expressions.h"
 #include "decompiler/apis/apis.h"
 #include "base/strings/strings.h"
 
@@ -1823,6 +1824,32 @@ void decompiler::builder::coalesce_copies ( ) {
 
 		if ( from.kind != var_kind::PARAMETER || writes [ static_cast < size_t > ( source ) ] != 0 || ( widened ? ( into.size != 8 || ( into.bits & FLOATING ) || ( from.bits & FLOATING ) ) : ( into.size != from.size || ( into.bits & FLOATING ) != ( from.bits & FLOATING ) ) ) )
 			continue;
+
+		if ( widened && dying_widened_copies ) {
+
+			bool other_reads = false;
+
+			for ( const statement& other : statements ) {
+
+				if ( &other == &line || other.kind == stmt::NOP || other.kind == stmt::ASM )
+					continue;
+
+				if ( ( other.right >= 0 && mentions ( *this, other.right, source, 0 ) ) || ( other.left >= 0 && exprs [ static_cast < size_t > ( other.left ) ].kind != op::VAR && mentions ( *this, other.left, source, 0 ) ) )
+					other_reads = true;
+
+			}
+
+			for ( const block_code& block : code ) {
+
+				if ( ( block.condition >= 0 && mentions ( *this, block.condition, source, 0 ) ) || ( block.returned >= 0 && mentions ( *this, block.returned, source, 0 ) ) || ( block.selector >= 0 && mentions ( *this, block.selector, source, 0 ) ) )
+					other_reads = true;
+
+			}
+
+			if ( other_reads )
+				continue;
+
+		}
 
 		if ( into.family == 0 ) {
 

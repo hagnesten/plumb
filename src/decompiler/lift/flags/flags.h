@@ -36,6 +36,8 @@ namespace decompiler {
 
 	extern bool narrow_spills;
 
+	extern bool dying_widened_copies;
+
 	extern bool tail_stack_args;
 
 	extern bool ordered_cmov_loads;
