@@ -352,8 +352,24 @@ bool decompiler::emit ( builder& b ) {
 
 	} else if ( b.returns_value ) {
 
-		if ( b.returns_float )
-			head.type_name ( b.return_size ? b.return_size : 4, FLOATING, false );
+		if ( b.returns_float ) {
+
+			uint8_t shown_size = b.return_size ? b.return_size : 4;
+
+			if ( scalar_vector_returns && shown_size == 16 ) {
+
+				for ( const variable& item : b.vars ) {
+
+					if ( item.kind == var_kind::PARAMETER && item.position == 0 && ( item.bits & FLOATING ) && ( item.size == 4 || item.size == 8 ) )
+						shown_size = item.size;
+
+				}
+
+			}
+
+			head.type_name ( shown_size, FLOATING, false );
+
+		}
 		else if ( b.result_width == 0 && !b.result_text.empty ( ) )
 			head.out.put ( b.result_text.get ( ), syntax::TYPE );
 		else if ( b.result_width == 0 && returned_pointer ( b ) )

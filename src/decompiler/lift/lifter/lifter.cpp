@@ -817,6 +817,7 @@ bool decompiler::builder::lift ( ) {
 				rax_written = ( defs [ static_cast < size_t > ( k ) ] & 1u ) != 0;
 
 			int32_t last_writer = 0;
+			bool xmm_read_later = false;
 			const base::list < x86::instruction >& own = listings [ static_cast < size_t > ( index ) ];
 
 			for ( int32_t k = own.count ( ) - 2; k >= 0 && block_writers && !last_writer; k-- ) {
@@ -829,6 +830,20 @@ bool decompiler::builder::lift ( ) {
 					break;
 
 				effects ( ins, long_mode, u, d );
+
+				if ( ( d & ( 1u << 16 ) ) && float_flow_returns ) {
+
+					bool zeroing = ( ins.name == mnemonic::xorps || ins.name == mnemonic::xorpd || ins.name == mnemonic::pxor ) && ins.count == 2 && ins.operands [ 1 ].type == x86::kind::REG && ins.operands [ 0 ].reg == ins.operands [ 1 ].reg;
+
+					if ( zeroing || xmm_read_later ) {
+
+						last_writer = 4;
+
+						break;
+
+					}
+
+				}
 
 				if ( d & ( 1u << 16 ) ) {
 
@@ -866,9 +881,12 @@ bool decompiler::builder::lift ( ) {
 				} else if ( d & 1u )
 					last_writer = 1;
 
+				if ( u & ( 1u << 16 ) )
+					xmm_read_later = true;
+
 			}
 
-			if ( last_writer == 2 && float_return && state.regs [ 16 ] >= 0 ) {
+			if ( ( last_writer == 2 || ( float_flow_returns && last_writer == 3 ) ) && float_return && state.regs [ 16 ] >= 0 ) {
 
 				out_block.returned = state.regs [ 16 ];
 				returns_float = true;

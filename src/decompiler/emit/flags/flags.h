@@ -152,6 +152,8 @@ namespace decompiler {
 
 	extern bool signed_divisions;
 
+	extern bool scalar_vector_returns;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

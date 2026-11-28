@@ -28,6 +28,8 @@ namespace decompiler {
 
 	extern bool shared_result_exit;
 
+	extern bool float_flow_returns;
+
 	extern bool tail_stack_args;
 
 	extern bool ordered_cmov_loads;

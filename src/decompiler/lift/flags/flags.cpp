@@ -24,6 +24,8 @@ bool decompiler::joined_results = true;
 
 bool decompiler::shared_result_exit = true;
 
+bool decompiler::float_flow_returns = true;
+
 bool decompiler::tail_stack_args = true;
 
 bool decompiler::ordered_cmov_loads = true;
