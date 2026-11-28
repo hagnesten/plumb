@@ -1170,6 +1170,15 @@ bool decompiler::builder::lift ( ) {
 
 	}
 
+	inner_addresses ( );
+
+	for ( variable& item : vars ) {
+
+		if ( ( item.kind == var_kind::STACK || item.kind == var_kind::PARAMETER ) && item.size == 0 )
+			item.size = 8;
+
+	}
+
 	merge_stack_slots ( );
 	detect_variadic ( );
 	propagate ( );

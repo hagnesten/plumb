@@ -193,4 +193,8 @@ namespace decompiler {
 
 	extern bool void_call_paths;
 
+	extern bool unsized_addresses;
+
+	extern bool inner_stack_addresses;
+
 }

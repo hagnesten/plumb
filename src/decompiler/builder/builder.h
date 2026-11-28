@@ -347,6 +347,8 @@ namespace decompiler {
 
 		void merge_stack_slots ( );
 
+		void inner_addresses ( );
+
 		void detect_variadic ( );
 
 		base::list < base::text > call_names;

@@ -99,6 +99,83 @@ void decompiler::builder::merge_stack_slots ( ) {
 
 }
 
+void decompiler::builder::inner_addresses ( ) {
+
+	if ( !inner_stack_addresses )
+		return;
+
+	int32_t total = vars.count ( );
+	base::list < int32_t > owner;
+	bool any = false;
+
+	owner.fill ( static_cast < size_t > ( total ), -1 );
+
+	for ( int32_t w = 0; w < total; w++ ) {
+
+		const variable& part = vars [ static_cast < size_t > ( w ) ];
+
+		if ( part.kind != var_kind::STACK || part.size != 0 )
+			continue;
+
+		for ( int32_t v = 0; v < total; v++ ) {
+
+			const variable& whole = vars [ static_cast < size_t > ( v ) ];
+
+			if ( v == w || whole.kind != var_kind::STACK || whole.size == 0 )
+				continue;
+
+			if ( part.offset > whole.offset && part.offset < whole.offset + whole.size ) {
+
+				owner [ static_cast < size_t > ( w ) ] = v;
+				any = true;
+
+				break;
+
+			}
+
+		}
+
+	}
+
+	if ( !any )
+		return;
+
+	int32_t count = exprs.count ( );
+
+	for ( int32_t i = 0; i < count; i++ ) {
+
+		const expr node = exprs [ static_cast < size_t > ( i ) ];
+
+		if ( node.kind != op::ADDRESS || node.a >= 0 || node.value < 0 || node.value >= total )
+			continue;
+
+		int32_t v = owner [ static_cast < size_t > ( node.value ) ];
+
+		if ( v < 0 )
+			continue;
+
+		int64_t k = vars [ static_cast < size_t > ( node.value ) ].offset - vars [ static_cast < size_t > ( v ) ].offset;
+		int32_t base = make ( op::ADDRESS, 8, -1, -1, v, POINTER );
+		int32_t step = make ( op::CONST, 8, -1, -1, k, 0 );
+		expr& target = exprs [ static_cast < size_t > ( i ) ];
+
+		target.kind = op::ADD;
+		target.a = base;
+		target.b = step;
+		target.value = 0;
+		target.bits = POINTER;
+
+	}
+
+	for ( int32_t w = 0; w < total; w++ ) {
+
+		if ( owner [ static_cast < size_t > ( w ) ] >= 0 )
+			vars [ static_cast < size_t > ( w ) ].size = 1;
+
+	}
+
+}
+
 int32_t decompiler::builder::stack_var ( int64_t offset, uint8_t size ) {
 
 	for ( int32_t i = 0; i < vars.count ( ); i++ ) {

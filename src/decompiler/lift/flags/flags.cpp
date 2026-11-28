@@ -174,3 +174,5 @@ int32_t decompiler::cast_param_ghosts = 2;
 bool decompiler::dead_copy_params = true;
 bool decompiler::opaque_guard_slots = true;
 bool decompiler::void_call_paths = true;
+bool decompiler::unsized_addresses = true;
+bool decompiler::inner_stack_addresses = true;
