@@ -80,7 +80,7 @@ namespace decompiler {
 		bool indexing = true;
 		wchar_t param_type [ 64 ] = { };
 		bool defer_joins = true;
-		bool rotate_guards = false;
+		bool rotate_guards = strict_rotation;
 		base::list < int8_t > loop_letter;
 		int32_t next_letter = 0;
 		int32_t last_assign = -1;

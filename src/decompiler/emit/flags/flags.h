@@ -158,6 +158,8 @@ namespace decompiler {
 
 	extern bool derived_int_args;
 
+	extern bool strict_rotation;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

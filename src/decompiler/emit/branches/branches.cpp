@@ -352,6 +352,24 @@ int32_t decompiler::emitter::rotate ( int32_t block, int32_t entry, int32_t leav
 	bool matched = equivalent ( guard_test, test, -1, -1, 0 );
 	int32_t seed_statement = -1;
 
+	if ( strict_rotation ) {
+
+		if ( !matched || ( pre >= 0 && !empty_block ( pre ) ) )
+			return -2;
+
+		const block_code& guard = b.code [ static_cast < size_t > ( block ) ];
+
+		for ( int32_t s = guard.first; s < guard.first + guard.count; s++ ) {
+
+			const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+			if ( line.kind == stmt::ASSIGN && line.left >= 0 && b.exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && b.references ( guard_test, static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( line.left ) ].value ), -1 ) && b.exprs [ static_cast < size_t > ( strip ( line.right ) ) ].kind != op::LOAD && b.exprs [ static_cast < size_t > ( strip ( line.right ) ) ].kind != op::CALL )
+				return -2;
+
+		}
+
+	}
+
 	const int32_t sources [ 2 ] = { pre, block };
 
 	for ( int32_t source : sources ) {
@@ -403,6 +421,8 @@ int32_t decompiler::emitter::rotate ( int32_t block, int32_t entry, int32_t leav
 			const expr& grow = b.exprs [ static_cast < size_t > ( line.right ) ];
 
 			if ( ( grow.kind == op::ADD || grow.kind == op::SUB ) && grow.a >= 0 && b.exprs [ static_cast < size_t > ( grow.a ) ].kind == op::VAR && b.exprs [ static_cast < size_t > ( grow.a ) ].value == b.exprs [ static_cast < size_t > ( line.left ) ].value && grow.b >= 0 && b.exprs [ static_cast < size_t > ( grow.b ) ].kind == op::CONST && b.references ( test, static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( line.left ) ].value ), -1 ) )
+				step = s;
+			else if ( strict_rotation && b.references ( test, static_cast < int32_t > ( b.exprs [ static_cast < size_t > ( line.left ) ].value ), -1 ) && grow.kind != op::CALL )
 				step = s;
 
 		}
