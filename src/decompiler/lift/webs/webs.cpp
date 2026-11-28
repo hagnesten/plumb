@@ -1050,6 +1050,12 @@ void decompiler::builder::narrow_webs ( ) {
 		bool low_bits = !( node.bits & FLOATING ) && ( node.kind == op::ADD || node.kind == op::SUB || node.kind == op::MUL || node.kind == op::AND || node.kind == op::OR || node.kind == op::XOR || node.kind == op::NOT || node.kind == op::NEG || node.kind == op::SHL );
 		int32_t inner = node.kind == op::CAST ? ( node.size <= 4 && !( node.bits & FLOATING ) ? node.size : 0 ) : ( low_bits ? limit : 0 );
 
+		if ( widened_arith_uses && node.kind == op::CAST && !inner && !( node.bits & ( FLOATING | SIGNED ) ) && node.a >= 0 && exprs [ static_cast < size_t > ( node.a ) ].size <= 4 && !( exprs [ static_cast < size_t > ( node.a ) ].bits & FLOATING ) && exprs [ static_cast < size_t > ( node.a ) ].kind != op::VAR )
+			inner = exprs [ static_cast < size_t > ( node.a ) ].size;
+
+		if ( widened_arith_uses && low_bits && node.size <= 4 && ( !limit || limit > node.size ) )
+			inner = node.size;
+
 		if ( node.kind == op::VAR )
 			return;
 
@@ -1193,7 +1199,7 @@ void decompiler::builder::narrow_webs ( ) {
 
 			int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
 
-			if ( v >= 0 && v < total && line.right >= 0 && narrow_copies && exprs [ static_cast < size_t > ( line.right ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.right ) ].value >= 0 && exprs [ static_cast < size_t > ( line.right ) ].value < total && exprs [ static_cast < size_t > ( line.right ) ].value != v && !blocked [ static_cast < size_t > ( v ) ] ) {
+			if ( v >= 0 && v < total && line.right >= 0 && narrow_copies && exprs [ static_cast < size_t > ( line.right ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.right ) ].value >= 0 && exprs [ static_cast < size_t > ( line.right ) ].value < total && exprs [ static_cast < size_t > ( line.right ) ].value != v && !blocked [ static_cast < size_t > ( v ) ] && !( widened_arith_uses && exprs [ static_cast < size_t > ( line.right ) ].size < exprs [ static_cast < size_t > ( line.left ) ].size ) ) {
 
 				defined [ static_cast < size_t > ( v ) ] = 1;
 				copy_to.push ( static_cast < int32_t > ( v ) );
@@ -1226,6 +1232,16 @@ void decompiler::builder::narrow_webs ( ) {
 		} else
 			note_use ( line.left, 0 );
 
+		if ( widened_arith_uses && defines && db && line.right >= 0 && exprs [ static_cast < size_t > ( line.right ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.right ) ].value != exprs [ static_cast < size_t > ( line.left ) ].value && exprs [ static_cast < size_t > ( line.right ) ].value >= 0 && exprs [ static_cast < size_t > ( line.right ) ].value < total && !( vars [ static_cast < size_t > ( exprs [ static_cast < size_t > ( line.right ) ].value ) ].bits & FLOATING ) ) {
+
+			x86::instruction ins;
+			uint64_t at = line.origin ? line.origin : line.address;
+
+			if ( at && db->decode ( at, ins ) && ins.name == x86::mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::REG && ins.operands [ 1 ].type == x86::kind::REG && ins.operands [ 0 ].size == 4 && ins.operands [ 1 ].size == 4 )
+				continue;
+
+		}
+
 		note_use ( line.right, 0 );
 
 	}
@@ -1248,7 +1264,7 @@ void decompiler::builder::narrow_webs ( ) {
 			size_t to = static_cast < size_t > ( copy_to [ static_cast < size_t > ( k ) ] );
 			size_t from = static_cast < size_t > ( copy_from [ static_cast < size_t > ( k ) ] );
 
-			if ( blocked [ to ] != blocked [ from ] ) {
+			if ( blocked [ to ] != blocked [ from ] && !( widened_arith_uses && blocked [ to ] && !blocked [ from ] ) ) {
 
 				blocked [ to ] = blocked [ from ] = 1;
 				moved = true;
