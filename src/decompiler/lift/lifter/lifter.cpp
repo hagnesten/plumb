@@ -1384,6 +1384,9 @@ bool decompiler::builder::lift ( ) {
 	if ( shared_result_exit )
 		shared_exit ( );
 
+	if ( constants_right )
+		order_compares ( );
+
 	return true;
 
 }

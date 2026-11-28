@@ -106,6 +106,7 @@
     <ClCompile Include="src\decompiler\emit\vectors\vectors.cpp" />
     <ClCompile Include="src\decompiler\lift\api_types\api_types.cpp" />
     <ClCompile Include="src\decompiler\lift\availability\availability.cpp" />
+    <ClCompile Include="src\decompiler\lift\compares\compares.cpp" />
     <ClCompile Include="src\decompiler\lift\constants\constants.cpp" />
     <ClCompile Include="src\decompiler\lift\divisions\divisions.cpp" />
     <ClCompile Include="src\decompiler\lift\expressions\expressions.cpp" />
@@ -336,6 +337,7 @@
     <ClInclude Include="src\decompiler\emit\vectors\vectors.h" />
     <ClInclude Include="src\decompiler\lift\api_types\api_types.h" />
     <ClInclude Include="src\decompiler\lift\availability\availability.h" />
+    <ClInclude Include="src\decompiler\lift\compares\compares.h" />
     <ClInclude Include="src\decompiler\lift\constants\constants.h" />
     <ClInclude Include="src\decompiler\lift\divisions\divisions.h" />
     <ClInclude Include="src\decompiler\lift\expressions\expressions.h" />

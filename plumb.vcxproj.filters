@@ -253,6 +253,9 @@
     <Filter Include="src\decompiler\lift\effects">
       <UniqueIdentifier>{6CB919AB-7828-518D-1858-46043B312CBA}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\decompiler\lift\compares">
+      <UniqueIdentifier>{6E2B7C41-9A3D-4F58-B1C7-2D84E5F90A36}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\decompiler\lift\expressions">
       <UniqueIdentifier>{558B9350-0D97-EA7A-CA28-D15264425A89}</UniqueIdentifier>
     </Filter>
@@ -882,6 +885,9 @@
     <ClCompile Include="src\decompiler\lift\guards\guards.cpp">
       <Filter>src\decompiler\lift\guards</Filter>
     </ClCompile>
+    <ClCompile Include="src\decompiler\lift\compares\compares.cpp">
+      <Filter>src\decompiler\lift\compares</Filter>
+    </ClCompile>
     <ClCompile Include="src\decompiler\lift\inline_temps\inline_temps.cpp">
       <Filter>src\decompiler\lift\inline_temps</Filter>
     </ClCompile>
@@ -1408,6 +1414,9 @@
     </ClInclude>
     <ClInclude Include="src\decompiler\lift\guards\guards.h">
       <Filter>src\decompiler\lift\guards</Filter>
+    </ClInclude>
+    <ClInclude Include="src\decompiler\lift\compares\compares.h">
+      <Filter>src\decompiler\lift\compares</Filter>
     </ClInclude>
     <ClInclude Include="src\decompiler\lift\inline_temps\inline_temps.h">
       <Filter>src\decompiler\lift\inline_temps</Filter>

@@ -290,6 +290,8 @@ namespace decompiler {
 
 		void guard_expressions ( );
 
+		void order_compares ( );
+
 		void fold_divisions ( );
 
 		void split_divisions ( );

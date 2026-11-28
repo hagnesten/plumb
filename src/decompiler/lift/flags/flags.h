@@ -197,4 +197,5 @@ namespace decompiler {
 
 	extern bool inner_stack_addresses;
 
+	extern bool constants_right;
 }
