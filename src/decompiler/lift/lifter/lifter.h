@@ -10,6 +10,8 @@ namespace decompiler {
 
 	int32_t call_arguments ( builder& b, const x86::instruction& ins );
 
+	bool opaque_thunk ( const analysis::database& db, uint64_t address );
+
 	bool cookie_check ( const base::list < x86::instruction >& list, int32_t index );
 
 	void annotate ( builder& b, const base::list < x86::instruction >& list, base::list < uint32_t >& uses, base::list < uint32_t >& defs );

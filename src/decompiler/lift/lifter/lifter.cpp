@@ -52,7 +52,50 @@ int32_t decompiler::call_arguments ( builder& b, const x86::instruction& ins ) {
 	if ( callee >= 0 && ( b.db->functions [ static_cast < size_t > ( callee ) ].flags & analysis::THUNK ) && b.db->functions [ static_cast < size_t > ( callee ) ].import >= 0 )
 		return import_arguments ( b.file->imports [ static_cast < size_t > ( b.db->functions [ static_cast < size_t > ( callee ) ].import ) ].name.get ( ) );
 
+	if ( b.long_mode && opaque_guard_slots && opaque_thunk ( *b.db, direct ) )
+		return 4;
+
 	return internal_arguments ( *b.db, direct, b.long_mode, 0 );
+
+}
+
+bool decompiler::opaque_thunk ( const analysis::database& db, uint64_t address ) {
+
+	if ( !db.file )
+		return false;
+
+	for ( int32_t hop = 0; hop < 4; hop++ ) {
+
+		x86::instruction step;
+
+		if ( !db.decode ( address, step ) || step.name != mnemonic::jmp || step.count != 1 )
+			return false;
+
+		if ( step.direct ( ) ) {
+
+			address = step.target ( );
+
+			continue;
+
+		}
+
+		if ( !hop || step.operands [ 0 ].type != x86::kind::MEM || !step.operands [ 0 ].rip_relative ( ) )
+			return false;
+
+		uint64_t slot = step.next ( ) + static_cast < uint64_t > ( step.operands [ 0 ].value );
+
+		for ( const loader::import& item : db.file->imports ) {
+
+			if ( item.slot == slot )
+				return false;
+
+		}
+
+		return true;
+
+	}
+
+	return false;
 
 }
 

@@ -1,6 +1,7 @@
 #include "decompiler/lift/yields/yields.h"
 #include "decompiler/lift/effects/effects.h"
 #include "decompiler/lift/flags/flags.h"
+#include "decompiler/lift/lifter/lifter.h"
 #include "decompiler/apis/apis.h"
 #include "decompiler/prototypes/prototypes.h"
 #include "analysis/graph/graph.h"
@@ -1059,6 +1060,9 @@ int64_t decompiler::entry_arguments ( const analysis::database& db, uint64_t fun
 
 		int64_t inner = target ? entry_arguments ( db, target, long_mode, depth + 1, false ) : -1;
 		uint32_t mask = 0;
+
+		if ( target && opaque_guard_slots && opaque_thunk ( db, target ) )
+			inner = 4;
 
 		for ( int32_t i = 0; i < inner && i < 4; i++ )
 			mask |= 1u << gpr [ i ];

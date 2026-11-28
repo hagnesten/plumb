@@ -189,4 +189,6 @@ namespace decompiler {
 
 	extern bool dead_copy_params;
 
+	extern bool opaque_guard_slots;
+
 }

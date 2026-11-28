@@ -4,6 +4,7 @@
 #include "decompiler/lift/propagate/propagate.h"
 #include "decompiler/lift/intrinsics/intrinsics.h"
 #include "decompiler/lift/yields/yields.h"
+#include "decompiler/lift/lifter/lifter.h"
 #include "decompiler/apis/apis.h"
 #include "decompiler/literals/literals.h"
 #include "x86/decoder/decoder.h"
@@ -1609,7 +1610,9 @@ int32_t decompiler::machine::call_expr ( const x86::instruction& ins, uint32_t l
 	else
 		target = read ( ins, 0 );
 
-	if ( direct && k.long_mode && jumps_through_rax ( direct ) ) {
+	bool opaque = direct && k.long_mode && opaque_guard_slots && opaque_thunk ( *k.db, direct );
+
+	if ( !opaque && direct && k.long_mode && jumps_through_rax ( direct ) ) {
 
 		target = family_value ( 0 );
 		direct = 0;
@@ -1646,6 +1649,9 @@ int32_t decompiler::machine::call_expr ( const x86::instruction& ins, uint32_t l
 			count = import_arguments ( k.file->imports [ static_cast < size_t > ( import ) ].name.get ( ) );
 
 	}
+
+	if ( opaque && count < 0 )
+		count = 4;
 
 	uint8_t result_size = k.long_mode ? 8 : 4;
 	uint8_t result_bits = 0;
