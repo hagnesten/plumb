@@ -185,4 +185,6 @@ namespace decompiler {
 	extern bool comma_uses;
 	extern bool guard_defs;
 
+	extern int32_t cast_param_ghosts;
+
 }

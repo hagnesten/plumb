@@ -4,6 +4,7 @@
 #include "decompiler/lift/flags/flags.h"
 #include "decompiler/lift/effects/effects.h"
 #include "decompiler/lift/yields/yields.h"
+#include "decompiler/lift/webs/webs.h"
 #include "decompiler/apis/apis.h"
 #include "base/strings/strings.h"
 
@@ -507,7 +508,9 @@ void decompiler::builder::inline_temps ( ) {
 				uses [ static_cast < size_t > ( p ) ] += uses [ static_cast < size_t > ( v ) ] - 1;
 				uses [ static_cast < size_t > ( v ) ] = 0;
 				defs [ static_cast < size_t > ( v ) ] = 0;
-				vars [ static_cast < size_t > ( v ) ].ghost = true;
+				int32_t family = vars [ static_cast < size_t > ( v ) ].family;
+				bool lives = family == 3 || family == 5 || family == 6 || family == 7 || ( family >= 12 && family < 16 ) || read_later ( *this, p, line.origin ? line.origin : line.address );
+				vars [ static_cast < size_t > ( v ) ].ghost = cast_param_ghosts == 1 || ( cast_param_ghosts == 2 && lives ) || ( cast_param_ghosts == 3 && !lives );
 				vars [ static_cast < size_t > ( v ) ].born = line.origin ? line.origin : line.address;
 
 				for ( statement& other : statements ) {
