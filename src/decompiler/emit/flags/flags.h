@@ -164,6 +164,8 @@ namespace decompiler {
 
 	extern bool call_sum_returns;
 
+	extern bool exiting_falls_first;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;
