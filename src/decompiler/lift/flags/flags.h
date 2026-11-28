@@ -18,6 +18,8 @@ namespace decompiler {
 
 	extern bool kept_exchanges;
 
+	extern bool widened_param_copies;
+
 	extern bool tail_stack_args;
 
 	extern bool ordered_cmov_loads;

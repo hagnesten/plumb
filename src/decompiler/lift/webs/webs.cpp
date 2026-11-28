@@ -1744,7 +1744,33 @@ void decompiler::builder::coalesce_copies ( ) {
 			continue;
 
 		const expr& left = exprs [ static_cast < size_t > ( line.left ) ];
-		const expr& right = exprs [ static_cast < size_t > ( line.right ) ];
+		expr right = exprs [ static_cast < size_t > ( line.right ) ];
+		expr widening = right;
+		bool widened = false;
+
+		if ( widened_param_copies && right.kind == op::CAST && right.a >= 0 && right.size == 8 && !( right.bits & ( FLOATING | POINTER ) ) ) {
+
+			int32_t inner = right.a;
+
+			while ( inner >= 0 && exprs [ static_cast < size_t > ( inner ) ].kind == op::CAST && !( exprs [ static_cast < size_t > ( inner ) ].bits & ( FLOATING | POINTER ) ) && exprs [ static_cast < size_t > ( inner ) ].size == 4 )
+				inner = exprs [ static_cast < size_t > ( inner ) ].a;
+
+			if ( inner >= 0 && exprs [ static_cast < size_t > ( inner ) ].kind == op::VAR && exprs [ static_cast < size_t > ( right.a ) ].size == 4 ) {
+
+				right = exprs [ static_cast < size_t > ( inner ) ];
+				widened = true;
+
+			}
+
+		} else if ( widened_param_copies && right.kind == op::VAR && right.size == 4 && left.size == 8 && !( right.bits & FLOATING ) ) {
+
+			widening.kind = op::CAST;
+			widening.size = 8;
+			widening.bits = 0;
+			widening.a = line.right;
+			widened = true;
+
+		}
 
 		if ( left.kind != op::VAR || right.kind != op::VAR || left.value == right.value )
 			continue;
@@ -1761,7 +1787,7 @@ void decompiler::builder::coalesce_copies ( ) {
 		if ( into.kind != var_kind::REGISTER || into.cookie || into.saved || writes [ static_cast < size_t > ( copy ) ] != 1 )
 			continue;
 
-		if ( from.kind != var_kind::PARAMETER || writes [ static_cast < size_t > ( source ) ] != 0 || into.size != from.size || ( into.bits & FLOATING ) != ( from.bits & FLOATING ) )
+		if ( from.kind != var_kind::PARAMETER || writes [ static_cast < size_t > ( source ) ] != 0 || ( widened ? ( into.size != 8 || ( into.bits & FLOATING ) || ( from.bits & FLOATING ) ) : ( into.size != from.size || ( into.bits & FLOATING ) != ( from.bits & FLOATING ) ) ) )
 			continue;
 
 		if ( into.family == 0 ) {
@@ -1794,10 +1820,48 @@ void decompiler::builder::coalesce_copies ( ) {
 
 		}
 
-		for ( expr& node : exprs ) {
+		if ( widened ) {
 
-			if ( node.kind == op::VAR && node.value == copy )
-				node.value = source;
+			int32_t total = exprs.count ( );
+
+			for ( int32_t e = 0; e < total; e++ ) {
+
+				if ( exprs [ static_cast < size_t > ( e ) ].kind != op::VAR || exprs [ static_cast < size_t > ( e ) ].value != copy )
+					continue;
+
+				exprs.push ( right );
+
+				int32_t leaf = exprs.count ( ) - 1;
+				expr narrow = exprs [ static_cast < size_t > ( widening.a ) ];
+
+				if ( narrow.kind == op::CAST ) {
+
+					narrow.a = leaf;
+					exprs.push ( narrow );
+					leaf = exprs.count ( ) - 1;
+
+				}
+
+				expr& node = exprs [ static_cast < size_t > ( e ) ];
+
+				node.kind = op::CAST;
+				node.size = 8;
+				node.bits = widening.bits;
+				node.a = leaf;
+				node.b = -1;
+				node.c = -1;
+				node.value = 0;
+
+			}
+
+		} else {
+
+			for ( expr& node : exprs ) {
+
+				if ( node.kind == op::VAR && node.value == copy )
+					node.value = source;
+
+			}
 
 		}
 
