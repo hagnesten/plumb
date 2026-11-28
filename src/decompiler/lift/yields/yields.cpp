@@ -111,7 +111,7 @@ int32_t decompiler::callee_width ( const analysis::database& db, const loader::b
 	if ( known >= 0 )
 		return known;
 
-	if ( depth >= 3 || db.function_starting ( target ) < 0 )
+	if ( depth >= 3 || db.function_starting ( target ) < 0 || ( opaque_guard_slots && opaque_thunk ( db, target ) ) )
 		return 8;
 
 	return yields_value ( db, file, names, target, long_mode, depth + 1 );
@@ -1362,6 +1362,7 @@ int32_t decompiler::yields_value ( const analysis::database& db, const loader::b
 	bool found_call = false;
 	bool found_void = false;
 	bool found_undefined = false;
+	bool void_call = false;
 	uint32_t kinds = 0;
 
 	auto note = [ & ] ( int32_t kind ) {
@@ -1416,7 +1417,15 @@ int32_t decompiler::yields_value ( const analysis::database& db, const loader::b
 
 			if ( state [ static_cast < size_t > ( at ) ] ) {
 
-				note ( judge ( at ) );
+				int32_t kind = judge ( at );
+
+				wchar_t ender [ 200 ];
+				uint64_t ended = kind == 0 && void_call_paths && names && last_def [ static_cast < size_t > ( at ) ].name == mnemonic::call ? call_target ( last_def [ static_cast < size_t > ( at ) ] ) : 0;
+
+				if ( ended && names->name ( ended, true, ender, 200 ) && analysis::is_noreturn_name ( ender ) )
+					void_call = true;
+				else
+					note ( kind );
 
 				continue;
 
@@ -1438,6 +1447,9 @@ int32_t decompiler::yields_value ( const analysis::database& db, const loader::b
 		}
 
 	}
+
+	if ( void_call && !found_plain && !found_call )
+		found_void = true;
 
 	if ( found_void || !( found_plain || ( found_call && !found_undefined ) ) )
 		return 0;

@@ -191,4 +191,6 @@ namespace decompiler {
 
 	extern bool opaque_guard_slots;
 
+	extern bool void_call_paths;
+
 }
