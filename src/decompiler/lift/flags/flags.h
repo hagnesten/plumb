@@ -32,6 +32,8 @@ namespace decompiler {
 
 	extern bool widened_arith_uses;
 
+	extern bool self_tests;
+
 	extern bool tail_stack_args;
 
 	extern bool ordered_cmov_loads;

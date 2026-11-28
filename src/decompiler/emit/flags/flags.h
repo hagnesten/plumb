@@ -160,6 +160,8 @@ namespace decompiler {
 
 	extern bool strict_rotation;
 
+	extern bool self_ands;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

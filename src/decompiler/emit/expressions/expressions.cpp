@@ -488,6 +488,16 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 
 	}
 
+	if ( self_ands && ( item.kind == op::AND || item.kind == op::OR ) && item.a >= 0 && item.b >= 0 && !( item.bits & FLOATING ) && b.same ( item.a, item.b ) && !logical_pair ( item ) ) {
+
+		value ( item.a, parent, hex_hint );
+		holder_size = outer_size;
+		holder_kind = outer_kind;
+
+		return;
+
+	}
+
 	int32_t mine = precedence ( item.kind );
 	bool wrap = mine < parent;
 

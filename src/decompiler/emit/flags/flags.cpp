@@ -93,6 +93,7 @@ bool decompiler::scalar_vector_returns = true;
 bool decompiler::loop_follows = true;
 bool decompiler::derived_int_args = true;
 bool decompiler::strict_rotation = true;
+bool decompiler::self_ands = true;
 bool decompiler::buffer_arrays = true;
 bool decompiler::ida_typedefs = true;
 bool decompiler::value_falls = true;

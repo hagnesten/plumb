@@ -1302,7 +1302,7 @@ int32_t decompiler::machine::condition ( int32_t code ) {
 
 			int32_t value = a;
 
-			if ( !( flag_b == a || ( k.exprs [ static_cast < size_t > ( a ) ].kind == k.exprs [ static_cast < size_t > ( flag_b ) ].kind && k.exprs [ static_cast < size_t > ( a ) ].kind == op::VAR && k.exprs [ static_cast < size_t > ( a ) ].value == k.exprs [ static_cast < size_t > ( flag_b ) ].value ) ) )
+			if ( !( flag_b == a || flag_b == flag_a || ( k.exprs [ static_cast < size_t > ( a ) ].kind == k.exprs [ static_cast < size_t > ( flag_b ) ].kind && k.exprs [ static_cast < size_t > ( a ) ].kind == op::VAR && k.exprs [ static_cast < size_t > ( a ) ].value == k.exprs [ static_cast < size_t > ( flag_b ) ].value ) || ( self_tests && flag_b >= 0 && k.same ( flag_a, flag_b ) ) ) )
 				value = k.binary ( op::AND, a, flag_b, size );
 
 			switch ( code ) {
