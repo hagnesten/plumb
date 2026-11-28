@@ -198,4 +198,10 @@ namespace decompiler {
 	extern bool inner_stack_addresses;
 
 	extern bool constants_right;
+
+	extern bool home_spills;
+
+	extern bool call_spoils;
+
+	extern bool spoil_numbers;
 }

@@ -177,3 +177,6 @@ bool decompiler::void_call_paths = true;
 bool decompiler::unsized_addresses = true;
 bool decompiler::inner_stack_addresses = true;
 bool decompiler::constants_right = true;
+bool decompiler::home_spills = true;
+bool decompiler::call_spoils = false;
+bool decompiler::spoil_numbers = true;

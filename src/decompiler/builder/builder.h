@@ -219,6 +219,7 @@ namespace decompiler {
 		int32_t family_var [ 32 ];
 		uint32_t entry_live = 0;
 		uint32_t home_local = 0;
+		uint8_t spill_widths [ 4 ] = { };
 		int32_t params = 0;
 		bool has_prototype = false;
 		c_prototype prototype;

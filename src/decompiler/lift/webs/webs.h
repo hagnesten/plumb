@@ -15,7 +15,11 @@ namespace decompiler {
 		base::list < int32_t > use_expr;
 		base::list < int32_t > use_def;
 		base::list < int32_t > def_of_statement;
+		base::list < uint8_t > spoils_at;
 		int32_t words = 0;
+		int32_t spoil = -1;
+		uint64_t spoil_at = 0;
+		uint64_t spoil_born = 0;
 
 		explicit web_state ( builder& owner );
 

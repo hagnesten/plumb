@@ -63,6 +63,18 @@ void decompiler::web_state::uses_in ( int32_t e, const uint64_t* reaching, base:
 
 		}
 
+		if ( first < 0 && spoil >= 0 && ( reaching [ spoil / 64 ] & ( 1ull << ( spoil % 64 ) ) ) ) {
+
+			first = spoil;
+
+			if ( spoil_at && ( !spoil_born || spoil_at < spoil_born ) )
+				spoil_born = spoil_at;
+
+		}
+
+		if ( spoil >= 0 && node.first_arg == 1 && ( first < 0 || first == spoil ) )
+			first = 0;
+
 		if ( first < 0 )
 			first = 0;
 
@@ -122,12 +134,44 @@ void decompiler::web_state::run ( ) {
 	}
 
 	bool parameter = b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::PARAMETER;
+	int32_t family = b.vars [ static_cast < size_t > ( var ) ].family;
+	bool volatile_family = call_spoils && ( family == 1 || family == 2 || ( family >= 8 && family <= 11 ) ) && ( b.vars [ static_cast < size_t > ( var ) ].kind == var_kind::REGISTER || parameter );
+	bool any_spoil = false;
 
-	if ( defs.count ( ) < ( parameter ? 1 : 2 ) || defs.count ( ) > 4000 )
+	spoil = -1;
+	spoil_at = 0;
+	spoil_born = 0;
+	spoils_at.clear ( );
+	spoils_at.fill ( b.statements.size ( ), 0 );
+
+	if ( volatile_family ) {
+
+		for ( int32_t s = 0; s < b.statements.count ( ); s++ ) {
+
+			const statement& line = b.statements [ static_cast < size_t > ( s ) ];
+
+			if ( line.kind == stmt::NOP || line.kind == stmt::ASM || defines ( line ) )
+				continue;
+
+			if ( has_call ( b, line.right, 0 ) || ( line.left >= 0 && has_call ( b, line.left, 0 ) ) ) {
+
+				spoils_at [ static_cast < size_t > ( s ) ] = 1;
+				any_spoil = true;
+
+			}
+
+		}
+
+	}
+
+	if ( defs.count ( ) < ( any_spoil ? ( parameter ? 0 : 1 ) : ( parameter ? 1 : 2 ) ) || defs.count ( ) > 4000 )
 		return;
 
-	int32_t total = defs.count ( ) + 1;
+	int32_t total = defs.count ( ) + 1 + ( any_spoil ? 1 : 0 );
 	int32_t blocks = b.code.count ( );
+
+	if ( any_spoil )
+		spoil = total - 1;
 
 	words = ( total + 63 ) / 64;
 	parent.clear ( );
@@ -151,8 +195,13 @@ void decompiler::web_state::run ( ) {
 
 			if ( b.statements [ static_cast < size_t > ( s ) ].kind != stmt::NOP && def_of_statement [ static_cast < size_t > ( s ) ] > 0 )
 				last_def [ static_cast < size_t > ( k ) ] = def_of_statement [ static_cast < size_t > ( s ) ];
+			else if ( spoil >= 0 && spoils_at [ static_cast < size_t > ( s ) ] )
+				last_def [ static_cast < size_t > ( k ) ] = spoil;
 
 		}
+
+		if ( spoil >= 0 && has_call ( b, block.condition, 0 ) )
+			last_def [ static_cast < size_t > ( k ) ] = spoil;
 
 	}
 
@@ -229,6 +278,8 @@ void decompiler::web_state::run ( ) {
 		for ( int32_t w = 0; w < words; w++ )
 			reaching [ static_cast < size_t > ( w ) ] = in [ static_cast < size_t > ( k * words + w ) ];
 
+		spoil_at = 0;
+
 		for ( int32_t s = block.first; s < block.first + block.count && s < b.statements.count ( ); s++ ) {
 
 			const statement& line = b.statements [ static_cast < size_t > ( s ) ];
@@ -239,9 +290,21 @@ void decompiler::web_state::run ( ) {
 			seen.clear ( );
 			uses_in ( line.right, reaching.data ( ), seen );
 
-			if ( !defines ( line ) )
+			if ( !defines ( line ) ) {
+
 				uses_in ( line.left, reaching.data ( ), seen );
-			else {
+
+				if ( spoil >= 0 && spoils_at [ static_cast < size_t > ( s ) ] ) {
+
+					for ( int32_t w = 0; w < words; w++ )
+						reaching [ static_cast < size_t > ( w ) ] = 0;
+
+					reaching [ static_cast < size_t > ( spoil / 64 ) ] = 1ull << ( spoil % 64 );
+					spoil_at = line.origin ? line.origin : line.address;
+
+				}
+
+			} else {
 
 				int32_t made = def_of_statement [ static_cast < size_t > ( s ) ];
 
@@ -294,11 +357,19 @@ void decompiler::web_state::run ( ) {
 
 	}
 
+	bool spoil_used = false;
+
+	for ( int32_t d : use_def )
+		spoil_used = spoil_used || ( spoil >= 0 && find ( d ) == find ( spoil ) );
+
 	for ( int32_t d = 1; d < total; d++ ) {
 
 		int32_t root = find ( d );
 
 		if ( class_var [ static_cast < size_t > ( root ) ] >= 0 )
+			continue;
+
+		if ( d == spoil && !spoil_used )
 			continue;
 
 		if ( !kept ) {
@@ -320,12 +391,15 @@ void decompiler::web_state::run ( ) {
 			copy.position = -1;
 
 		}
+
+		if ( d == spoil && spoil_born && spoil_numbers )
+			copy.born = spoil_born;
 		class_var [ static_cast < size_t > ( root ) ] = b.vars.count ( );
 		b.vars.push ( copy );
 
 	}
 
-	for ( int32_t d = 1; d < total; d++ ) {
+	for ( int32_t d = 1; d < defs.count ( ) + 1; d++ ) {
 
 		int32_t target = class_var [ static_cast < size_t > ( find ( d ) ) ];
 		const statement& line = b.statements [ static_cast < size_t > ( defs [ static_cast < size_t > ( d - 1 ) ] ) ];
@@ -1035,6 +1109,24 @@ void decompiler::builder::narrow_webs ( ) {
 			widest [ v ] = static_cast < uint8_t > ( base::max ( static_cast < int32_t > ( widest [ v ] ), width ) );
 
 	};
+
+	for ( int32_t v = 0; v < total; v++ ) {
+
+		const variable& item = vars [ static_cast < size_t > ( v ) ];
+
+		if ( item.kind != var_kind::PARAMETER || item.position < 0 || item.position >= 4 || ( item.bits & FLOATING ) )
+			continue;
+
+		uint8_t width = spill_widths [ item.position ];
+
+		if ( width > 0 && width <= 4 ) {
+
+			narrow_count [ static_cast < size_t > ( v ) ]++;
+			widest [ static_cast < size_t > ( v ) ] = static_cast < uint8_t > ( base::max ( static_cast < int32_t > ( widest [ static_cast < size_t > ( v ) ] ), static_cast < int32_t > ( width ) ) );
+
+		}
+
+	}
 
 	base::list < uint8_t > visited;
 

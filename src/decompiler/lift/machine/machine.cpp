@@ -455,7 +455,19 @@ int32_t decompiler::machine::read_memory ( const x86::instruction& ins, const x8
 
 		item.bits |= bits;
 
-		return b->var_expr ( index, size );
+		bool homed = item.kind != var_kind::STACK;
+		int32_t made = b->var_expr ( index, size );
+
+		if ( homed && call_spoils ) {
+
+			int32_t node = b->exprs [ static_cast < size_t > ( made ) ].kind == op::VAR ? made : b->exprs [ static_cast < size_t > ( made ) ].a;
+
+			if ( node >= 0 && b->exprs [ static_cast < size_t > ( node ) ].kind == op::VAR )
+				b->exprs [ static_cast < size_t > ( node ) ].first_arg = 1;
+
+		}
+
+		return made;
 
 	}
 
@@ -1065,11 +1077,31 @@ void decompiler::machine::write_memory ( const x86::instruction& ins, const x86:
 
 			static const int32_t homes [ 4 ] = { 1, 2, 8, 9 };
 			int32_t position = static_cast < int32_t > ( slot / 8 ) - 1;
-			const expr& incoming = b->exprs [ static_cast < size_t > ( value ) ];
+			int32_t spilled_value = value;
+
+			if ( home_spills && b->exprs [ static_cast < size_t > ( spilled_value ) ].kind == op::CAST && b->exprs [ static_cast < size_t > ( spilled_value ) ].a >= 0 && !( b->exprs [ static_cast < size_t > ( spilled_value ) ].bits & FLOATING ) )
+				spilled_value = b->exprs [ static_cast < size_t > ( spilled_value ) ].a;
+
+			const expr& incoming = b->exprs [ static_cast < size_t > ( spilled_value ) ];
 			bool spill = prologue && incoming.kind == op::VAR && incoming.value >= 0 && incoming.value < b->vars.count ( ) && b->vars [ static_cast < size_t > ( incoming.value ) ].kind != var_kind::STACK && ( b->vars [ static_cast < size_t > ( incoming.value ) ].family == homes [ position ] || b->vars [ static_cast < size_t > ( incoming.value ) ].family == 16 + position );
 
 			if ( !spill )
 				b->home_local |= 1u << position;
+
+			if ( spill && home_spills ) {
+
+				int32_t home = b->stack_var ( slot, size );
+
+				if ( home == incoming.value || ( home >= 0 && b->vars [ static_cast < size_t > ( home ) ].kind != var_kind::STACK && b->vars [ static_cast < size_t > ( home ) ].family == b->vars [ static_cast < size_t > ( incoming.value ) ].family ) ) {
+
+					if ( size < 8 )
+						b->spill_widths [ position ] = size;
+
+					return;
+
+				}
+
+			}
 
 		}
 

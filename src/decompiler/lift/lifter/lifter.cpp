@@ -110,6 +110,87 @@ bool decompiler::cookie_check ( const base::list < x86::instruction >& list, int
 
 }
 
+uint32_t decompiler::taken_homes ( const base::list < base::list < x86::instruction > >& listings ) {
+
+	if ( listings.empty ( ) )
+		return 0xF;
+
+	int64_t rsp = 0;
+	int64_t frame [ 16 ] = { };
+	bool known [ 16 ] = { };
+
+	known [ 4 ] = true;
+
+	for ( const x86::instruction& ins : listings [ 0 ] ) {
+
+		if ( ins.name == mnemonic::push ) {
+
+			rsp -= 8;
+
+			continue;
+
+		}
+
+		if ( ins.count != 2 || ins.operands [ 0 ].type != x86::kind::REG )
+			continue;
+
+		int32_t target = slot_of ( ins.operands [ 0 ].reg );
+
+		if ( target < 0 || target >= 16 )
+			continue;
+
+		if ( target == 4 && ins.name == mnemonic::sub && ins.operands [ 1 ].type == x86::kind::IMM ) {
+
+			rsp -= ins.operands [ 1 ].value;
+
+			continue;
+
+		}
+
+		if ( ins.name == mnemonic::mov && ins.operands [ 1 ].type == x86::kind::REG && x86::register_family ( ins.operands [ 1 ].reg ) == 4 ) {
+
+			known [ target ] = true;
+			frame [ target ] = rsp;
+
+		} else if ( ins.name == mnemonic::lea && ins.operands [ 1 ].type == x86::kind::MEM && ins.operands [ 1 ].index == x86::NONE && ins.operands [ 1 ].base != x86::NONE && x86::register_family ( ins.operands [ 1 ].base ) == 4 ) {
+
+			known [ target ] = true;
+			frame [ target ] = rsp + ins.operands [ 1 ].value;
+
+		} else if ( target != 4 )
+			known [ target ] = false;
+
+	}
+
+	frame [ 4 ] = rsp;
+
+	uint32_t taken = 0;
+
+	for ( const base::list < x86::instruction >& list : listings ) {
+
+		for ( const x86::instruction& ins : list ) {
+
+			if ( ins.name != mnemonic::lea || ins.count != 2 || ins.operands [ 1 ].type != x86::kind::MEM || ins.operands [ 1 ].index != x86::NONE || ins.operands [ 1 ].base == x86::NONE )
+				continue;
+
+			int32_t base = slot_of ( x86::resize_register ( ins.operands [ 1 ].base, 8 ) );
+
+			if ( base < 0 || base >= 16 || !known [ base ] )
+				continue;
+
+			int64_t slot = frame [ base ] + ins.operands [ 1 ].value;
+
+			if ( slot >= 8 && slot <= 32 )
+				taken |= 1u << ( ( slot - 8 ) / 8 );
+
+		}
+
+	}
+
+	return taken;
+
+}
+
 uint32_t decompiler::useful_entry ( const builder& b, const base::list < base::list < x86::instruction > >& listings, const base::list < base::list < uint32_t > >& uses, const base::list < base::list < uint32_t > >& defs ) {
 
 	int32_t count = listings.count ( );
@@ -706,6 +787,7 @@ bool decompiler::builder::lift ( ) {
 	}
 
 	machine state;
+	uint32_t homes_taken = home_spills && long_mode ? taken_homes ( listings ) : 0xF;
 
 	state.b = this;
 
@@ -756,6 +838,7 @@ bool decompiler::builder::lift ( ) {
 		out_block.reachable = true;
 
 		bool pushing = index == 0;
+		bool extended = false;
 		int32_t table_at = -1;
 		uint8_t table_reg = 0;
 		int32_t table_selector = -1;
@@ -795,12 +878,31 @@ bool decompiler::builder::lift ( ) {
 			else if ( !( ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::MEM && ins.operands [ 1 ].type == x86::kind::REG ) )
 				pushing = false;
 
+			int64_t home = 0;
+			bool home_store = home_spills && long_mode && ins.name == mnemonic::mov && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::MEM && ins.operands [ 1 ].type == x86::kind::REG && state.stack_slot ( ins.operands [ 0 ], home ) && home >= 8 && home <= 32 && ( home & 7 ) == 0;
+			bool spilled = home_store && !( homes_taken & ( 1u << ( ( home - 8 ) / 8 ) ) );
+
+			bool resume = home_store && !spilled && state.prologue;
+
+			if ( ( extended || resume ) && !spilled && ins.count && ins.operands [ 0 ].type == x86::kind::MEM && ins.name != mnemonic::push )
+				state.prologue = false;
+
 			state.step ( ins, after [ static_cast < size_t > ( i ) ], def_list [ static_cast < size_t > ( i ) ] );
+
+			if ( resume ) {
+
+				state.prologue = true;
+				spilled = true;
+
+			}
 
 			if ( state.delta < deepest )
 				deepest = state.delta;
 
-			if ( ins.name == mnemonic::call || ( ins.count && ins.operands [ 0 ].type == x86::kind::MEM && ins.name != mnemonic::push ) )
+			if ( spilled && state.prologue )
+				extended = true;
+
+			if ( ins.name == mnemonic::call || ( ins.count && ins.operands [ 0 ].type == x86::kind::MEM && ins.name != mnemonic::push && !spilled ) )
 				state.prologue = false;
 
 			if ( ins.name != mnemonic::push && ins.name != mnemonic::sub && ins.name != mnemonic::mov && ins.name != mnemonic::lea )
