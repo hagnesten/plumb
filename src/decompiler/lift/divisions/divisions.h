@@ -11,4 +11,6 @@ namespace decompiler {
 
 	uint64_t magic_divisor ( uint64_t magic, int32_t shift );
 
+	uint64_t magic_divisor32 ( uint64_t magic, int32_t shift );
+
 }

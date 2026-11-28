@@ -150,6 +150,8 @@ namespace decompiler {
 
 	extern bool part_macro_slots;
 
+	extern bool signed_divisions;
+
 	extern bool buffer_arrays;
 
 	extern bool ida_typedefs;

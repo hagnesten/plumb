@@ -40,6 +40,7 @@ namespace decompiler {
 		bool in_logic = false;
 		bool untruncate = false;
 		bool word_store = false;
+		bool divisor_suffix = false;
 		uint8_t holder_size = 0;
 		op holder_kind = op::CONST;
 		int32_t forced_exit = -1;

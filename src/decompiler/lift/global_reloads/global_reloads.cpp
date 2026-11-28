@@ -209,6 +209,128 @@ void decompiler::builder::retest_loads ( ) {
 
 }
 
+void decompiler::builder::inline_pre_increments ( ) {
+
+	base::list < int32_t > defs;
+	base::list < int32_t > reads;
+
+	defs.fill ( vars.size ( ), 0 );
+	reads.fill ( vars.size ( ), 0 );
+
+	for ( const statement& line : statements ) {
+
+		if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+			continue;
+
+		bool direct = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+
+		if ( direct ) {
+
+			int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+			if ( v >= 0 && v < defs.count ( ) )
+				defs [ static_cast < size_t > ( v ) ]++;
+
+		} else
+			count_reads ( *this, line.left, reads );
+
+		count_reads ( *this, line.right, reads );
+
+	}
+
+	for ( const block_code& item : code ) {
+
+		count_reads ( *this, item.condition, reads );
+		count_reads ( *this, item.selector, reads );
+		count_reads ( *this, item.returned, reads );
+
+	}
+
+	for ( block_code& block : code ) {
+
+		if ( !block.reachable )
+			continue;
+
+		base::list < int32_t > live;
+
+		for ( int32_t s = block.first; s < block.first + block.count && s < statements.count ( ); s++ ) {
+
+			if ( statements [ static_cast < size_t > ( s ) ].kind != stmt::NOP )
+				live.push ( s );
+
+		}
+
+		for ( int32_t i = 0; i + 1 < live.count ( ); i++ ) {
+
+			statement& first = statements [ static_cast < size_t > ( live [ static_cast < size_t > ( i ) ] ) ];
+			statement& second = statements [ static_cast < size_t > ( live [ static_cast < size_t > ( i + 1 ) ] ) ];
+
+			if ( first.kind != stmt::ASSIGN || first.left < 0 || first.right < 0 || exprs [ static_cast < size_t > ( first.left ) ].kind != op::VAR || ( second.kind != stmt::STORE && second.kind != stmt::ASSIGN ) || second.left < 0 || second.right < 0 )
+				continue;
+
+			int64_t v = exprs [ static_cast < size_t > ( first.left ) ].value;
+			const expr step = exprs [ static_cast < size_t > ( first.right ) ];
+
+			if ( v < 0 || v >= vars.count ( ) || defs [ static_cast < size_t > ( v ) ] != 1 || reads [ static_cast < size_t > ( v ) ] != 1 || vars [ static_cast < size_t > ( v ) ].kind != var_kind::REGISTER )
+				continue;
+
+			if ( step.kind != op::ADD || step.a < 0 || step.b < 0 || exprs [ static_cast < size_t > ( step.b ) ].kind != op::CONST || ( exprs [ static_cast < size_t > ( step.b ) ].value != 1 && exprs [ static_cast < size_t > ( step.b ) ].value != -1 ) || ( step.bits & FLOATING ) )
+				continue;
+
+			const expr& place = exprs [ static_cast < size_t > ( second.left ) ];
+			bool global = place.kind == op::GLOBAL || ( place.kind == op::LOAD && place.a >= 0 && exprs [ static_cast < size_t > ( place.a ) ].kind == op::CONST );
+
+			if ( !global || !same ( step.a, second.left ) )
+				continue;
+
+			bool stored_var = exprs [ static_cast < size_t > ( second.right ) ].kind == op::VAR && exprs [ static_cast < size_t > ( second.right ) ].value == v;
+
+			if ( !stored_var && !same ( second.right, first.right ) )
+				continue;
+
+			int32_t increment = make ( op::SET, exprs [ static_cast < size_t > ( second.left ) ].size, second.left, first.right, 2 );
+			bool placed = false;
+
+			if ( i + 2 < live.count ( ) ) {
+
+				statement& third = statements [ static_cast < size_t > ( live [ static_cast < size_t > ( i + 2 ) ] ) ];
+
+				if ( third.kind != stmt::ASM && third.right >= 0 && mentions ( *this, third.right, v, 0 ) ) {
+
+					third.right = substitute ( *this, third.right, v, increment, 0 );
+					placed = true;
+
+				}
+
+			} else {
+
+				if ( block.returned >= 0 && mentions ( *this, block.returned, v, 0 ) ) {
+
+					block.returned = substitute ( *this, block.returned, v, increment, 0 );
+					placed = true;
+
+				} else if ( block.condition >= 0 && mentions ( *this, block.condition, v, 0 ) ) {
+
+					block.condition = substitute ( *this, block.condition, v, increment, 0 );
+					placed = true;
+
+				}
+
+			}
+
+			if ( !placed )
+				continue;
+
+			first.kind = stmt::NOP;
+			second.kind = stmt::NOP;
+			i++;
+
+		}
+
+	}
+
+}
+
 void decompiler::builder::reuse_store_loads ( ) {
 
 	for ( const block_code& block : code ) {

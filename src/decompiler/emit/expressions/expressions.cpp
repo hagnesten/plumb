@@ -506,7 +506,9 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 			if ( item.bits & POINTER )
 				pointer_constant ( static_cast < uint64_t > ( item.value ) );
 			else
-				number ( item.value, item.size, hex_hint || !simple_constant ( item.value ), false );
+				number ( item.value, item.size, hex_hint || !simple_constant ( item.value ), divisor_suffix && item.value > 0 );
+
+			divisor_suffix = false;
 
 			break;
 
@@ -1248,6 +1250,15 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 
 		case op::SET:
 
+			if ( item.value == 2 && item.b >= 0 && b.exprs [ static_cast < size_t > ( item.b ) ].kind == op::ADD && b.exprs [ static_cast < size_t > ( item.b ) ].b >= 0 ) {
+
+				out.put ( b.exprs [ static_cast < size_t > ( b.exprs [ static_cast < size_t > ( item.b ) ].b ) ].value < 0 ? L"--" : L"++", syntax::OPERATOR );
+				value ( item.a, 14 );
+
+				break;
+
+			}
+
 			out.put ( L"(" );
 			value ( item.a, 0 );
 			out.put ( L" = ", syntax::OPERATOR );
@@ -1712,8 +1723,21 @@ void decompiler::emitter::value_body ( int32_t index, int32_t parent, bool hex_h
 
 			} else if ( ( item.kind == op::LAND || item.kind == op::LOR ) && item.b >= 0 && b.exprs [ static_cast < size_t > ( item.b ) ].kind == item.kind )
 				value ( item.b, mine, bitwise );
-			else
+			else {
+
+				if ( signed_divisions && ( item.kind == op::DIV || item.kind == op::MOD ) && ( item.bits & UNSIGNED ) && item.size == 4 && item.b >= 0 && b.exprs [ static_cast < size_t > ( item.b ) ].kind == op::CONST ) {
+
+					const expr& dividend = b.exprs [ static_cast < size_t > ( item.a ) ];
+					bool known = ( dividend.bits & UNSIGNED ) || ( dividend.kind == op::VAR && dividend.value >= 0 && dividend.value < b.vars.count ( ) && ( b.vars [ static_cast < size_t > ( dividend.value ) ].bits & UNSIGNED ) );
+
+					divisor_suffix = !known;
+
+				}
+
 				value ( item.b, mine + 1, bitwise );
+				divisor_suffix = false;
+
+			}
 
 			break;
 

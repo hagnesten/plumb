@@ -1232,6 +1232,9 @@ bool decompiler::builder::lift ( ) {
 	if ( retested_loads )
 		retest_loads ( );
 
+	if ( global_pre_increments )
+		inline_pre_increments ( );
+
 	return true;
 
 }

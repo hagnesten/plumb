@@ -20,6 +20,10 @@ namespace decompiler {
 
 	extern bool widened_param_copies;
 
+	extern bool split_magic_divisions;
+
+	extern bool global_pre_increments;
+
 	extern bool tail_stack_args;
 
 	extern bool ordered_cmov_loads;

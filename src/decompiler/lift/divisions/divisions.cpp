@@ -3,6 +3,7 @@
 #include "decompiler/lift/effects/effects.h"
 #include "decompiler/lift/intrinsics/intrinsics.h"
 #include "decompiler/lift/yields/yields.h"
+#include "decompiler/lift/prune/prune.h"
 #include "decompiler/apis/apis.h"
 #include "decompiler/literals/literals.h"
 #include "x86/decoder/decoder.h"
@@ -53,10 +54,160 @@ uint64_t decompiler::magic_divisor ( uint64_t magic, int32_t shift ) {
 
 }
 
+uint64_t decompiler::magic_divisor32 ( uint64_t magic, int32_t shift ) {
+
+	if ( !magic || magic > 0xFFFFFFFFull || shift < 32 || shift > 63 )
+		return 0;
+
+	double estimate = 1.0;
+
+	for ( int32_t i = 0; i < shift; i++ )
+		estimate *= 2.0;
+
+	estimate /= static_cast < double > ( magic );
+
+	if ( estimate < 2.0 || estimate > 4294967295.0 )
+		return 0;
+
+	uint64_t divisor = static_cast < uint64_t > ( estimate + 0.5 );
+	const uint64_t probes [ ] = { 1, 7, 99, 12345, divisor - 1, divisor, divisor + 1, divisor * 2 - 1, divisor * 2, 0x7FFFFFFFull, 0xFFFFFFFFull, 0x89ABCDEFull };
+
+	for ( uint64_t x : probes ) {
+
+		x &= 0xFFFFFFFFull;
+
+		if ( ( ( x * magic ) >> shift ) != x / divisor )
+			return 0;
+
+	}
+
+	return divisor;
+
+}
+
+void decompiler::builder::split_divisions ( ) {
+
+	base::list < int32_t > defs;
+	base::list < int32_t > reads;
+
+	defs.fill ( vars.size ( ), 0 );
+	reads.fill ( vars.size ( ), 0 );
+
+	for ( const statement& line : statements ) {
+
+		if ( line.kind == stmt::NOP || line.kind == stmt::ASM )
+			continue;
+
+		bool direct = line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR;
+
+		if ( direct ) {
+
+			int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+			if ( v >= 0 && v < defs.count ( ) )
+				defs [ static_cast < size_t > ( v ) ]++;
+
+		} else
+			count_reads ( *this, line.left, reads );
+
+		count_reads ( *this, line.right, reads );
+
+	}
+
+	for ( const block_code& item : code ) {
+
+		count_reads ( *this, item.condition, reads );
+		count_reads ( *this, item.selector, reads );
+		count_reads ( *this, item.returned, reads );
+
+	}
+
+	for ( statement& line : statements ) {
+
+		if ( line.kind != stmt::ASSIGN || line.left < 0 || line.right < 0 || exprs [ static_cast < size_t > ( line.left ) ].kind != op::VAR )
+			continue;
+
+		int64_t v = exprs [ static_cast < size_t > ( line.left ) ].value;
+
+		if ( v < 0 || v >= vars.count ( ) || defs [ static_cast < size_t > ( v ) ] != 1 || reads [ static_cast < size_t > ( v ) ] != 1 || vars [ static_cast < size_t > ( v ) ].kind != var_kind::REGISTER )
+			continue;
+
+		int32_t top = line.right;
+
+		while ( top >= 0 && exprs [ static_cast < size_t > ( top ) ].kind == op::CAST && !( exprs [ static_cast < size_t > ( top ) ].bits & ( SIGNED | FLOATING ) ) )
+			top = exprs [ static_cast < size_t > ( top ) ].a;
+
+		if ( top < 0 )
+			continue;
+
+		const expr high = exprs [ static_cast < size_t > ( top ) ];
+
+		if ( high.kind != op::SHR || high.a < 0 || high.b < 0 || exprs [ static_cast < size_t > ( high.b ) ].kind != op::CONST || exprs [ static_cast < size_t > ( high.b ) ].value != 32 )
+			continue;
+
+		const expr product = exprs [ static_cast < size_t > ( high.a ) ];
+
+		if ( product.kind != op::MUL || product.a < 0 || product.b < 0 )
+			continue;
+
+		int32_t magic = exprs [ static_cast < size_t > ( product.a ) ].kind == op::CONST ? product.a : ( exprs [ static_cast < size_t > ( product.b ) ].kind == op::CONST ? product.b : -1 );
+
+		if ( magic < 0 )
+			continue;
+
+		int32_t subject = magic == product.a ? product.b : product.a;
+
+		while ( subject >= 0 && exprs [ static_cast < size_t > ( subject ) ].kind == op::CAST && exprs [ static_cast < size_t > ( subject ) ].size == 8 && !( exprs [ static_cast < size_t > ( subject ) ].bits & ( SIGNED | FLOATING ) ) )
+			subject = exprs [ static_cast < size_t > ( subject ) ].a;
+
+		if ( subject < 0 || exprs [ static_cast < size_t > ( subject ) ].size != 4 )
+			continue;
+
+		for ( int32_t e = 0; e < exprs.count ( ); e++ ) {
+
+			const expr use = exprs [ static_cast < size_t > ( e ) ];
+
+			if ( use.kind != op::SHR || use.a < 0 || use.b < 0 || exprs [ static_cast < size_t > ( use.b ) ].kind != op::CONST )
+				continue;
+
+			int32_t read = use.a;
+
+			while ( read >= 0 && exprs [ static_cast < size_t > ( read ) ].kind == op::CAST && !( exprs [ static_cast < size_t > ( read ) ].bits & ( SIGNED | FLOATING ) ) )
+				read = exprs [ static_cast < size_t > ( read ) ].a;
+
+			if ( read < 0 || exprs [ static_cast < size_t > ( read ) ].kind != op::VAR || exprs [ static_cast < size_t > ( read ) ].value != v )
+				continue;
+
+			uint64_t divisor = magic_divisor32 ( static_cast < uint64_t > ( exprs [ static_cast < size_t > ( magic ) ].value ), 32 + static_cast < int32_t > ( exprs [ static_cast < size_t > ( use.b ) ].value ) );
+
+			if ( !divisor )
+				break;
+
+			int32_t amount = constant ( static_cast < int64_t > ( divisor ), 4 );
+			int32_t quotient = make ( op::DIV, 4, subject, amount, 0, UNSIGNED );
+			expr& target = exprs [ static_cast < size_t > ( e ) ];
+
+			target.kind = op::CAST;
+			target.a = quotient;
+			target.b = -1;
+			target.bits = 0;
+			line.kind = stmt::NOP;
+
+			break;
+
+		}
+
+	}
+
+}
+
 void decompiler::builder::fold_divisions ( ) {
 
 	if ( !late_divisions )
 		return;
+
+	if ( split_magic_divisions )
+		split_divisions ( );
 
 	for ( int32_t e = 0; e < exprs.count ( ); e++ ) {
 
@@ -129,10 +280,39 @@ void decompiler::builder::fold_divisions ( ) {
 
 		const expr division = exprs [ static_cast < size_t > ( quotient ) ];
 
-		if ( division.b < 0 || exprs [ static_cast < size_t > ( division.b ) ].kind != op::CONST || exprs [ static_cast < size_t > ( division.b ) ].value != exprs [ static_cast < size_t > ( factor ) ].value || !same_tree ( *this, bare ( division.a ), whole, 0 ) )
+		if ( division.b < 0 || exprs [ static_cast < size_t > ( division.b ) ].kind != op::CONST || exprs [ static_cast < size_t > ( division.b ) ].value != exprs [ static_cast < size_t > ( factor ) ].value )
 			continue;
 
-		int32_t remainder = make ( op::MOD, division.size, division.a, division.b, 0, division.bits );
+		int32_t dividend = division.a;
+
+		if ( !same_tree ( *this, bare ( division.a ), whole, 0 ) ) {
+
+			if ( !split_magic_divisions || exprs [ static_cast < size_t > ( whole ) ].kind != op::VAR )
+				continue;
+
+			int64_t v = exprs [ static_cast < size_t > ( whole ) ].value;
+			int32_t source = -1;
+			int32_t found = 0;
+
+			for ( const statement& line : statements ) {
+
+				if ( line.kind == stmt::ASSIGN && line.left >= 0 && exprs [ static_cast < size_t > ( line.left ) ].kind == op::VAR && exprs [ static_cast < size_t > ( line.left ) ].value == v ) {
+
+					source = line.right;
+					found++;
+
+				}
+
+			}
+
+			if ( found != 1 || source < 0 || !same_tree ( *this, bare ( source ), bare ( division.a ), 0 ) )
+				continue;
+
+			dividend = whole;
+
+		}
+
+		int32_t remainder = make ( op::MOD, division.size, dividend, division.b, 0, division.bits );
 		expr& target = exprs [ static_cast < size_t > ( e ) ];
 
 		if ( node.size == division.size ) {

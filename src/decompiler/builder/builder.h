@@ -292,6 +292,8 @@ namespace decompiler {
 
 		void fold_divisions ( );
 
+		void split_divisions ( );
+
 		void fold_switches ( );
 
 		void chain_switches ( );
@@ -325,6 +327,8 @@ namespace decompiler {
 		void reuse_store_loads ( );
 
 		void retest_loads ( );
+
+		void inline_pre_increments ( );
 
 		void scale_counters ( );
 
