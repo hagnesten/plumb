@@ -14,4 +14,6 @@ namespace decompiler {
 
 	void annotate ( builder& b, const base::list < x86::instruction >& list, base::list < uint32_t >& uses, base::list < uint32_t >& defs );
 
+	uint32_t useful_entry ( const builder& b, const base::list < base::list < x86::instruction > >& listings, const base::list < base::list < uint32_t > >& uses, const base::list < base::list < uint32_t > >& defs );
+
 }

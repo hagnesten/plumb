@@ -171,3 +171,4 @@ bool decompiler::assign_in_tests = true;
 bool decompiler::comma_uses = true;
 bool decompiler::guard_defs = true;
 int32_t decompiler::cast_param_ghosts = 2;
+bool decompiler::dead_copy_params = true;

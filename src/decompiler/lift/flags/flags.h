@@ -187,4 +187,6 @@ namespace decompiler {
 
 	extern int32_t cast_param_ghosts;
 
+	extern bool dead_copy_params;
+
 }

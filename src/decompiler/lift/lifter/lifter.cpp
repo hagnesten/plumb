@@ -67,6 +67,79 @@ bool decompiler::cookie_check ( const base::list < x86::instruction >& list, int
 
 }
 
+uint32_t decompiler::useful_entry ( const builder& b, const base::list < base::list < x86::instruction > >& listings, const base::list < base::list < uint32_t > >& uses, const base::list < base::list < uint32_t > >& defs ) {
+
+	int32_t count = listings.count ( );
+	base::list < uint32_t > live_in;
+	base::list < uint32_t > live_out;
+
+	live_in.fill ( static_cast < size_t > ( count ), 0 );
+	live_out.fill ( static_cast < size_t > ( count ), 0 );
+
+	for ( int32_t round = 0; round < 64; round++ ) {
+
+		bool changed = false;
+
+		for ( int32_t i = count - 1; i >= 0; i-- ) {
+
+			const analysis::block& item = b.graph.blocks [ static_cast < size_t > ( i ) ];
+			const base::list < x86::instruction >& list = listings [ static_cast < size_t > ( i ) ];
+			uint32_t live = 0;
+
+			for ( int32_t e = 0; e < item.out_count; e++ )
+				live |= live_in [ static_cast < size_t > ( b.graph.edges [ static_cast < size_t > ( item.first_out + e ) ].to ) ];
+
+			uint32_t out_mask = live;
+			base::list < uint32_t > passed;
+			uint32_t written = 0;
+
+			passed.fill ( list.size ( ), 0 );
+
+			for ( int32_t k = 0; k < list.count ( ); k++ ) {
+
+				if ( list [ static_cast < size_t > ( k ) ].name == mnemonic::call || list [ static_cast < size_t > ( k ) ].control == x86::flow::JUMP ) {
+
+					passed [ static_cast < size_t > ( k ) ] = written;
+					written = 0;
+
+				} else
+					written |= defs [ static_cast < size_t > ( i ) ] [ static_cast < size_t > ( k ) ] & ( ( 1u << 1 ) | ( 1u << 2 ) | ( 1u << 8 ) | ( 1u << 9 ) );
+
+			}
+
+			for ( int32_t k = list.count ( ) - 1; k >= 0; k-- ) {
+
+				const x86::instruction& ins = list [ static_cast < size_t > ( k ) ];
+				uint32_t use = uses [ static_cast < size_t > ( i ) ] [ static_cast < size_t > ( k ) ] | passed [ static_cast < size_t > ( k ) ];
+				uint32_t def = defs [ static_cast < size_t > ( i ) ] [ static_cast < size_t > ( k ) ];
+				bool pure = ( ins.name == mnemonic::mov || ins.name == mnemonic::movzx || ins.name == mnemonic::movsx || ins.name == mnemonic::movsxd || ins.name == mnemonic::lea ) && ins.count == 2 && ins.operands [ 0 ].type == x86::kind::REG && ( def & 0xFFFFu ) == def;
+
+				if ( pure && def && !( def & live ) )
+					continue;
+
+				live = ( live & ~def ) | use;
+
+			}
+
+			if ( out_mask != live_out [ static_cast < size_t > ( i ) ] || live != live_in [ static_cast < size_t > ( i ) ] ) {
+
+				live_out [ static_cast < size_t > ( i ) ] = out_mask;
+				live_in [ static_cast < size_t > ( i ) ] = live;
+				changed = true;
+
+			}
+
+		}
+
+		if ( !changed )
+			break;
+
+	}
+
+	return count ? live_in [ 0 ] : 0;
+
+}
+
 void decompiler::annotate ( builder& b, const base::list < x86::instruction >& list, base::list < uint32_t >& uses, base::list < uint32_t >& defs ) {
 
 	static const int32_t gpr [ 4 ] = { 1, 2, 8, 9 };
@@ -330,6 +403,9 @@ bool decompiler::builder::lift ( ) {
 	}
 
 	entry_live = live_in [ 0 ];
+
+	if ( long_mode && dead_copy_params )
+		entry_live &= ~( 0xFFFFu & ~useful_entry ( *this, listings, ins_uses, ins_defs ) );
 
 	if ( long_mode ) {
 
