@@ -209,6 +209,84 @@ void decompiler::builder::retest_loads ( ) {
 
 }
 
+void decompiler::builder::shared_exit ( ) {
+
+	if ( !returns_value || code.count ( ) != graph.blocks.count ( ) || code.count ( ) < 3 )
+		return;
+
+	int64_t v = -1;
+	int32_t found = 0;
+	uint64_t edge = 0;
+
+	for ( int32_t k = 0; k < code.count ( ); k++ ) {
+
+		const block_code& block = code [ static_cast < size_t > ( k ) ];
+
+		if ( graph.blocks [ static_cast < size_t > ( k ) ].end > edge )
+			edge = graph.blocks [ static_cast < size_t > ( k ) ].end;
+
+		if ( !block.reachable || block.end != term::RETURN )
+			continue;
+
+		if ( block.returned < 0 || exprs [ static_cast < size_t > ( block.returned ) ].kind != op::VAR )
+			return;
+
+		int64_t returned = exprs [ static_cast < size_t > ( block.returned ) ].value;
+
+		if ( returned < 0 || returned >= vars.count ( ) || vars [ static_cast < size_t > ( returned ) ].family != 0 || ( v >= 0 && returned != v ) )
+			return;
+
+		v = returned;
+		found++;
+
+	}
+
+	if ( found < 2 || v < 0 )
+		return;
+
+	int32_t exit = code.count ( );
+	block_code tail;
+
+	tail.first = statements.count ( );
+	tail.count = 0;
+	tail.end = term::RETURN;
+	tail.returned = var_expr ( static_cast < int32_t > ( v ), 0 );
+	tail.reachable = true;
+	tail.last = edge;
+
+	analysis::block spot;
+
+	spot.start = edge;
+	spot.end = edge;
+	spot.last = edge;
+	spot.returns = true;
+
+	for ( int32_t k = 0; k < exit; k++ ) {
+
+		block_code& block = code [ static_cast < size_t > ( k ) ];
+
+		if ( !block.reachable || block.end != term::RETURN )
+			continue;
+
+		block.end = term::FALL;
+		block.taken = exit;
+		block.returned = -1;
+
+		analysis::edge link;
+
+		link.from = k;
+		link.to = exit;
+		link.kind = analysis::edge_kind::FALL;
+		graph.edges.push ( link );
+
+	}
+
+	code.push ( tail );
+	graph.blocks.push ( spot );
+	reindex_edges ( );
+
+}
+
 void decompiler::builder::inline_pre_increments ( ) {
 
 	base::list < int32_t > defs;

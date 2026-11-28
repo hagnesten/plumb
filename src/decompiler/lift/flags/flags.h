@@ -26,6 +26,8 @@ namespace decompiler {
 
 	extern bool joined_results;
 
+	extern bool shared_result_exit;
+
 	extern bool tail_stack_args;
 
 	extern bool ordered_cmov_loads;

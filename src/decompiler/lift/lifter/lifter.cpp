@@ -1235,6 +1235,9 @@ bool decompiler::builder::lift ( ) {
 	if ( global_pre_increments )
 		inline_pre_increments ( );
 
+	if ( shared_result_exit )
+		shared_exit ( );
+
 	return true;
 
 }

@@ -330,6 +330,8 @@ namespace decompiler {
 
 		void inline_pre_increments ( );
 
+		void shared_exit ( );
+
 		void scale_counters ( );
 
 		base::list < int32_t > counter_bases;
